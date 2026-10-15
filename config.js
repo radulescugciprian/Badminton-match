@@ -2,5 +2,5 @@
 // the database rules in supabase/schema.sql are what keep the data safe.
 window.CONFIG = {
   url: 'https://lhpfiyvsgibxkayepxml.supabase.co',
-  key: 'YOUR-ANON-KEY',
+  key: 'sb_publishable_fYActYYsFeVrPH9-0NV6AA_PpojHLnt',
 };
