@@ -113,7 +113,7 @@ const KEY = 'badminton-db-v2'; // same key as before: older saves just gain mode
 const today = () => new Date().toLocaleDateString('sv-SE'); // local YYYY-MM-DD
 // a new day inherits the previous order/mode; players added since then go to the end
 const newDay = (prev, players) => {
-  const ids = players.map(p => p.id), old = prev ? prev.order.filter(id => ids.includes(id)) : [];
+  const ids = players.filter(p => !p.removed).map(p => p.id), old = prev ? prev.order.filter(id => ids.includes(id)) : [];
   return { date: today(), order: [...old, ...ids.filter(id => !old.includes(id))], mode: prev ? prev.mode : 5, started: false, matches: [] };
 };
 const fresh = () => {
@@ -150,12 +150,22 @@ function rename(id) {
   const p = db.players.find(p => p.id === id), n = prompt('Player name', p.name);
   if (n && n.trim()) { p.name = n.trim().slice(0, 20); save(); }
 }
-function setMode(n) { cur().mode = n; save(); }
+function setMode(n) { if (n <= cur().order.length) cur().mode = n; save(); }
 function addPlayer() {
   const n = (prompt('New player name') || '').trim().slice(0, 20);
   if (!n) return;
   const id = Math.max(...db.players.map(p => p.id)) + 1;
   db.players.push({ id, name: n }); cur().order.push(id); save();
+}
+// Removed players are only hidden (removed: true) so past matches and leaderboards keep working.
+async function removePlayer(id) {
+  const d = cur();
+  if (d.order.length <= 4) return alert('You need at least 4 players.');
+  if (await unlocked() && confirm(`Remove ${player(id).name}? Past results stay in the leaderboards.`)) {
+    player(id).removed = true; d.order = d.order.filter(x => x !== id);
+    if (d.order.length < d.mode) d.mode = d.order.length;
+  }
+  save();
 }
 let pickFor;
 function avatar(id) { pickFor = id; pick.value = ''; pick.click(); }
@@ -261,13 +271,14 @@ function play() {
     return `<h1>New day</h1><p class="mut">Choose 4 or 5 players and their order. The first ${m} in the list play; the rest sit out.</p>
       <input type="date" value="${d.date}" onchange="setDate(this.value)" aria-label="Date">
       <div class="seg" style="margin:12px 0"><button class="${m === 4 ? 'on' : ''}" onclick="setMode(4)">4 players</button>
-        <button class="${m === 5 ? 'on' : ''}" onclick="setMode(5)">5 players</button></div>
+        <button class="${m === 5 ? 'on' : ''}" onclick="setMode(5)" ${o.length < 5 ? 'disabled' : ''}>5 players</button></div>
       <ol>${o.map((id, i) => `${i === m ? '<li class="sep">Sitting out</li>' : ''}<li class="row ${i >= m ? 'bench' : ''}">
         <span class="slot">${i + 1}</span>
         <button class="ph" onclick="avatar(${id})" aria-label="Photo for ${name(id)}">${av(id)}</button>
         <button class="nm" onclick="rename(${id})" aria-label="Rename ${name(id)}">${name(id)} ✎</button>
         <button onclick="move(${i},-1)" aria-label="Move up" ${i === 0 ? 'disabled' : ''}>▲</button>
-        <button onclick="move(${i},1)" aria-label="Move down" ${i === o.length - 1 ? 'disabled' : ''}>▼</button></li>`).join('')}</ol>
+        <button onclick="move(${i},1)" aria-label="Move down" ${i === o.length - 1 ? 'disabled' : ''}>▼</button>
+        <button class="danger" onclick="removePlayer(${id})" aria-label="Remove ${name(id)}">✕</button></li>`).join('')}</ol>
       <button class="add" onclick="addPlayer()">+ Add player</button>
       <p class="preview">Match 1: ${pair(slots(o, a))} vs ${pair(slots(o, b))}${r ? ` · ${name(o[r - 1])} rests` : ''}</p>
       <button class="primary" onclick="start()">Start day</button>`;
