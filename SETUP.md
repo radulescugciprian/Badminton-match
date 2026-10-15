@@ -12,6 +12,11 @@ The app stores everything in a free [Supabase](https://supabase.com) project so 
 6. **First login.** The **first account created becomes the admin**, so sign up yourself before sharing the link.
    Admins can then promote others under *Members*.
 
+## Usernames and password reset
+- Run the migrations in `supabase/migrations/` **in order** (the `..._init.sql` file first, then `..._username.sql`).
+- People log in with a username **or** an email. Trade-off: the login box looks up the email for a username, so anyone who knows a username can find that account's email. Fine for a friends group; say if you want it locked down.
+- "Forgot password?" emails a reset link. Add the app address under *Authentication → URL Configuration → Redirect URLs* or the link will not return to the app. Supabase's built-in email sender is limited to a few emails per hour; add your own SMTP under *Authentication → Emails* if that is not enough.
+
 ## Who can do what
 | | Member | Admin |
 |---|---|---|
