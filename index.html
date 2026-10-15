@@ -79,8 +79,6 @@
   #lb img{max-width:100%;max-height:68dvh;border-radius:12px}
   #lb .actions{margin:0}
   #lb a,#lb button{background:var(--line);border-radius:12px;padding:10px 16px;color:var(--text);text-decoration:none}
-  .last{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:16px;padding:12px 14px}
-  .last button{background:var(--acc);color:var(--on-acc);font-weight:700;white-space:nowrap}
 
   /* nav */
   nav{position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:var(--nav);backdrop-filter:blur(10px);border-top:1px solid var(--line)}
@@ -114,7 +112,7 @@ const today = () => new Date().toLocaleDateString('sv-SE'); // local YYYY-MM-DD
 // a new day inherits the previous order/mode; players added since then go to the end
 const newDay = (prev, players) => {
   const ids = players.filter(p => !p.removed).map(p => p.id), old = prev ? prev.order.filter(id => ids.includes(id)) : [];
-  return { date: today(), order: [...old, ...ids.filter(id => !old.includes(id))], mode: prev ? prev.mode : 5, started: false, matches: [] };
+  return { id: Date.now(), date: today(), order: [...old, ...ids.filter(id => !old.includes(id))], mode: prev ? prev.mode : 5, started: false, matches: [] };
 };
 const fresh = () => {
   const players = ['Vali', 'Dani', 'Costi', 'Zjepko', 'Ciprian'].map((name, i) => ({ id: i + 1, name }));
@@ -126,7 +124,8 @@ const fresh = () => {
 let db;
 try { db = JSON.parse(localStorage.getItem(KEY)); } catch {}
 if (!db || !db.players || !db.days || !db.days.length) db = fresh();
-db.days.forEach(d => { d.mode = d.mode || 5; });
+db.days.forEach((d, i) => { d.mode = d.mode || 5; d.id = d.id || Date.now() + i; });
+try { localStorage.setItem(KEY, JSON.stringify(db)); } catch {} // persist generated ids so photo keys stay stable
 
 let view = 'play', tab = 'day', sel = null;
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch {} render(); };
@@ -218,10 +217,12 @@ function setDate(v) { if (v) { cur().date = v; save(); } }
 function start() { cur().started = true; save(); }
 function recordWin(team) {
   const d = cur(), cyc = d.mode === 4 ? C4 : C5, [t1, t2, rest] = cyc[d.matches.length % cyc.length];
-  d.matches.push({ t1: slots(d.order, t1), t2: slots(d.order, t2), rest: rest ? d.order[rest - 1] : null, win: team, id: Date.now() });
+  d.matches.push({ t1: slots(d.order, t1), t2: slots(d.order, t2), rest: rest ? d.order[rest - 1] : null, win: team });
   save();
 }
-function undo() { dropPhotos([cur().matches.pop().id]); save(); }
+function undo() { cur().matches.pop(); save(); }
+function closeDay() { if (confirm('Close the day? No more matches can be added.')) { cur().closed = true; save(); } }
+function reopenDay() { cur().closed = false; save(); }
 // shortcut: password is a client-side hash in this phone's storage; it stops accidental taps, not someone with dev tools.
 const sha = async t => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('badminton:' + t)))]
   .map(b => b.toString(16).padStart(2, '0')).join('');
@@ -238,8 +239,8 @@ async function unlocked() {
 }
 async function resetDay() {
   if (await unlocked() && confirm('Reset today? This deletes all matches of this day and goes back to player order.')) {
-    dropPhotos(cur().matches.map(m => m.id));
-    Object.assign(cur(), { matches: [], started: false });
+    dropPhotos([cur().id]);
+    Object.assign(cur(), { matches: [], started: false, closed: false });
   }
   save();
 }
@@ -283,6 +284,16 @@ function play() {
       <p class="preview">Match 1: ${pair(slots(o, a))} vs ${pair(slots(o, b))}${r ? ` · ${name(o[r - 1])} rests` : ''}</p>
       <button class="primary" onclick="start()">Start day</button>`;
   }
+  if (d.closed) {
+    const has = photoIds.has(d.id);
+    return `<h1>Day closed 🏁</h1><p class="mut">${esc(d.date)} · ${n} matches</p>
+      <div class="card" style="padding:4px 16px;margin-bottom:16px">${stats(d.matches).slice(0, 3).map((r, i) => `<div class="rank"><span class="r">${['🥇', '🥈', '🥉'][i]}</span>${av(r.id, 32)}
+        <b>${esc(r.name)}</b><span class="mut" style="margin:0">${r.w}/${r.p}</span><b>${Math.round(pct(r) * 100)}%</b></div>`).join('')}</div>
+      <button class="primary" onclick="photo(${d.id})">📷 ${has ? 'Retake group photo' : 'Take group photo'}</button>
+      ${has ? '<p class="mut" style="text-align:center;margin:8px 0 0">✓ Photo saved in Photos</p>' : ''}
+      <button class="add" style="margin-top:12px" onclick="newDayBtn()">Start new day</button>
+      <div class="actions"><button class="link" onclick="reopenDay()">Reopen day</button></div>`;
+  }
   const [t1, t2, rest] = cyc[n % cyc.length];
   return `<p class="mut" style="margin:0">${esc(d.date)} · ${n} played</p>
     <p class="num">Match ${n + 1}</p>
@@ -295,10 +306,9 @@ function play() {
       <button style="--c:var(--t1)" onclick="recordWin(1)">Team 1 Wins</button>
       <button style="--c:var(--t2)" onclick="recordWin(2)">Team 2 Wins</button>
     </div>
-    ${n && d.matches[n - 1].id ? `<div class="card last"><span>Match ${n} done. ${photoIds.has(d.matches[n - 1].id) ? '✓ Photo saved' : 'Group photo?'}</span>
-      <button onclick="photo(${d.matches[n - 1].id})">📷 ${photoIds.has(d.matches[n - 1].id) ? 'Retake' : 'Take photo'}</button></div>` : ''}
     <div class="actions">
       <button class="link" onclick="undo()" ${n ? '' : 'disabled'}>↶ Undo last</button>
+      <button class="link" onclick="closeDay()" ${n ? '' : 'disabled'}>🏁 Close day</button>
       <button class="link" onclick="newDayBtn()">New day</button>
       <button class="link danger" onclick="resetDay()">Reset day</button>
     </div>`;
@@ -329,13 +339,13 @@ function board() {
 let urls = {}, blobs = {};
 async function gallery() {
   const ids = new Set(await tx('readonly', s => s.getAllKeys()).catch(() => []));
-  const items = db.days.flatMap(d => d.matches.map((m, i) => ({ d, m, n: i + 1 }))).filter(x => ids.has(x.m.id)).reverse();
+  const items = db.days.filter(d => ids.has(d.id)).reverse();
   Object.values(urls).forEach(URL.revokeObjectURL); urls = {}; blobs = {};
-  for (const { m } of items) { blobs[m.id] = await tx('readonly', s => s.get(m.id)); urls[m.id] = URL.createObjectURL(blobs[m.id]); }
+  for (const d of items) { blobs[d.id] = await tx('readonly', s => s.get(d.id)); urls[d.id] = URL.createObjectURL(blobs[d.id]); }
   if (view !== 'photos') return;
-  gal.innerHTML = items.length ? `<div class="grid">${items.map(({ d, m, n }) => `<button onclick="openPhoto(${m.id})">
-      <img src="${urls[m.id]}" alt=""><span>${esc(d.date)} · Match ${n}<br>🏆 ${pair(m.win === 1 ? m.t1 : m.t2)}</span></button>`).join('')}</div>`
-    : '<div class="empty">No photos yet.<br>After a match tap “Take photo” on the Play screen.</div>';
+  gal.innerHTML = items.length ? `<div class="grid">${items.map(d => `<button onclick="openPhoto(${d.id})">
+      <img src="${urls[d.id]}" alt=""><span>${esc(d.date)} · ${d.matches.length} matches<br>🏆 ${esc(stats(d.matches)[0].name)}</span></button>`).join('')}</div>`
+    : '<div class="empty">No photos yet.<br>Close the day and take the group photo.</div>';
 }
 function openPhoto(id) {
   const name = `badminton-${id}.jpg`, f = new File([blobs[id]], name, { type: 'image/jpeg' });
