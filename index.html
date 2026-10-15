@@ -164,14 +164,32 @@ function recordWin(team) {
   save();
 }
 function undo() { cur().matches.pop(); save(); }
-function resetDay() {
-  if (confirm('Reset today? This deletes all matches of this day and goes back to player order.')) {
-    Object.assign(cur(), { matches: [], started: false }); save();
+// shortcut: password is a client-side hash in this phone's storage; it stops accidental taps, not someone with dev tools.
+const sha = async t => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('badminton:' + t)))]
+  .map(b => b.toString(16).padStart(2, '0')).join('');
+async function unlocked() {
+  if (!db.pw) { // first use: whoever resets first picks the password
+    const p = prompt('Set a password for resetting (you will need it every time)');
+    if (!p) return false;
+    db.pw = await sha(p); return true;
   }
+  const p = prompt('Password');
+  if (!p) return false;
+  if (await sha(p) === db.pw) return true;
+  alert('Wrong password'); return false;
+}
+async function resetDay() {
+  if (await unlocked() && confirm('Reset today? This deletes all matches of this day and goes back to player order.')) {
+    Object.assign(cur(), { matches: [], started: false });
+  }
+  save();
 }
 function newDayBtn() { if (cur().matches.length) { db.days.push(newDay(cur(), db.players)); save(); } else { cur().started = false; save(); } }
-function eraseAll() {
-  if (confirm('Erase ALL days, matches and standings? This cannot be undone.')) { db = fresh(); sel = null; save(); }
+async function eraseAll() {
+  if (await unlocked() && confirm('Erase ALL days, matches and standings? This cannot be undone.')) {
+    db = Object.assign(fresh(), { pw: db.pw }); sel = null;
+  }
+  save();
 }
 
 // ---- stats
@@ -231,7 +249,7 @@ function board() {
   const picker = tab === 'day' && days.length
     ? `<select onchange="sel=db.days[this.value];render()" aria-label="Day">${days.map(([d, i]) =>
         `<option value="${i}" ${d === sel ? 'selected' : ''}>${esc(d.date)} · ${d.matches.length} matches</option>`).join('')}</select>` : '';
-  const podium = [[0, '🥇', '#facc15', 120], [1, '🥈', '#cbd5e1', 90], [2, '🥉', '#d97706', 64]].map(([i, medal, c, h]) =>
+  const podium = !ms.length ? [] : [[0, '🥇', '#facc15', 120], [1, '🥈', '#cbd5e1', 90], [2, '🥉', '#d97706', 64]].map(([i, medal, c, h]) =>
     `<div class="pod"><div class="medal">${medal}</div>${av(rows[i].id)}<div class="pn">${esc(rows[i].name)}</div>
      <div class="pw">${rows[i].w} wins · ${Math.round(pct(rows[i]) * 100)}%</div>
      <div class="bar" style="--c:${c};--h:${h}px">${i + 1}</div></div>`);
