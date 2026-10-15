@@ -120,7 +120,7 @@ const C5 = [
 const C4 = [[[1, 2], [3, 4]], [[1, 3], [2, 4]], [[1, 4], [2, 3]]];
 const today = () => new Date().toLocaleDateString('sv-SE'); // local YYYY-MM-DD
 
-// Everything lives in Supabase (see supabase/schema.sql); this is the last fetched copy, shared by all logged-in members.
+// Everything lives in Supabase (see supabase/migrations); this is the last fetched copy, shared by all logged-in members.
 let db = { players: [], days: [] }, members = [], me = {}, session = null, loaded = false, busy = false, authReady = false;
 let view = 'play', tab = 'day', selId = null, authMode = 'in', authMsg = '';
 const sb = window.supabase && CONFIG.url && !CONFIG.url.includes('YOUR-') ? supabase.createClient(CONFIG.url, CONFIG.key) : null;
