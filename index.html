@@ -141,6 +141,7 @@ const ok = r => { if (r.error) throw r.error; return r.data; };
 
 // ---- loading + live updates
 async function refresh() {
+  if (!session) return;
   const [p, d, m] = await Promise.all([
     sb.from('players').select('*').order('id'),
     sb.from('days').select('*, matches(*)').order('id'),
@@ -149,6 +150,7 @@ async function refresh() {
   db.players = ok(p).map(x => ({ id: x.id, name: x.name, avatar: x.avatar, removed: !x.active }));
   db.days = ok(d).map(x => ({ id: x.id, date: x.date, order: x.player_order, mode: x.mode, started: x.started, closed: x.closed,
     photo: x.photo_path, matches: x.matches.sort((a, b) => a.n - b.n) }));
+  if (!session) return; // logged out while loading
   members = ok(m); me = members.find(x => x.id === session.user.id) || {};
   if (!db.days.length) { ok(await sb.from('days').insert(dayRow(null))); return refresh(); }
   loaded = true; render();
@@ -168,7 +170,7 @@ sb && sb.auth.onAuthStateChange((_ev, s) => {
   const was = !!session; session = s; authReady = true; authMode = 'in'; authMsg = '';
   if (!!s === was && loaded) return;                 // token refresh etc.
   if (s) {
-    refresh().catch(e => { app.innerHTML = `<p class="msg">${esc(e.message)}</p>`; });
+    refresh().catch(e => { if (session) app.innerHTML = `<h1>Couldn't load</h1><p class="msg">${esc(e.message)}</p><button class="primary" onclick="location.reload()">Try again</button><div class="actions"><button class="link" onclick="logout()">Log out</button></div>`; });
     channel = sb.channel('all').on('postgres_changes', { event: '*', schema: 'public' }, later).subscribe();
   } else {
     if (channel) sb.removeChannel(channel);
