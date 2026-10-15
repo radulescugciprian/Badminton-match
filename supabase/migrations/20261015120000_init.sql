@@ -1,4 +1,4 @@
--- Badminton tracker: shared database. Run this whole file once in Supabase -> SQL Editor.
+-- Badminton tracker: shared database. Applied automatically by the Supabase GitHub integration, or paste it once into SQL Editor.
 
 -- ---------- tables ----------
 create table profiles (
