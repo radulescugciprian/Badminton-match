@@ -69,6 +69,18 @@
   .rank:last-child{border:0} .rank .r{color:var(--mut);font-weight:700}
   .empty{text-align:center;color:var(--mut);padding:40px 0}
 
+  /* photos */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .grid button{padding:0;overflow:hidden;background:var(--card);text-align:left;border:1px solid var(--line)}
+  .grid img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
+  .grid span{display:block;padding:8px 10px;font-size:13px}
+  #lb{position:fixed;inset:0;z-index:10;background:rgba(0,0,0,.92);display:flex;flex-direction:column;gap:12px;padding:16px;align-items:center;justify-content:center}
+  #lb img{max-width:100%;max-height:68dvh;border-radius:12px}
+  #lb .actions{margin:0}
+  #lb a,#lb button{background:var(--line);border-radius:12px;padding:10px 16px;color:var(--text);text-decoration:none}
+  .last{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:16px;padding:12px 14px}
+  .last button{background:var(--acc);color:#10200a;font-weight:700;white-space:nowrap}
+
   /* nav */
   nav{position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:rgba(7,26,20,.92);backdrop-filter:blur(10px);border-top:1px solid var(--line)}
   nav button{flex:1;background:none;color:var(--mut);padding:12px;font-weight:600}
@@ -78,9 +90,11 @@
 <body>
 <main id="app"></main>
 <input type="file" id="pick" accept="image/*" hidden>
+<input type="file" id="shot" accept="image/*" hidden>
 <nav>
-  <button id="nav-play" onclick="go('play')">🏸 Play</button>
-  <button id="nav-board" onclick="go('board')">🏆 Leaderboard</button>
+  <button data-v="play" onclick="go('play')">🏸 Play</button>
+  <button data-v="board" onclick="go('board')">🏆 Board</button>
+  <button data-v="photos" onclick="go('photos')">📷 Photos</button>
 </nav>
 
 <script>
@@ -156,14 +170,47 @@ pick.onchange = () => {
   };
   img.src = URL.createObjectURL(f);
 };
+// Group photos live in IndexedDB (too big for localStorage), keyed by match id.
+const store = new Promise((ok, bad) => {
+  const r = indexedDB.open('badminton-photos', 1);
+  r.onupgradeneeded = () => r.result.createObjectStore('p');
+  r.onsuccess = () => ok(r.result); r.onerror = () => bad(r.error);
+});
+const tx = async (mode, fn) => {
+  const s = (await store).transaction('p', mode).objectStore('p');
+  return new Promise((ok, bad) => { const r = fn(s); r.onsuccess = () => ok(r.result); r.onerror = () => bad(r.error); });
+};
+const photoIds = new Set();
+tx('readonly', s => s.getAllKeys()).then(k => { k.forEach(i => photoIds.add(i)); render(); }).catch(() => {});
+const dropPhotos = ids => ids.filter(Boolean).forEach(id => { photoIds.delete(id); tx('readwrite', s => s.delete(id)).catch(() => {}); });
+const shrink = (file, max, q) => new Promise(ok => {
+  const img = new Image();
+  img.onload = () => {
+    const k = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement('canvas');
+    c.width = img.width * k; c.height = img.height * k;
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(img.src); c.toBlob(ok, 'image/jpeg', q);
+  };
+  img.src = URL.createObjectURL(file);
+});
+let shotFor;
+function photo(id) { shotFor = id; shot.value = ''; shot.click(); }
+shot.onchange = async () => {
+  const f = shot.files[0]; if (!f) return;
+  try {
+    const blob = await shrink(f, 1280, .8);
+    await tx('readwrite', s => s.put(blob, shotFor));
+    photoIds.add(shotFor); render();
+  } catch { alert("Couldn't save the photo on this device."); }
+};
 function setDate(v) { if (v) { cur().date = v; save(); } }
 function start() { cur().started = true; save(); }
 function recordWin(team) {
   const d = cur(), cyc = d.mode === 4 ? C4 : C5, [t1, t2, rest] = cyc[d.matches.length % cyc.length];
-  d.matches.push({ t1: slots(d.order, t1), t2: slots(d.order, t2), rest: rest ? d.order[rest - 1] : null, win: team });
+  d.matches.push({ t1: slots(d.order, t1), t2: slots(d.order, t2), rest: rest ? d.order[rest - 1] : null, win: team, id: Date.now() });
   save();
 }
-function undo() { cur().matches.pop(); save(); }
+function undo() { dropPhotos([cur().matches.pop().id]); save(); }
 // shortcut: password is a client-side hash in this phone's storage; it stops accidental taps, not someone with dev tools.
 const sha = async t => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('badminton:' + t)))]
   .map(b => b.toString(16).padStart(2, '0')).join('');
@@ -180,6 +227,7 @@ async function unlocked() {
 }
 async function resetDay() {
   if (await unlocked() && confirm('Reset today? This deletes all matches of this day and goes back to player order.')) {
+    dropPhotos(cur().matches.map(m => m.id));
     Object.assign(cur(), { matches: [], started: false });
   }
   save();
@@ -188,6 +236,7 @@ function newDayBtn() { if (cur().matches.length) { db.days.push(newDay(cur(), db
 async function eraseAll() {
   if (await unlocked() && confirm('Erase ALL days, matches and standings? This cannot be undone.')) {
     db = Object.assign(fresh(), { pw: db.pw }); sel = null;
+    photoIds.clear(); tx('readwrite', s => s.clear()).catch(() => {});
   }
   save();
 }
@@ -234,6 +283,8 @@ function play() {
       <button style="--c:var(--t1)" onclick="recordWin(1)">Team 1 Wins</button>
       <button style="--c:var(--t2)" onclick="recordWin(2)">Team 2 Wins</button>
     </div>
+    ${n && d.matches[n - 1].id ? `<div class="card last"><span>Match ${n} done. ${photoIds.has(d.matches[n - 1].id) ? '✓ Photo saved' : 'Group photo?'}</span>
+      <button onclick="photo(${d.matches[n - 1].id})">📷 ${photoIds.has(d.matches[n - 1].id) ? 'Retake' : 'Take photo'}</button></div>` : ''}
     <div class="actions">
       <button class="link" onclick="undo()" ${n ? '' : 'disabled'}>↶ Undo last</button>
       <button class="link" onclick="newDayBtn()">New day</button>
@@ -263,10 +314,34 @@ function board() {
     ${tab === 'all' ? '<div class="actions"><button class="link danger" onclick="eraseAll()">Erase all data</button></div>' : ''}`;
 }
 
+let urls = {}, blobs = {};
+async function gallery() {
+  const ids = new Set(await tx('readonly', s => s.getAllKeys()).catch(() => []));
+  const items = db.days.flatMap(d => d.matches.map((m, i) => ({ d, m, n: i + 1 }))).filter(x => ids.has(x.m.id)).reverse();
+  Object.values(urls).forEach(URL.revokeObjectURL); urls = {}; blobs = {};
+  for (const { m } of items) { blobs[m.id] = await tx('readonly', s => s.get(m.id)); urls[m.id] = URL.createObjectURL(blobs[m.id]); }
+  if (view !== 'photos') return;
+  gal.innerHTML = items.length ? `<div class="grid">${items.map(({ d, m, n }) => `<button onclick="openPhoto(${m.id})">
+      <img src="${urls[m.id]}" alt=""><span>${esc(d.date)} · Match ${n}<br>🏆 ${pair(m.win === 1 ? m.t1 : m.t2)}</span></button>`).join('')}</div>`
+    : '<div class="empty">No photos yet.<br>After a match tap “Take photo” on the Play screen.</div>';
+}
+function openPhoto(id) {
+  const name = `badminton-${id}.jpg`, f = new File([blobs[id]], name, { type: 'image/jpeg' });
+  const el = document.createElement('div'); el.id = 'lb';
+  el.innerHTML = `<img src="${urls[id]}" alt="Group photo"><div class="actions">
+    <a href="${urls[id]}" download="${name}">⬇ Save</a>
+    ${navigator.canShare && navigator.canShare({ files: [f] }) ? '<button id="sh">Share</button>' : ''}
+    <button id="rm" class="danger">Delete</button><button id="cl">Close</button></div>`;
+  document.body.append(el);
+  el.querySelector('#cl').onclick = () => el.remove();
+  el.querySelector('#rm').onclick = () => { if (confirm('Delete this photo?')) { dropPhotos([id]); el.remove(); setTimeout(gallery, 50); } };
+  const sh = el.querySelector('#sh'); if (sh) sh.onclick = () => navigator.share({ files: [f] }).catch(() => {});
+}
+
 function render() {
-  app.innerHTML = view === 'play' ? play() : board();
-  document.getElementById('nav-play').setAttribute('aria-current', view === 'play' ? 'page' : '');
-  document.getElementById('nav-board').setAttribute('aria-current', view === 'board' ? 'page' : '');
+  app.innerHTML = view === 'play' ? play() : view === 'board' ? board() : '<h1>Photos</h1><div id="gal"></div>';
+  if (view === 'photos') gallery();
+  document.querySelectorAll('nav button').forEach(b => b.setAttribute('aria-current', b.dataset.v === view ? 'page' : ''));
 }
 
 render();
