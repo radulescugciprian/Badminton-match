@@ -13,15 +13,22 @@ The app stores everything in a free [Supabase](https://supabase.com) project so 
    Admins can then promote others under *Members*.
 
 ## Usernames and password reset
-- Run the migrations in `supabase/migrations/` **in order** (the `..._init.sql` file first, then `..._username.sql`).
+- Run the migrations in `supabase/migrations/` **in order** (`..._init.sql`, then `..._username.sql`, then `..._player_accounts.sql`).
 - People log in with a username **or** an email. Trade-off: the login box looks up the email for a username, so anyone who knows a username can find that account's email. Fine for a friends group; say if you want it locked down.
 - "Forgot password?" emails a reset link. Add the app address under *Authentication → URL Configuration → Redirect URLs* or the link will not return to the app. Supabase's built-in email sender is limited to a few emails per hour; add your own SMTP under *Authentication → Emails* if that is not enough.
+
+## Accounts and players
+- Every account is a player. On the sign-up form people pick which existing player they are (Vali, Dani, ...) or "I'm a new player", which creates one.
+- Only the account owner can change their own avatar (**Profile** at the top of the app). The database refuses anyone else, admins included.
+- Players without an account (guests) are added by admins only, with "Add guest player" on the new-day screen. Guests have no avatar until someone claims them.
 
 ## Who can do what
 | | Member | Admin |
 |---|---|---|
 | See scores, leaderboards, photos | ✅ | ✅ |
-| Add players, rename, change avatar, set the order, start a day | ✅ | ✅ |
+| Rename players, set the order, start a day | ✅ | ✅ |
+| Change *your own* avatar | ✅ | ✅ |
+| Add a guest player (no account) | ❌ | ✅ |
 | Record a match result, undo the last one | ✅ | ✅ |
 | Take or retake the group photo | ✅ | ✅ |
 | Close / reopen / reset a day | ❌ | ✅ |

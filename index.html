@@ -122,7 +122,7 @@ const today = () => new Date().toLocaleDateString('sv-SE'); // local YYYY-MM-DD
 
 // Everything lives in Supabase (see supabase/migrations); this is the last fetched copy, shared by all logged-in members.
 let db = { players: [], days: [] }, members = [], me = {}, session = null, loaded = false, busy = false, authReady = false;
-let view = 'play', tab = 'day', selId = null, authMode = 'in';
+let view = 'play', tab = 'day', selId = null, authMode = 'in', unclaimed = [];
 const sb = window.supabase && CONFIG.url && !CONFIG.url.includes('YOUR-') ? supabase.createClient(CONFIG.url, CONFIG.key) : null;
 
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -147,12 +147,14 @@ async function refresh() {
     sb.from('days').select('*, matches(*)').order('id'),
     sb.from('profiles').select('*').order('name'),
   ]);
-  db.players = ok(p).map(x => ({ id: x.id, name: x.name, avatar: x.avatar, removed: !x.active }));
+  db.players = ok(p).map(x => ({ id: x.id, name: x.name, avatar: x.avatar, removed: !x.active, user: x.user_id }));
   db.days = ok(d).map(x => ({ id: x.id, date: x.date, order: x.player_order, mode: x.mode, started: x.started, closed: x.closed,
     photo: x.photo_path, matches: x.matches.sort((a, b) => a.n - b.n) }));
   if (!session) return; // logged out while loading
   members = ok(m); me = members.find(x => x.id === session.user.id) || {};
   if (!db.days.length) { ok(await sb.from('days').insert(dayRow(null))); return refresh(); }
+  const day = cur(), missing = db.players.filter(x => !x.removed && !day.order.includes(x.id)).map(x => x.id);
+  if (!day.started && missing.length) { await patchDay(day.id, { player_order: [...day.order, ...missing] })(); return refresh(); } // new accounts join today's setup
   loaded = true; render();
 }
 // every write goes through act(): one at a time, errors shown, then re-fetch so everyone (including us) sees the server's truth
@@ -167,7 +169,7 @@ async function act(fn) {
 let timer, channel;
 const later = () => { clearTimeout(timer); timer = setTimeout(() => session && !busy && refresh().catch(() => {}), 200); };
 sb && sb.auth.onAuthStateChange((ev, s) => {
-  if (ev === 'PASSWORD_RECOVERY') { view = 'password'; render(); } // arrived from the reset-password email
+  if (ev === 'PASSWORD_RECOVERY') { view = 'profile'; render(); } // arrived from the reset-password email
   const was = !!session; session = s; authReady = true; authMode = 'in';
   if (!!s === was && loaded) return;                 // token refresh etc.
   if (s) {
@@ -199,7 +201,7 @@ async function signup(f) {
   const u = f.get('username').trim();
   if (ok(await sb.rpc('email_for_username', { u }))) return showMsg('That username is taken.');
   const { data, error } = await sb.auth.signUp({ email: f.get('email'), password: f.get('password'),
-    options: { data: { username: u }, emailRedirectTo: location.origin + location.pathname } });
+    options: { data: { username: u, player_id: f.get('player') }, emailRedirectTo: location.origin + location.pathname } });
   if (error) showMsg(error.message);
   else if (!data.session) showMsg('Account created. Check your email to confirm it, then log in.');
 }
@@ -215,7 +217,11 @@ async function newPassword(e) {
   alert('Password changed.'); go('play');
 }
 const logout = () => sb.auth.signOut();
-const setAuthMode = m => { authMode = m; render(); };
+const setAuthMode = async m => {
+  authMode = m;
+  if (m === 'up') unclaimed = (await sb.rpc('unclaimed_players')).data || []; // players nobody has claimed yet
+  render();
+};
 
 // ---- actions
 const go = v => { view = v; render(); };
@@ -323,6 +329,7 @@ function login_() {
   return `<h1 style="font-size:32px;margin-top:40px">🏸 Badminton</h1><p class="mut">${up ? 'Create your account' : m === 'reset' ? 'Reset your password' : 'Log in to see the scores'}</p>
     <form onsubmit="authForm(event)">
       ${up ? '<input type="text" name="username" placeholder="Username (3-20 letters, numbers, . _)" required pattern="[A-Za-z0-9_.]{3,20}" title="3-20 letters, numbers, dot or underscore" autocapitalize="none" autocomplete="username">' : ''}
+      ${up ? `<select name="player" aria-label="Which player are you?"><option value="">I'm a new player</option>${unclaimed.map(p => `<option value="${p.id}">I'm ${esc(p.name)}</option>`).join('')}</select>` : ''}
       ${up ? '<input type="email" name="email" placeholder="Email" required autocomplete="email">'
            : '<input type="text" name="login" placeholder="Username or email" required autocapitalize="none" autocomplete="username">'}
       ${m === 'reset' ? '' : `<input type="password" name="password" placeholder="Password (6+ characters)" required minlength="6" autocomplete="${up ? 'new-password' : 'current-password'}">`}
@@ -333,8 +340,13 @@ function login_() {
       <button class="link" onclick="setAuthMode('reset')">Forgot password?</button>` : `<button class="link" onclick="setAuthMode('in')">Back to log in</button>`}</div>`;
 }
 
-function passwordView() {
-  return `<h1>New password</h1><p class="mut">Choose a new password${me.username ? ' for ' + esc(me.username) : ''}.</p>
+function profileView() {
+  const mine = db.players.find(p => p.user === session.user.id);
+  return `<h1>Your profile</h1>
+    ${mine ? `<div class="card" style="display:flex;align-items:center;gap:14px;margin-bottom:20px">${av(mine.id, 64)}
+      <div style="flex:1"><b>${esc(mine.name)}</b><div class="mut" style="margin:0">Only you can change your photo</div></div>
+      <button onclick="avatar(${mine.id})">📷 Change photo</button></div>` : ''}
+    <h2 style="font-size:18px;margin:0 0 8px">New password</h2>
     <form onsubmit="newPassword(event)">
       <input type="password" name="password" placeholder="New password (6+ characters)" required minlength="6" autocomplete="new-password">
       <p class="msg" role="alert"></p><button class="primary" type="submit">Save password</button></form>`;
@@ -348,12 +360,12 @@ function setup(d) {
         <button class="${m === 5 ? 'on' : ''}" onclick="setMode(5)" ${o.length < 5 ? 'disabled' : ''}>5 players</button></div>
       <ol>${o.map((id, i) => `${i === m ? '<li class="sep">Sitting out</li>' : ''}<li class="row ${i >= m ? 'bench' : ''}">
         <span class="slot">${i + 1}</span>
-        <button class="ph" onclick="avatar(${id})" aria-label="Photo for ${name(id)}">${av(id)}</button>
+        ${player(id).user === session.user.id ? `<button class="ph" onclick="avatar(${id})" aria-label="Change your photo">${av(id)}</button>` : `<span class="ph">${av(id)}</span>`}
         <button class="nm" onclick="rename(${id})" aria-label="Rename ${name(id)}">${name(id)} ✎</button>
         <button onclick="move(${i},-1)" aria-label="Move up" ${i === 0 ? 'disabled' : ''}>▲</button>
         <button onclick="move(${i},1)" aria-label="Move down" ${i === o.length - 1 ? 'disabled' : ''}>▼</button>
         ${admin ? `<button class="danger" onclick="removePlayer(${id})" aria-label="Remove ${name(id)}">✕</button>` : ''}</li>`).join('')}</ol>
-      <button class="add" onclick="addPlayer()">+ Add player</button>
+      ${admin ? '<button class="add" onclick="addPlayer()">+ Add guest player (no account)</button>' : ''}
       <p class="preview">Match 1: ${pair(slots(o, a))} vs ${pair(slots(o, b))}${r ? ` · ${name(o[r - 1])} rests` : ''}</p>
       <button class="primary" onclick="start()">Start day</button>`;
 }
@@ -451,8 +463,8 @@ function render() {
   if (!session) { app.innerHTML = login_(); return; }
   if (!loaded) { app.innerHTML = '<p class="mut">Loading…</p>'; return; }
   const top = `<div class="top"><span>👤 ${esc(me.username || '')}${me.is_admin ? ' · admin' : ''}</span>
-    <span><button class="link" onclick="go('members')">Members</button><button class="link" onclick="go('password')">Password</button><button class="link" onclick="logout()">Log out</button></span></div>`;
-  app.innerHTML = top + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'password' ? passwordView() : '<h1>Photos</h1><div id="gal"></div>');
+    <span><button class="link" onclick="go('members')">Members</button><button class="link" onclick="go('profile')">Profile</button><button class="link" onclick="logout()">Log out</button></span></div>`;
+  app.innerHTML = top + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'profile' ? profileView() : '<h1>Photos</h1><div id="gal"></div>');
   if (view === 'photos') gallery().catch(e => { gal.innerHTML = `<p class="msg">${esc(e.message)}</p>`; });
   document.querySelectorAll('nav button').forEach(b => b.setAttribute('aria-current', b.dataset.v === view ? 'page' : ''));
 }
