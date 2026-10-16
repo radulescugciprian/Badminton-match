@@ -3,8 +3,10 @@
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   /* top-down badminton court (doubles lines, singles sidelines, service lines, net) behind everything */
   body::before{content:'';position:fixed;inset:0;z-index:-1;background:var(--court)}
-  /* Play tab: photo of the court, darkened so cards and text stay readable */
-  body[data-view=play]::before{background:linear-gradient(rgba(7,12,24,.45),rgba(7,12,24,.82)),var(--pbg,url(bg-play.jpg)) center/cover}
+  /* one photo per screen, darkened so cards and text stay readable (Play's can be replaced by an admin via --pbg) */
+  body.out::before,body[data-view=play]::before,body[data-view=board]::before,body[data-view=photos]::before,body[data-view=stats]::before{background:linear-gradient(rgba(7,12,24,.45),rgba(7,12,24,.82)),var(--bg-img) center/cover}
+  body.out{--bg-img:url(bg-login.jpg)} body[data-view=play]{--bg-img:var(--pbg,url(bg-play.jpg))}
+  body[data-view=board]{--bg-img:url(bg-board.jpg)} body[data-view=photos]{--bg-img:url(bg-photos.jpg)} body[data-view=stats]{--bg-img:url(bg-stats.jpg)}
   body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,-apple-system,sans-serif;min-height:100dvh;
        padding:16px 16px calc(88px + env(safe-area-inset-bottom))}
   main{max-width:480px;margin:auto}
