@@ -14,7 +14,7 @@ The app stores everything in a free [Supabase](https://supabase.com) project so 
    Admins can then promote others under *Members*.
 
 ## Usernames and password reset
-- Run the migrations in `supabase/migrations/` **in order** (`..._init.sql`, then `..._username.sql`, then `..._player_accounts.sql`, then `..._admin_tools.sql`).
+- Run the migrations in `supabase/migrations/` **in order** (`..._init.sql`, then `..._username.sql`, then `..._player_accounts.sql`, then `..._admin_tools.sql`, then `..._play_schedule.sql`, then `..._fun_features.sql`).
 - People log in with a username **or** an email. Trade-off: the login box looks up the email for a username, so anyone who knows a username can find that account's email. Fine for a friends group; say if you want it locked down.
 - "Forgot password?" emails a reset link. Add the app address under *Authentication → URL Configuration → Redirect URLs* or the link will not return to the app. Supabase's built-in email sender is limited to a few emails per hour; add your own SMTP under *Authentication → Emails* if that is not enough.
 
@@ -40,6 +40,13 @@ We play on Thursday at 18:30 (Europe/Berlin time). Regular members can only pres
 ```sql
 update schedule set tz = 'Europe/Berlin', dow = 4 /* 0=Sunday .. 6=Saturday */, play_time = '18:30', opens_minutes = 60;
 ```
+
+## Sign-up, ratings, photos
+- **Thursday sign-up:** the Play screen shows the coming play date with *I'm in / I'm out*. Everyone answers for themselves; admins can tap a name to answer for guests. The player list fills itself (in, then no answer, then out) and 4 or 5 confirmed players set the 4/5 mode.
+- **Reminder:** *Remind me every Thursday* downloads a calendar event with an alert when starting opens, so the phone notifies you without any server. (Real push notifications from the app would need a Supabase Edge Function plus secrets; not set up.)
+- **Rating (Elo):** everyone starts at 1000 and moves after every match; computed from the match log (`analytics.js`, tested in `tests/`). Badges: 5 in a row, perfect night (4+ matches, all won), comeback (lost the first two, finished ahead), most improved (last 4 nights), player of the night.
+- **Result card:** on the closed-day screen or in a photo, *Share result card* makes a 1080×1350 picture of the podium over the group photo.
+- **Team names** (✎ under a team on the match screen) are saved with the match and shown in the day's match list. **Reactions** (👏🔥😂❤️🏆) go on the group photo.
 
 ## Who can do what
 | | Member | Admin |

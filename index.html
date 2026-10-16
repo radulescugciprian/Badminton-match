@@ -59,7 +59,7 @@
   .win button{padding:28px 8px;font-size:18px;font-weight:800;color:#fff;background:var(--c)}
 
   /* board */
-  .seg{display:grid;grid-template-columns:1fr 1fr;background:var(--card);border-radius:12px;padding:4px;margin-bottom:12px}
+  .seg{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));background:var(--card);border-radius:12px;padding:4px;margin-bottom:12px}
   .seg button{background:none;color:var(--mut)} .seg .on{background:var(--line);color:var(--text)}
   .podium{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end;margin:20px 0}
   .pod{text-align:center}
@@ -92,9 +92,28 @@
   .member{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 0;border-bottom:1px solid var(--line)}
   .member:last-child{border:0}
 
+  /* sign-up, stats, fun */
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 4px}
+  .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:3px 10px 3px 4px;font-size:13px;background:none;color:var(--text)}
+  .chip.in{border-color:var(--acc)} .chip.out{opacity:.5;text-decoration:line-through}
+  button.chip{border:1px solid var(--line)}
+  .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+  .tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 4px;text-align:center;font-size:12px;color:var(--mut)}
+  .tile b{display:block;font-size:24px;color:var(--text)}
+  .badge{display:inline-block;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 12px;margin:0 6px 6px 0;font-size:14px}
+  .potn{display:flex;align-items:center;gap:14px;margin-bottom:16px;border-color:#facc15}
+  .potn .mut{margin:0}
+  .mrow{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .mrow:last-child{border:0} .mrow .r{color:var(--mut);font-weight:700;width:22px}
+  h2.sec{font-size:18px;margin:20px 0 8px}
+  .confetti{position:fixed;inset:0;pointer-events:none;z-index:20}
+  .rx{padding:8px 12px;border-radius:999px;font-size:16px;background:var(--line);color:var(--text)}
+  .rx.on{background:var(--acc);color:var(--on-acc)}
+  .tname{background:none;color:var(--mut);padding:4px;font-size:12px;display:block;margin:4px auto 0}
+
   /* nav */
   nav{position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:var(--nav);backdrop-filter:blur(10px);border-top:1px solid var(--line)}
-  nav button{flex:1;background:none;color:var(--mut);padding:12px;font-weight:600}
+  nav button{flex:1;background:none;color:var(--mut);padding:12px 2px;font-weight:600;font-size:14px}
   nav button[aria-current=page]{color:var(--acc);background:var(--card)}
 </style>
 </head>
@@ -106,10 +125,13 @@
   <button data-v="play" onclick="go('play')">🏸 Play</button>
   <button data-v="board" onclick="go('board')">🏆 Board</button>
   <button data-v="photos" onclick="go('photos')">📷 Photos</button>
+  <button data-v="stats" onclick="go('stats')">📊 Stats</button>
 </nav>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
+<script src="analytics.js"></script>
+<script src="fx.js"></script>
 <script>
 // Slots 1-5 are filled by the players chosen in setup; C5[i] = [team1 slots, team2 slots, resting slot]
 const C5 = [
@@ -126,6 +148,7 @@ const today = () => new Date().toLocaleDateString('sv-SE'); // local YYYY-MM-DD
 // Everything lives in Supabase (see supabase/migrations); this is the last fetched copy, shared by all logged-in members.
 let db = { players: [], days: [] }, members = [], me = {}, session = null, loaded = false, busy = false, authReady = false;
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
+let rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, dateTouched = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
 let view = 'play', tab = 'day', selId = null, authMode = 'in', unclaimed = [];
 const sb = window.supabase && CONFIG.url && !CONFIG.url.includes('YOUR-') ? supabase.createClient(CONFIG.url, CONFIG.key) : null;
 
@@ -146,13 +169,16 @@ const ok = r => { if (r.error) throw r.error; return r.data; };
 // ---- loading + live updates
 async function refresh() {
   if (!session) return;
-  const [p, d, m, sc] = await Promise.all([
+  const [p, d, m, sc, rs, rx] = await Promise.all([
     sb.from('players').select('*').order('id'),
     sb.from('days').select('*, matches(*)').order('id'),
     sb.from('profiles').select('*').order('name'),
     sb.from('schedule').select('*'),
+    sb.from('rsvps').select('*'),
+    sb.from('reactions').select('*'),
   ]);
   sched = !sc.error && sc.data[0] ? sc.data[0] : null;
+  rsvps = rs.error ? [] : rs.data; reactions = rx.error ? [] : rx.data; // empty until the migration has been applied
   db.players = ok(p).map(x => ({ id: x.id, name: x.name, avatar: x.avatar, removed: !x.active, user: x.user_id }));
   db.days = ok(d).map(x => ({ id: x.id, date: x.date, order: x.player_order, mode: x.mode, started: x.started, closed: x.closed,
     photo: x.photo_path, matches: x.matches.sort((a, b) => a.n - b.n) }));
@@ -163,6 +189,13 @@ async function refresh() {
   if (!db.days.length) { ok(await sb.from('days').insert(dayRow(null))); return refresh(); }
   const day = cur(), missing = db.players.filter(x => !x.removed && !day.order.includes(x.id)).map(x => x.id);
   if (!day.started && missing.length) { await patchDay(day.id, { player_order: [...day.order, ...missing] })(); return refresh(); } // new accounts join today's setup
+  // everyone's "I'm in / I'm out" answers fill the player list: in, then no answer, then out (stable, so manual order is kept inside each group)
+  const date = nextPlayDate(), answer = id => (rsvps.find(r => r.day_date === date && r.player_id === id) || {}).status;
+  if (!day.started && rsvps.some(r => r.day_date === date)) {
+    const rank = id => answer(id) === 'in' ? 0 : answer(id) === 'out' ? 2 : 1, order = [...day.order].sort((a, b) => rank(a) - rank(b));
+    const ins = order.filter(id => rank(id) === 0).length, mode = ins >= 4 ? Math.min(5, ins) : day.mode; // 4 or 5 in = 4 or 5 play
+    if (order.join() !== day.order.join() || mode !== day.mode) { await patchDay(day.id, { player_order: order, mode })(); return refresh(); }
+  }
   loaded = true; render();
 }
 // every write goes through act(): one at a time, errors shown, then re-fetch so everyone (including us) sees the server's truth
@@ -239,9 +272,10 @@ const dayRow = prev => { // a new day inherits the previous order/mode; players 
 };
 const patchDay = (id, o) => async () => ok(await sb.from('days').update(o).eq('id', id));
 const move = (i, d) => act(() => { const o = [...cur().order]; [o[i], o[i + d]] = [o[i + d], o[i]]; return patchDay(cur().id, { player_order: o })(); });
-const setDate = v => v && act(patchDay(cur().id, { date: v }));
+const setDate = v => v && (dateTouched = cur().id, act(patchDay(cur().id, { date: v })));
 const setMode = n => n <= cur().order.length && act(patchDay(cur().id, { mode: n }));
-const start = () => act(patchDay(cur().id, { started: true }));
+// the day gets today's date when it starts (it may have been created days earlier), unless someone picked a date by hand
+const start = () => act(patchDay(cur().id, { started: true, date: dateTouched === cur().id ? cur().date : today() }));
 const rename = id => {
   const n = (prompt('Player name', player(id).name) || '').trim().slice(0, 20);
   if (n) act(async () => ok(await sb.from('players').update({ name: n }).eq('id', id)));
@@ -294,11 +328,54 @@ shot.onchange = async () => {
     await patchDay(id, { photo_path: path })();
   });
 };
-const recordWin = team => act(async () => {
+const nameTeam = t => { const n = prompt(`Name for team ${t}`, tn[t]); if (n !== null) { tn[t] = n.trim().slice(0, 24); render(); } };
+const recordWin = team => { primeAudio(); return act(async () => {
   const d = cur(), cyc = d.mode === 4 ? C4 : C5, [t1, t2, rest] = cyc[d.matches.length % cyc.length];
+  const names = { ...(tn[1] && { team1_name: tn[1] }), ...(tn[2] && { team2_name: tn[2] }) }; // only sent when set
   ok(await sb.from('matches').insert({ day_id: d.id, n: d.matches.length + 1, t1: slots(d.order, t1), t2: slots(d.order, t2),
-    rest: rest ? d.order[rest - 1] : null, win: team }));
+    rest: rest ? d.order[rest - 1] : null, win: team, ...names }));
+  tn = { 1: '', 2: '' }; celebrate();
+}); };
+
+// ---- Thursday sign-up
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+function nextPlayDate() { // the play date people are answering for (this week's play day, or next week's once tonight's day has started)
+  const f = new Intl.DateTimeFormat('en-CA', { timeZone: sched ? sched.tz : undefined, year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short' }).formatToParts(new Date());
+  const g = t => f.find(x => x.type === t).value, ahead = sched ? (sched.dow - DAYS.indexOf(g('weekday')) + 7) % 7 : 0;
+  const iso = n => new Date(Date.UTC(+g('year'), +g('month') - 1, +g('day') + ahead + n)).toISOString().slice(0, 10);
+  return db.days.some(d => d.started && d.date === iso(0)) ? iso(7) : iso(0);
+}
+const answerOf = (id, date) => (rsvps.find(r => r.day_date === date && r.player_id === id) || {}).status;
+const setRsvp = (id, status) => act(async () => {
+  const date = nextPlayDate();
+  if (status) ok(await sb.from('rsvps').upsert({ day_date: date, player_id: id, status, updated_at: new Date().toISOString() }));
+  else ok(await sb.from('rsvps').delete().eq('day_date', date).eq('player_id', id));
 });
+const cycleRsvp = id => setRsvp(id, { in: 'out', out: null }[answerOf(id, nextPlayDate())] ?? 'in'); // admins: in -> out -> no answer
+const remindMe = () => saveFile(calendarFile(sched || { tz: 'Europe/Berlin', dow: 4, play_time: '18:30', opens_minutes: 60 }, nextPlayDate(), location.href), 'badminton-thursdays.ics');
+
+// ---- photo reactions
+const KINDS = [['clap', '👏'], ['fire', '🔥'], ['laugh', '😂'], ['love', '❤️'], ['trophy', '🏆']];
+const mineOn = (day, kind) => reactions.some(r => r.day_id === day && r.kind === kind && r.user_id === session.user.id);
+const react = (day, kind) => act(async () => mineOn(day, kind)
+  ? ok(await sb.from('reactions').delete().eq('day_id', day).eq('kind', kind).eq('user_id', session.user.id))
+  : ok(await sb.from('reactions').insert({ day_id: day, kind })));
+const reactionBar = day => KINDS.map(([k, e]) => { const n = reactions.filter(r => r.day_id === day && r.kind === k).length;
+  return `<button class="rx ${mineOn(day, k) ? 'on' : ''}" onclick="react(${day},'${k}')" aria-pressed="${mineOn(day, k)}" aria-label="${k}">${e}${n ? ' ' + n : ''}</button>`; }).join('');
+
+// ---- shareable result card
+async function shareCard(dayId) {
+  const d = db.days.find(x => x.id === dayId), an = analyse(db.days, db.players), top = playerOfNight(an, dayId);
+  const bitmap = async url => { try { return await createImageBitmap(await (await fetch(url)).blob()); } catch { return null; } };
+  const who = async (id, extra = {}) => { const p = player(id); return { name: p.name, hue: id * 67 % 360, initial: p.name[0].toUpperCase(), img: p.avatar ? await bitmap(p.avatar) : null, ...extra }; };
+  let bg = null;
+  if (d.photo) { const u = (await sb.storage.from('photos').createSignedUrl(d.photo, 300)).data; bg = u && await bitmap(u.signedUrl); }
+  const rows = await Promise.all(stats(d.matches).slice(0, 3).map(r => who(r.id, { w: r.w, p: r.p })));
+  const blob = await drawCard({ date: d.date, matches: d.matches.length, rows, bg, potn: top && await who(top.id, { delta: top.delta }) });
+  const file = new File([blob], `badminton-${d.date}.png`, { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: 'Badminton night' }).catch(() => {});
+  else saveFile(blob, file.name);
+}
 const undo = () => act(async () => ok(await sb.from('matches').delete().eq('id', cur().matches[cur().matches.length - 1].id)));
 const closeDay = () => confirm('Close the day? No more matches can be added.') && act(patchDay(cur().id, { closed: true }));
 const reopenDay = () => act(patchDay(cur().id, { closed: false }));
@@ -385,22 +462,40 @@ function profileView() {
     ${mine ? `<div class="card" style="display:flex;align-items:center;gap:14px;margin-bottom:20px">${av(mine.id, 64)}
       <div style="flex:1"><b>${esc(mine.name)}</b><div class="mut" style="margin:0">Only you can change your photo</div></div>
       <button onclick="avatar(${mine.id})">📷 Change photo</button></div>` : ''}
+    <label class="card" style="display:flex;gap:12px;align-items:center;margin-bottom:20px"><input type="checkbox" ${fxOn() ? 'checked' : ''} onchange="setFx(this.checked)" style="width:22px;height:22px">
+      <span>🎉 Confetti and sound when a match is recorded</span></label>
     <h2 style="font-size:18px;margin:0 0 8px">New password</h2>
     <form onsubmit="newPassword(event)">
       <input type="password" name="password" placeholder="New password (6+ characters)" required minlength="6" autocomplete="new-password">
       <p class="msg" role="alert"></p><button class="primary" type="submit">Save password</button></form>`;
 }
 
+function rsvpCard() {
+  const date = nextPlayDate(), mine = db.players.find(p => p.user === session.user.id), act_ = db.players.filter(p => !p.removed), admin = me.is_admin;
+  const ans = id => answerOf(id, date), icon = id => ({ in: '✅', out: '❌' }[ans(id)] || '⏳');
+  const label = new Date(date + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'UTC' });
+  const by = sched ? hhmm(+sched.play_time.split(':')[0] * 60 + +sched.play_time.split(':')[1] - sched.opens_minutes) : '';
+  const n = act_.filter(p => ans(p.id) === 'in').length;
+  return `<div class="card" style="margin-bottom:16px"><b>${label}</b> · ${n} in
+    ${mine ? `<div class="seg" style="margin:12px 0 0"><button class="${ans(mine.id) === 'in' ? 'on' : ''}" onclick="setRsvp(${mine.id}, ${ans(mine.id) === 'in' ? 'null' : "'in'"})">✅ I'm in</button>
+      <button class="${ans(mine.id) === 'out' ? 'on' : ''}" onclick="setRsvp(${mine.id}, ${ans(mine.id) === 'out' ? 'null' : "'out'"})">❌ I'm out</button></div>` : ''}
+    <div class="chips">${act_.map(p => admin ? `<button class="chip ${ans(p.id) || ''}" onclick="cycleRsvp(${p.id})" aria-label="Answer for ${esc(p.name)}">${av(p.id, 22)} ${esc(p.name)} ${icon(p.id)}</button>`
+      : `<span class="chip ${ans(p.id) || ''}">${av(p.id, 22)} ${esc(p.name)} ${icon(p.id)}</span>`).join('')}</div>
+    <p class="mut" style="margin:6px 0 0">${by ? `Answer before ${by}. ` : ''}The list below fills itself: players who are in first.${admin ? ' Admins can tap a name to answer for them.' : ''}</p>
+    <button class="link" onclick="remindMe()">🔔 Remind me every ${sched ? ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][sched.dow] : 'Thursday'}</button></div>`;
+}
+
 function setup(d) {
   const n = d.matches.length, m = d.mode, cyc = m === 4 ? C4 : C5, o = d.order, [a, b, r] = cyc[0], admin = me.is_admin;
-  return `<h1>New day</h1><p class="mut">Choose 4 or 5 players and their order. The first ${m} in the list play; the rest sit out.</p>
+  const date = nextPlayDate(), ins = o.filter(id => answerOf(id, date) === 'in').length, auto = ins >= 4, icon = id => ({ in: '✅', out: '❌' }[answerOf(id, date)] || '⏳');
+  return `<h1>New day</h1>${rsvpCard()}<p class="mut">Choose 4 or 5 players and their order. The first ${m} in the list play; the rest sit out.${auto ? ' The 4 / 5 choice follows the sign-ups.' : ''}${rsvps.some(x => x.day_date === date) && ins < 4 ? ` Only ${ins} confirmed so far, you need at least 4.` : ''}</p>
       <input type="date" value="${d.date}" onchange="setDate(this.value)" aria-label="Date">
-      <div class="seg" style="margin:12px 0"><button class="${m === 4 ? 'on' : ''}" onclick="setMode(4)">4 players</button>
-        <button class="${m === 5 ? 'on' : ''}" onclick="setMode(5)" ${o.length < 5 ? 'disabled' : ''}>5 players</button></div>
+      <div class="seg" style="margin:12px 0"><button class="${m === 4 ? 'on' : ''}" onclick="setMode(4)" ${auto ? 'disabled' : ''}>4 players</button>
+        <button class="${m === 5 ? 'on' : ''}" onclick="setMode(5)" ${auto || o.length < 5 ? 'disabled' : ''}>5 players</button></div>
       <ol>${o.map((id, i) => `${i === m ? '<li class="sep">Sitting out</li>' : ''}<li class="row ${i >= m ? 'bench' : ''}">
         <span class="slot">${i + 1}</span>
         ${player(id).user === session.user.id ? `<button class="ph" onclick="avatar(${id})" aria-label="Change your photo">${av(id)}</button>` : `<span class="ph">${av(id)}</span>`}
-        <button class="nm" onclick="rename(${id})" aria-label="Rename ${name(id)}">${name(id)} ✎${player(id).user ? '' : '<span class="tag">no account</span>'}</button>
+        <button class="nm" onclick="rename(${id})" aria-label="Rename ${name(id)}">${icon(id)} ${name(id)} ✎${player(id).user ? '' : '<span class="tag">no account</span>'}</button>
         <button onclick="move(${i},-1)" aria-label="Move up" ${i === 0 ? 'disabled' : ''}>▲</button>
         <button onclick="move(${i},1)" aria-label="Move down" ${i === o.length - 1 ? 'disabled' : ''}>▼</button>
         ${admin ? `<button class="danger" onclick="removePlayer(${id})" aria-label="Remove ${name(id)}">✕</button>` : ''}</li>`).join('')}</ol>
@@ -410,6 +505,14 @@ function setup(d) {
       <button class="primary" onclick="start()" ${me.is_admin || startOpen() ? '' : 'disabled'}>Start day</button>`;
 }
 
+function closedExtras(d) {
+  const an = analyse(db.days, db.players), top = playerOfNight(an, d.id);
+  if (!top) return '';
+  return `<div class="card potn">${av(top.id, 56)}<div><div class="mut">⭐ Player of the night</div><b style="font-size:20px">${name(top.id)}</b>
+      <div class="mut">${top.delta >= 0 ? '+' : ''}${Math.round(top.delta)} rating · ${top.w} of ${top.p} won</div></div></div>
+    ${nightAwards(an, d.id).map(x => `<span class="badge">${x.emoji} ${name(x.id)}: ${x.label}</span>`).join('')}<div style="height:10px"></div>`;
+}
+
 function play() {
   const d = cur(), n = d.matches.length, cyc = d.mode === 4 ? C4 : C5, o = d.order, admin = me.is_admin;
   if (!d.started) return setup(d);
@@ -417,17 +520,19 @@ function play() {
     return `<h1>Day closed 🏁</h1><p class="mut">${esc(d.date)} · ${n} matches</p>
       <div class="card" style="padding:4px 16px;margin-bottom:16px">${stats(d.matches).slice(0, 3).map((r, i) => `<div class="rank"><span class="r">${['🥇', '🥈', '🥉'][i]}</span>${av(r.id, 32)}
         <b>${esc(r.name)}</b><span class="mut" style="margin:0">${r.w}/${r.p}</span><b>${Math.round(pct(r) * 100)}%</b></div>`).join('')}</div>
+      ${closedExtras(d)}
       <button class="primary" onclick="photo(${d.id})">📷 ${d.photo ? 'Retake group photo' : 'Take group photo'}</button>
       ${d.photo ? '<p class="mut" style="text-align:center;margin:8px 0 0">✓ Photo saved in Photos</p>' : ''}
-      <button class="add" style="margin-top:12px" onclick="newDayBtn()">Start new day</button>
+      <button class="add" style="margin-top:12px" onclick="shareCard(${d.id})">📤 Share result card</button>
+      <button class="add" onclick="newDayBtn()">Start new day</button>
       ${admin ? '<div class="actions"><button class="link" onclick="reopenDay()">Reopen day</button></div>' : ''}`;
   }
   const [t1, t2, rest] = cyc[n % cyc.length];
   return `<p class="mut" style="margin:0">${esc(d.date)} · ${n} played</p>
     <p class="num">Match ${n + 1}</p>
     <div class="teams">
-      <div class="team" style="--c:var(--t1)"><small>Team 1</small>${slots(o, t1).map(who).join('')}</div>
-      <div class="team" style="--c:var(--t2)"><small>Team 2</small>${slots(o, t2).map(who).join('')}</div>
+      <div class="team" style="--c:var(--t1)"><small>${esc(tn[1] || 'Team 1')}</small>${slots(o, t1).map(who).join('')}<button class="tname" onclick="nameTeam(1)">✎ name</button></div>
+      <div class="team" style="--c:var(--t2)"><small>${esc(tn[2] || 'Team 2')}</small>${slots(o, t2).map(who).join('')}<button class="tname" onclick="nameTeam(2)">✎ name</button></div>
     </div>
     ${rest ? `<div class="rest">Resting: <b>${name(o[rest - 1])}</b></div>` : ''}
     <div class="win">
@@ -454,14 +559,54 @@ function board() {
     `<div class="pod"><div class="medal">${medal}</div>${av(rows[i].id)}<div class="pn">${esc(rows[i].name)}</div>
      <div class="pw">${rows[i].w} wins · ${Math.round(pct(rows[i]) * 100)}%</div>
      <div class="bar" style="--c:${c};--h:${h}px">${i + 1}</div></div>`);
-  return `<h1>Leaderboard</h1>
+  const head = `<h1>Leaderboard</h1>
     <div class="seg"><button class="${tab === 'day' ? 'on' : ''}" onclick="tab='day';render()">Day</button>
-      <button class="${tab === 'all' ? 'on' : ''}" onclick="tab='all';render()">General</button></div>${picker}
-    ${ms.length ? `<div class="podium">${podium[1]}${podium[0]}${podium[2]}</div>
+      <button class="${tab === 'all' ? 'on' : ''}" onclick="tab='all';render()">General</button>
+      <button class="${tab === 'rating' ? 'on' : ''}" onclick="tab='rating';render()">Rating</button></div>`;
+  if (tab === 'rating') return head + ratingList();
+  const side = (m, t) => { const ids = t === 1 ? m.t1 : m.t2, nm = m['team' + t + '_name'];
+    return `${m.win === t ? '🏆 ' : ''}${nm ? `<b>${esc(nm)}</b> (${pair(ids)})` : pair(ids)}`; };
+  return head + picker + `${ms.length ? `<div class="podium">${podium[1]}${podium[0]}${podium[2]}</div>
       <div class="card" style="padding:4px 16px">${rows.slice(3).map((r, i) => `<div class="rank"><span class="r">${i + 4}</span>${av(r.id, 32)}
-        <b>${esc(r.name)}</b><span class="mut" style="margin:0">${r.w}/${r.p}</span><b>${Math.round(pct(r) * 100)}%</b></div>`).join('')}</div>`
+        <b>${esc(r.name)}</b><span class="mut" style="margin:0">${r.w}/${r.p}</span><b>${Math.round(pct(r) * 100)}%</b></div>`).join('')}</div>
+      ${tab === 'day' && sel ? `<h2 class="sec">Matches</h2><div class="card" style="padding:4px 16px">${sel.matches.map(m => `<div class="mrow"><span class="r">${m.n}</span>
+        <span>${side(m, 1)} <span class="mut">vs</span> ${side(m, 2)}</span></div>`).join('')}</div>` : ''}`
       : '<div class="empty">No matches yet.<br>Play one and the podium shows up here.</div>'}
     ${tab === 'all' && me.is_admin ? '<div class="actions"><button class="link danger" onclick="eraseAll()">Reset all scores</button></div>' : ''}`;
+}
+
+function ratingList() {
+  const an = analyse(db.days, db.players), lastDay = [...an.night.keys()].pop(), ranked = db.players.filter(p => an.hist.get(p.id).length)
+    .sort((x, y) => an.rating.get(y.id) - an.rating.get(x.id));
+  if (!ranked.length) return '<div class="empty">No matches yet.<br>Ratings start at 1000 and move with every result.</div>';
+  return `<p class="mut">Everyone starts at 1000. Beat a stronger team and you gain more.</p><div class="card" style="padding:4px 16px">${ranked.map((p, i) => {
+    const dl = (an.night.get(lastDay).get(p.id) || {}).delta;
+    return `<div class="rank"><span class="r">${i + 1}</span>${av(p.id, 32)}<b>${esc(p.name)}</b>
+      <span class="mut" style="margin:0">${dl === undefined ? '' : (dl >= 0 ? '▲' : '▼') + Math.abs(Math.round(dl))}</span><b>${Math.round(an.rating.get(p.id))}</b></div>`; }).join('')}</div>`;
+}
+
+function statsView() {
+  const an = analyse(db.days, db.players), mine = db.players.find(p => p.user === session.user.id), played = db.players.filter(p => an.hist.get(p.id).length);
+  if (!played.length) return '<h1>Stats</h1><div class="empty">Stats appear after the first match.</div>';
+  const id = played.some(p => p.id === statsId) ? statsId : mine && played.some(p => p.id === mine.id) ? mine.id : played[0].id;
+  const h = an.hist.get(id), b = an.badges.get(id), rel = relations(db.days, id), me_ = stats(db.days.flatMap(d => d.matches)).find(r => r.id === id);
+  const rate = x => Math.round(100 * x.w / x.g), byRate = (m, dir, min) => [...m].filter(([, x]) => x.g >= min).sort((p, q) => dir * (rate(q[1]) - rate(p[1])) || q[1].g - p[1].g);
+  const mates = byRate(rel.mate, 1, 1), foes = byRate(rel.foe, 1, 2), pair_ = bestPair(db.days);
+  const nemesis = foes.length ? foes[foes.length - 1] : null, victim = foes.length ? foes[0] : null, line = ([pid, x]) => `${av(pid, 24)} ${name(pid)} <span class="mut">${x.w}-${x.g - x.w} · ${rate(x)}%</span>`;
+  const badges = [b.potn && `⭐ Player of the night ×${b.potn}`, b.perfect && `💯 Perfect night ×${b.perfect}`, b.fire && `🔥 5 in a row ×${b.fire}`,
+    b.comeback && `🔄 Comeback ×${b.comeback}`, b.improved && '📈 Most improved'].filter(Boolean);
+  return `<h1>Stats</h1>
+    <select onchange="statsId=+this.value;render()" aria-label="Player">${played.map(p => `<option value="${p.id}" ${p.id === id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
+    <div class="card" style="display:flex;align-items:center;gap:14px;margin:12px 0">${av(id, 64)}<div style="flex:1"><b style="font-size:20px">${name(id)}</b>
+      <div class="mut" style="margin:0">Rating</div></div><b style="font-size:34px">${Math.round(an.rating.get(id))}</b></div>
+    <div class="tiles"><div class="tile"><b>${me_.p}</b>matches</div><div class="tile"><b>${Math.round(100 * pct(me_))}%</b>win rate</div><div class="tile"><b>${b.bestStreak}</b>best streak</div></div>
+    <h2 class="sec">Badges</h2>${badges.map(x => `<span class="badge">${x}</span>`).join('') || '<p class="mut">None yet. Win 5 in a row or finish a night unbeaten.</p>'}
+    <h2 class="sec">Rating over time</h2><div class="card" style="color:var(--mut)">${ratingChart(h.map(x => x.r)) || '<p class="mut" style="margin:0">Play a few more matches to see the chart.</p>'}</div>
+    <h2 class="sec">Partners</h2><div class="card" style="padding:4px 16px">${mates.map(x => `<div class="member"><span>${line(x)}</span></div>`).join('') || '<p class="mut">No partners yet.</p>'}</div>
+    <h2 class="sec">Rivals</h2><div class="card" style="padding:4px 16px">
+      <div class="member"><span>😈 Nemesis</span><span>${nemesis && rate(nemesis[1]) < 50 ? line(nemesis) : '<span class="mut">none yet</span>'}</span></div>
+      <div class="member"><span>🎯 Favourite victim</span><span>${victim && rate(victim[1]) > 50 ? line(victim) : '<span class="mut">none yet</span>'}</span></div></div>
+    <h2 class="sec">Best pair in the group</h2><div class="card">${pair_ ? `${pair(pair_.ids)} <span class="mut">${pair_.w}-${pair_.g - pair_.w} together</span>` : '<span class="mut">needs 3 games together</span>'}</div>`;
 }
 
 function membersView() {
@@ -483,7 +628,7 @@ async function gallery() {
   if (days.length) for (const x of ok(await sb.storage.from('photos').createSignedUrls(days.map(d => d.photo), 3600))) urls[x.path] = x.signedUrl;
   if (view !== 'photos') return;
   gal.innerHTML = days.length ? `<div class="grid">${days.map(d => `<div class="cell"><button onclick="openPhoto(${d.id})">
-      <img src="${urls[d.photo]}" alt=""><span>${esc(d.date)} · ${d.matches.length} matches<br>🏆 ${esc((stats(d.matches)[0] || { name: '-' }).name)}</span></button>
+      <img src="${urls[d.photo]}" alt=""><span>${esc(d.date)} · ${d.matches.length} matches<br>🏆 ${esc((stats(d.matches)[0] || { name: '-' }).name)}${KINDS.map(([k, e]) => { const n = reactions.filter(r => r.day_id === d.id && r.kind === k).length; return n ? ` ${e}${n}` : ''; }).join('')}</span></button>
       ${me.is_admin ? `<button class="x" onclick="removePhoto(${d.id})" aria-label="Delete photo of ${esc(d.date)}">✕</button>` : ''}</div>`).join('')}</div>`
     : '<div class="empty">No photos yet.<br>Close the day and take the group photo.</div>';
 }
@@ -491,16 +636,21 @@ async function openPhoto(id) {
   const d = db.days.find(x => x.id === id), blob = await (await fetch(urls[d.photo])).blob(), u = URL.createObjectURL(blob);
   const nm = `badminton-${d.date}.jpg`, f = new File([blob], nm, { type: 'image/jpeg' });
   const el = document.createElement('div'); el.id = 'lb';
-  el.innerHTML = `<img src="${u}" alt="Group photo"><div class="actions">
+  el.innerHTML = `<img src="${u}" alt="Group photo"><div class="actions" id="rx" style="margin:0"></div><div class="actions">
+    <button id="cd">📤 Result card</button>
     <a href="${u}" download="${nm}">⬇ Save</a>
     ${navigator.canShare && navigator.canShare({ files: [f] }) ? '<button id="sh">Share</button>' : ''}
     ${me.is_admin ? '<button id="rm" class="danger">Delete</button>' : ''}<button id="cl">Close</button></div>`;
   document.body.append(el);
-  el.querySelector('#cl').onclick = () => { el.remove(); URL.revokeObjectURL(u); };
+  lbDay = id; drawReactions();
+  el.querySelector('#cl').onclick = () => { el.remove(); URL.revokeObjectURL(u); lbDay = null; };
+  el.querySelector('#cd').onclick = () => shareCard(id);
   const rm = el.querySelector('#rm');
   if (rm) rm.onclick = () => { el.remove(); removePhoto(d.id); };
   const sh = el.querySelector('#sh'); if (sh) sh.onclick = () => navigator.share({ files: [f] }).catch(() => {});
 }
+
+const drawReactions = () => { const el = document.getElementById('rx'); if (el && lbDay) el.innerHTML = reactionBar(lbDay); };
 
 function render() {
   document.body.classList.toggle('out', !session);
@@ -510,7 +660,8 @@ function render() {
   if (!loaded) { app.innerHTML = '<p class="mut">Loading…</p>'; return; }
   const top = `<div class="top"><span>👤 ${esc(me.username || '')}${me.is_admin ? ' · admin' : ''}</span>
     <span><button class="link" onclick="go('members')">Members</button><button class="link" onclick="go('profile')">Profile</button><button class="link" onclick="logout()">Log out</button></span></div>`;
-  app.innerHTML = top + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'profile' ? profileView() : '<h1>Photos</h1><div id="gal"></div>');
+  app.innerHTML = top + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : '<h1>Photos</h1><div id="gal"></div>');
+  drawReactions();
   if (view === 'photos') gallery().catch(e => { gal.innerHTML = `<p class="msg">${esc(e.message)}</p>`; });
   document.querySelectorAll('nav button').forEach(b => b.setAttribute('aria-current', b.dataset.v === view ? 'page' : ''));
 }
