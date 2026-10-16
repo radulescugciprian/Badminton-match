@@ -108,7 +108,7 @@ function setup(d) {
       ${admin ? `<button class="add" onclick="addPlayer()">${t('+ Add guest player (no account)')}</button>` : ''}
       <p class="preview">${t('Match 1: {a} vs {b}', { a: pair(slots(o, a)), b: pair(slots(o, b)) })}${r ? ' · ' + t('{name} rests', { name: name(o[r - 1]) }) : ''}</p>
       ${open ? '' : `<p class="mut" role="status">🔒 ${startNote()}</p>`}
-      <button class="primary" onclick="start()" ${open ? '' : 'disabled'}>${t('Start day')}</button>`;
+      <button class="primary" onclick="start()" ${open ? '' : 'disabled'}>${t('Start playing')}</button>`;
 }
 
 const AWARD = { perfect: () => '💯 ' + t('Perfect night'), comeback: () => '🔄 ' + t('Comeback') };

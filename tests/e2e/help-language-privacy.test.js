@@ -35,7 +35,7 @@ run('help, plain errors, languages, privacy and the schedule editor', async h =>
   // ---- play some matches (admin can start any time), then privacy
   const B = await mk(), C = await mk();
   await signup(B, 'Bob', 'b@x.com', '2'); await signup(C, 'Cleo', 'c@x.com', '3');
-  await A.click('text=Start day'); await A.waitForSelector('text=Match 1');
+  await A.click('text=Start playing'); await A.waitForSelector('text=Match 1');
   for (let i = 0; i < 4; i++) await win(A, 1);
   await A.waitForSelector('text=Match 5');
   await B.click('.top .me'); await B.waitForSelector('text=Your profile');

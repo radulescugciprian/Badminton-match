@@ -22,7 +22,7 @@ run('sign-in, rights, photos and the play schedule', async h => {
   assert.equal(await B.locator('button:has-text("4 players")').count(), 0, 'members do not pick 4 or 5 by hand');
   await A.click('button:has-text("4 players")'); await B.waitForFunction(() => cur().mode === 4);
   await A.click('button:has-text("5 players")'); await B.waitForFunction(() => cur().mode === 5);
-  await A.click('text=Start day'); await B.waitForSelector('text=Match 1');
+  await A.click('text=Start playing'); await B.waitForSelector('text=Match 1');
   assert((await B.locator('text=Close day').count()) === 0, 'member cannot close');
   await win(B, 1); await A.waitForSelector('text=Match 2');
   await win(A, 2); await B.waitForSelector('text=Match 3');
@@ -81,18 +81,18 @@ run('sign-in, rights, photos and the play schedule', async h => {
   assert(!st.profiles.some(p => p.username === 'Bob') && st.players.find(p => p.name === 'Dani').user_id === null, 'Bob gone, Dani kept as guest');
   await A.waitForFunction(() => document.querySelectorAll('.card .tag').length === 4);
   // reset all scores
-  await A.click('nav >> text=Play'); await A.click('text=Start day'); await win(A, 1);
+  await A.click('nav >> text=Play'); await A.click('text=Start playing'); await win(A, 1);
   await A.click('nav >> text=Board'); await A.click('text=General'); await A.click('text=Reset all scores');
   await A.waitForSelector('text=No matches yet');
   assert(st.matches.length === 0 && st.players.length === 5 && st.profiles.length === 1, 'scores reset, players and accounts kept');
   // delete a photo (card button) and delete single days (admin)
   await A.click('nav >> text=Play'); await A.waitForSelector('text=Next match day');
-  await A.click('text=Start day'); await win(A, 1); await A.click('text=Close day'); await A.waitForSelector('text=Day closed');
+  await A.click('text=Start playing'); await win(A, 1); await A.click('text=Close day'); await A.waitForSelector('text=Day closed');
   await A.click('text=Take group photo'); await A.setInputFiles('#shot', S + 'red.png'); await A.waitForSelector('text=Photo saved');
   await A.click('nav >> text=Photos'); await A.waitForSelector('.grid img');
   await A.click('.grid .x'); await A.waitForSelector('text=No photos yet');
   assert(Object.keys(st.files).length === 0 && st.days.every(d => !d.photo_path), 'photo deleted from storage and day');
-  await A.click('nav >> text=Play'); await A.click('text=Start next match day'); await A.click('text=Start day'); await win(A, 2);
+  await A.click('nav >> text=Play'); await A.click('text=Start next match day'); await A.click('text=Start playing'); await win(A, 2);
   await A.click('nav >> text=Board'); await A.click('.seg >> text=Day'); await A.waitForSelector('select option', { state: 'attached' });
   assert((await A.locator('select option').count()) === 2, 'two days with matches');
   await A.selectOption('select', { index: 0 }); await A.click('text=Delete this day');
@@ -107,17 +107,17 @@ run('sign-in, rights, photos and the play schedule', async h => {
   const C = await mk(); await signup(C, 'Cleo', 'c@x.com', '3'); await C.waitForSelector('text=Next match day');
   const at = async iso => { st.now = Date.parse(iso); await C.evaluate(t => { window.__t = t; render(); }, st.now); await A.evaluate(t => { window.__t = t; render(); }, st.now); };
   await at('2026-10-14T15:00:00Z');                                     // Wednesday 17:00 Berlin
-  assert(await C.locator('button:has-text("Start day")').isDisabled(), 'member locked on Wednesday');
+  assert(await C.locator('button:has-text("Start playing")').isDisabled(), 'member locked on Wednesday');
   assert((await C.textContent('[role=status]')).includes('Thursday at 18:30') && (await C.textContent('[role=status]')).includes('17:30'));
-  assert(await A.locator('button:has-text("Start day")').isEnabled(), 'admin never locked');
+  assert(await A.locator('button:has-text("Start playing")').isEnabled(), 'admin never locked');
   await at('2026-10-15T15:29:00Z');                                     // Thursday 17:29 Berlin (CEST)
-  assert(await C.locator('button:has-text("Start day")').isDisabled(), 'locked at 17:29');
+  assert(await C.locator('button:has-text("Start playing")').isDisabled(), 'locked at 17:29');
   await at('2026-10-15T15:31:00Z');                                     // Thursday 17:31
-  assert(await C.locator('button:has-text("Start day")').isEnabled(), 'open at 17:31');
+  assert(await C.locator('button:has-text("Start playing")').isEnabled(), 'open at 17:31');
   await at('2026-10-15T22:00:00Z');                                     // Friday 00:00 Berlin
-  assert(await C.locator('button:has-text("Start day")').isDisabled(), 'closed again after midnight');
+  assert(await C.locator('button:has-text("Start playing")').isDisabled(), 'closed again after midnight');
   st.now = Date.parse('2026-10-14T15:00:00Z');                          // server refuses a direct attempt too
   assert(rpc('u3', { table: 'days', op: 'update', f: [['eq', 'id', st.days[st.days.length - 1].id]], payload: { started: true } }).error, 'server enforces the window');
   await at('2026-10-29T16:31:00Z');                                     // Thursday 17:31 Berlin after the clocks changed (CET)
-  await C.click('button:has-text("Start day")'); await C.waitForSelector('text=Match 1');
+  await C.click('button:has-text("Start playing")'); await C.waitForSelector('text=Match 1');
 });

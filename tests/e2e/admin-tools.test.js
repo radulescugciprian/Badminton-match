@@ -4,7 +4,7 @@ run('admin tools', async h => {
   const { mk, signup, st, sleep, win, assert } = h;
   const A = await mk(), B = await mk();
   await signup(A, 'Anna', 'a@x.com', '1'); await signup(B, 'Bob', 'b@x.com', '2');
-  await A.click('text=Start day'); await A.waitForSelector('text=Match 1');
+  await A.click('text=Start playing'); await A.waitForSelector('text=Match 1');
   await win(A, 1); await win(A, 2); await win(A, 1); await A.waitForSelector('text=Match 4');
   await sleep(300);
 

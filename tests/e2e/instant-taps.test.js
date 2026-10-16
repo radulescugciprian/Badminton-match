@@ -3,7 +3,7 @@ const { run } = require('./harness');
 run('instant taps', async h => {
   const { mk, signup, st, sleep, win, assert } = h;
   const A = await mk(); await signup(A, 'Anna', 'a@x.com', '1');
-  await A.click('text=Start day'); await A.waitForSelector('text=Match 1');
+  await A.click('text=Start playing'); await A.waitForSelector('text=Match 1');
   st.delay = 1200;                                                      // a slow connection: every server call takes 1.2 s
   let t = Date.now(); await win(A, 1); const sleepMs = 750;
   await A.waitForSelector('text=Match 2', { timeout: 600 });            // shown at once, long before the server answered

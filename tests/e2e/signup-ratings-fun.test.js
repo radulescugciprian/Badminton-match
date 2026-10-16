@@ -29,7 +29,7 @@ run('sign-up list, ratings, badges, result card and reactions', async h => {
   assert(ics.includes('RRULE:FREQ=WEEKLY;BYDAY=TH') && ics.includes('DTSTART;TZID=Europe/Berlin:20261015T173000') && ics.includes('TRIGGER:PT0M') && ics.includes('TZID:Europe/Berlin'), 'ics content');
   
   // ---- play: team names, celebration
-  await A.click('text=Start day'); await A.waitForSelector('text=Match 1');
+  await A.click('text=Start playing'); await A.waitForSelector('text=Match 1');
   A.promptAnswer = 'Smashers'; await A.click('.team >> nth=0 >> .tname'); await A.waitForSelector('text=Smashers');
   await win(A, 1);
   await A.waitForSelector('canvas.confetti', { timeout: 3000 });

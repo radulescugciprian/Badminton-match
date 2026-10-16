@@ -46,11 +46,11 @@ run('compact sign-up card and play calendar', async h => {
   await B.waitForFunction(() => playDates.some(p => p.day === '2026-10-22' && p.kind === 'cancelled'));   // Bob's phone has heard about it
   // members can start a day on an extra day from 17:30, and not on a cancelled one
   await A.click('text=Back'); await B.evaluate(() => go('play'));
-  await at([A, B], '2026-10-21T15:29:00Z'); assert(await B.locator('button:has-text("Start day")').isDisabled(), 'locked at 17:29 on the extra day');
-  await at([A, B], '2026-10-21T15:31:00Z'); assert(await B.locator('button:has-text("Start day")').isEnabled(), 'open at 17:31 on the extra day');
-  await at([A, B], '2026-10-22T16:00:00Z'); assert(await B.locator('button:has-text("Start day")').isDisabled(), 'locked on the cancelled Thursday');
+  await at([A, B], '2026-10-21T15:29:00Z'); assert(await B.locator('button:has-text("Start playing")').isDisabled(), 'locked at 17:29 on the extra day');
+  await at([A, B], '2026-10-21T15:31:00Z'); assert(await B.locator('button:has-text("Start playing")').isEnabled(), 'open at 17:31 on the extra day');
+  await at([A, B], '2026-10-22T16:00:00Z'); assert(await B.locator('button:has-text("Start playing")').isDisabled(), 'locked on the cancelled Thursday');
   assert((await B.textContent('.rsvp')).includes('Thursday 29 Oct'), 'the card moved on to the next play day');
-  assert(await A.locator('button:has-text("Start day")').isEnabled(), 'admins can always start');
+  assert(await A.locator('button:has-text("Start playing")').isEnabled(), 'admins can always start');
   // on the play day itself the details are open
   await at([A, B], '2026-10-29T10:00:00Z'); await B.waitForSelector('.rsvp .chips');
   assert(h.rpc('u2', { table: 'play_dates', op: 'upsert', payload: { day: '2026-10-30', kind: 'extra' } }).error, 'the server refuses a member');

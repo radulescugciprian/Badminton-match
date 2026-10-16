@@ -170,7 +170,7 @@ function showHelp() {
   const el = document.createElement('div'); el.id = 'help'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
   el.innerHTML = `<div class="card"><h1>${t('How it works')}</h1>
     <ol class="steps"><li>${t('Before play day tap “I\'m in” or “I\'m out”. The player list fills itself from the answers.')}</li>
-      <li>${t('Starting a day opens one hour before play time. The first 5 (or 4) players in the list play, the others sit out.')}</li>
+      <li>${t('Playing opens one hour before play time. The first 5 (or 4) players in the list play, the others sit out.')}</li>
       <li>${t('After every match tap the winning team. The leaderboards and ratings update for everyone.')}</li>
       <li>${t('At the end the day is closed and anyone can take the group photo.')}</li></ol>
     <h2 class="sec">${t('The rotation')}</h2>
@@ -430,5 +430,5 @@ function startOpen() {
 }
 const hhmm = mins => String(Math.floor(mins / 60) % 24).padStart(2, '0') + ':' + String(mins % 60).padStart(2, '0');
 const playMins = () => +sched.play_time.split(':')[0] * 60 + +sched.play_time.split(':')[1];
-const startNote = () => t('We play on {day} at {time}. Starting a day opens at {open} that day.',
+const startNote = () => t('We play on {day} at {time}. You can start playing from {open}.',
   { day: dayName(sched.dow), time: hhmm(playMins()), open: hhmm(playMins() - sched.opens_minutes) });
