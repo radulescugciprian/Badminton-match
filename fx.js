@@ -37,8 +37,8 @@ function confetti() {
 function celebrate() { if (fxOn()) { confetti(); fanfare(); } }
 
 // ---- result card: group photo (or a plain background) with the night's podium on top, as a PNG
-// rows: top 3 [{name, w, p, img: ImageBitmap|null, hue, initial}], potn: same + delta, bg: ImageBitmap|null
-async function drawCard({ date, matches, rows, potn, bg }) {
+// texts are prepared (and translated) by the caller; rows: top 3 [{name, line, img: ImageBitmap|null, hue, initial}], potn: same, with `line` = text under the name
+async function drawCard({ title, subtitle, rows, potn, potnTitle, footer, bg }) {
   const W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H;
   const g = c.getContext('2d'), font = 'system-ui, "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
   const text = (s, x, y, size, weight = 700, color = '#fff', align = 'center') => { g.font = `${weight} ${size}px ${font}`; g.fillStyle = color; g.textAlign = align; g.fillText(s, x, y); };
@@ -48,9 +48,8 @@ async function drawCard({ date, matches, rows, potn, bg }) {
   const shade = g.createLinearGradient(0, 0, 0, H); shade.addColorStop(0, 'rgba(7,12,24,.6)'); shade.addColorStop(.45, 'rgba(7,12,24,.45)'); shade.addColorStop(1, 'rgba(7,12,24,.88)');
   g.fillStyle = shade; g.fillRect(0, 0, W, H);
 
-  const nice = new Date(date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
-  text('🏸 Badminton night', W / 2, 140, 76);
-  text(`${nice} · ${matches} matches`, W / 2, 205, 38, 500, 'rgba(255,255,255,.8)');
+  text('🏸 ' + title, W / 2, 140, 76);
+  text(subtitle, W / 2, 205, 38, 500, 'rgba(255,255,255,.8)');
 
   const avatar = (p, cx, cy, r) => {
     g.save(); g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.clip();
@@ -63,7 +62,7 @@ async function drawCard({ date, matches, rows, potn, bg }) {
     const s = spec[i], top = base - s.h;
     g.fillStyle = s.col; g.beginPath(); g.roundRect(s.x - 140, top, 280, s.h, [20, 20, 0, 0]); g.fill();
     text(String(i + 1), s.x, top + s.h / 2 + 30, 90, 800, '#0b1220');
-    text(`${p.w} win${p.w === 1 ? '' : 's'}`, s.x, top - 18, 34, 500, 'rgba(255,255,255,.85)');
+    text(p.line, s.x, top - 18, 34, 500, 'rgba(255,255,255,.85)');
     text(p.name, s.x, top - 62, 46);
     avatar(p, s.x, top - 62 - 52 - 80, 80);
     text(s.medal, s.x, top - 62 - 52 - 80 - 100, 64);
@@ -71,10 +70,10 @@ async function drawCard({ date, matches, rows, potn, bg }) {
   if (potn) {
     g.fillStyle = 'rgba(255,255,255,.14)'; g.beginPath(); g.roundRect(120, 1080, W - 240, 150, 30); g.fill();
     avatar(potn, 210, 1155, 52);
-    text('⭐ Player of the night', 290, 1135, 34, 500, 'rgba(255,255,255,.8)', 'left');
-    text(`${potn.name}  ·  +${Math.round(potn.delta)} rating`, 290, 1190, 48, 800, '#fff', 'left');
+    text('⭐ ' + potnTitle, 290, 1135, 34, 500, 'rgba(255,255,255,.8)', 'left');
+    text(potn.line, 290, 1190, 48, 800, '#fff', 'left');
   }
-  text('Badminton Thursdays', W / 2, 1300, 32, 500, 'rgba(255,255,255,.6)');
+  text(footer, W / 2, 1300, 32, 500, 'rgba(255,255,255,.6)');
   return new Promise(res => c.toBlob(res, 'image/png'));
 }
 
@@ -84,7 +83,8 @@ function saveFile(blob, name) {
 }
 
 // ---- weekly calendar reminder (.ics): the phone's calendar notifies when starting opens, no server needed
-function calendarFile(s, firstDate, url) {
+// summary/description are translated by the caller
+function calendarFile(s, firstDate, url, summary, description) {
   const [h, m] = s.play_time.split(':').map(Number), open = h * 60 + m - s.opens_minutes, pad = n => String(n).padStart(2, '0');
   const at = mins => `${firstDate.replace(/-/g, '')}T${pad(Math.floor(mins / 60) % 24)}${pad(mins % 60)}00`;
   const berlin = `BEGIN:VTIMEZONE\r\nTZID:Europe/Berlin\r\nBEGIN:STANDARD\r\nDTSTART:19701025T030000\r\nTZOFFSETFROM:+0200\r\nTZOFFSETTO:+0100\r\nRRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU\r\nEND:STANDARD\r\n`
@@ -94,7 +94,7 @@ function calendarFile(s, firstDate, url) {
     'BEGIN:VEVENT', 'UID:badminton-weekly@badminton-match', `DTSTAMP:${new Date().toISOString().replace(/[-:]|\.\d+/g, '')}`,
     `DTSTART;TZID=${s.tz}:${at(open)}`, `DTEND;TZID=${s.tz}:${at(h * 60 + m + 120)}`,
     `RRULE:FREQ=WEEKLY;BYDAY=${['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'][s.dow]}`,
-    `SUMMARY:🏸 Badminton: starting opens now (play ${pad(h)}:${pad(m)})`, `DESCRIPTION:Open the app, answer I'm in / I'm out and start the day.\\n${url}`, `URL:${url}`,
-    'BEGIN:VALARM', 'TRIGGER:PT0M', 'ACTION:DISPLAY', 'DESCRIPTION:Badminton: starting opens now', 'END:VALARM', 'END:VEVENT'];
+    `SUMMARY:🏸 ${summary}`, `DESCRIPTION:${description}\\n${url}`, `URL:${url}`,
+    'BEGIN:VALARM', 'TRIGGER:PT0M', 'ACTION:DISPLAY', `DESCRIPTION:${summary}`, 'END:VALARM', 'END:VEVENT'];
   return new Blob([lines.join('\r\n') + '\r\n' + (s.tz === 'Europe/Berlin' ? berlin : '') + body.join('\r\n') + '\r\nEND:VCALENDAR\r\n'], { type: 'text/calendar' });
 }

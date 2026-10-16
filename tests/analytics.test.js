@@ -30,7 +30,7 @@ a = analyse([{ id: 1, date: 'd1', matches: wins(4) }], players);
 assert.equal(a.badges.get(1).perfect, 1); assert.equal(a.badges.get(3).perfect, 0);
 a = analyse([{ id: 1, date: 'd1', matches: wins(3) }], players);
 assert.equal(a.badges.get(1).perfect, 0, 'only 3 matches');
-assert.deepEqual(nightAwards(analyse([{ id: 1, date: 'd1', matches: wins(4) }], players), 1).map(x => x.id).sort(), [1, 2]);
+assert.deepEqual(nightAwards(analyse([{ id: 1, date: 'd1', matches: wins(4) }], players), 1).map(x => x.id + x.kind).sort(), ['1perfect', '2perfect']);
 
 // comeback: lose the first two, finish with more wins than losses
 a = analyse([{ id: 1, date: 'd1', matches: [m(1, [1, 2], [3, 4], 2), m(2, [1, 2], [3, 4], 2), m(3, [1, 2], [3, 4], 1), m(4, [1, 2], [3, 4], 1), m(5, [1, 2], [3, 4], 1)] }], players);
@@ -54,6 +54,7 @@ assert.deepEqual(r.mate.get(2), { w: 2, g: 2 }); assert.deepEqual(r.mate.get(3),
 assert.deepEqual(r.foe.get(4), { w: 1, g: 2 }); assert.equal(r.mate.get(5), undefined);
 assert.deepEqual(bestPair(days, 2).ids.sort(), [1, 2]);
 assert.equal(bestPair(days, 5), null, 'not enough games together');
+assert.equal(bestPair(days, 2, ids => !ids.includes(1)), null, 'privacy filter hides pairs with a private player');
 
 // chart: needs 2+ points, renders the numbers
 assert.equal(ratingChart([1000]), '');

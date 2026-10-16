@@ -61,8 +61,8 @@ function playerOfNight(a, dayId) {
 function nightAwards(a, dayId) {
   const out = [];
   for (const [id, r] of a.night.get(dayId) || []) {
-    if (r.p >= 4 && r.w === r.p) out.push({ id, emoji: '💯', label: 'Perfect night' });
-    if (r.res[0] === false && r.res[1] === false && r.w > r.p - r.w) out.push({ id, emoji: '🔄', label: 'Comeback' });
+    if (r.p >= 4 && r.w === r.p) out.push({ id, kind: 'perfect' });
+    if (r.res[0] === false && r.res[1] === false && r.w > r.p - r.w) out.push({ id, kind: 'comeback' });
   }
   return out;
 }
@@ -80,23 +80,23 @@ function relations(days, pid) {
   return { mate, foe };
 }
 
-// best pair in the group: highest win rate, at least `min` games together
-function bestPair(days, min = 3) {
+// best pair in the group: highest win rate, at least `min` games together; `allow(ids)` can exclude pairs (privacy)
+function bestPair(days, min = 3, allow = () => true) {
   const pairs = new Map();
   for (const d of days) for (const m of d.matches) for (const [ids, won] of [[m.t1, m.win === 1], [m.t2, m.win === 2]]) {
     const key = [...ids].sort((x, y) => x - y).join('-'), x = pairs.get(key) || { ids: [...ids], w: 0, g: 0 };
     x.g++; x.w += won ? 1 : 0; pairs.set(key, x);
   }
-  return [...pairs.values()].filter(x => x.g >= min).sort((x, y) => y.w / y.g - x.w / x.g || y.g - x.g)[0] || null;
+  return [...pairs.values()].filter(x => x.g >= min && allow(x.ids)).sort((x, y) => y.w / y.g - x.w / x.g || y.g - x.g)[0] || null;
 }
 
 // rating line chart as an inline SVG string
-function ratingChart(vals, w = 320, h = 150) {
+function ratingChart(vals, w = 320, h = 150, label = 'Rating over time') {
   if (vals.length < 2) return '';
   const lo = Math.min(...vals, START_RATING) - 10, hi = Math.max(...vals, START_RATING) + 10;
   const x = i => 8 + (w - 16) * i / (vals.length - 1), y = v => h - 16 - (h - 32) * (v - lo) / (hi - lo);
   const pts = vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' '), last = vals.length - 1;
-  return `<svg viewBox="0 0 ${w} ${h}" width="100%" role="img" aria-label="Rating over time: from ${Math.round(vals[0])} to ${Math.round(vals[last])}">
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" role="img" aria-label="${label}: ${Math.round(vals[0])} → ${Math.round(vals[last])}">
     <line x1="8" x2="${w - 8}" y1="${y(START_RATING)}" y2="${y(START_RATING)}" stroke="currentColor" stroke-opacity=".3" stroke-dasharray="4 4"/>
     <polyline points="${pts}" fill="none" stroke="var(--acc)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
     <circle cx="${x(last)}" cy="${y(vals[last])}" r="5" fill="var(--acc)"/>

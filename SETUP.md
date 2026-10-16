@@ -14,7 +14,7 @@ The app stores everything in a free [Supabase](https://supabase.com) project so 
    Admins can then promote others under *Members*.
 
 ## Usernames and password reset
-- Run the migrations in `supabase/migrations/` **in order** (`..._init.sql`, then `..._username.sql`, then `..._player_accounts.sql`, then `..._admin_tools.sql`, then `..._play_schedule.sql`, then `..._fun_features.sql`).
+- Run the migrations in `supabase/migrations/` **in order** (`..._init.sql`, then `..._username.sql`, then `..._player_accounts.sql`, then `..._admin_tools.sql`, then `..._play_schedule.sql`, then `..._fun_features.sql`, then `..._settings.sql`).
 - People log in with a username **or** an email. Trade-off: the login box looks up the email for a username, so anyone who knows a username can find that account's email. Fine for a friends group; say if you want it locked down.
 - "Forgot password?" emails a reset link. Add the app address under *Authentication → URL Configuration → Redirect URLs* or the link will not return to the app. Supabase's built-in email sender is limited to a few emails per hour; add your own SMTP under *Authentication → Emails* if that is not enough.
 
@@ -36,10 +36,14 @@ select name from players where user_id is null and active;   -- guests (no accou
 ```
 
 ## Play schedule
-We play on Thursday at 18:30 (Europe/Berlin time). Regular members can only press **Start day** on Thursday from 17:30 until midnight; admins can start a day at any time. The database enforces this, not just the button. To change it, run in SQL Editor:
-```sql
-update schedule set tz = 'Europe/Berlin', dow = 4 /* 0=Sunday .. 6=Saturday */, play_time = '18:30', opens_minutes = 60;
-```
+We play on Thursday at 18:30 (Europe/Berlin time). Regular members can only press **Start day** on the play day from one hour before play time until midnight; admins can start a day at any time. The database enforces this, not just the button.
+Admins change the schedule in the app: **Members → Play schedule** (day, time, how many minutes before play time starting opens, time zone). Unknown time zones are refused.
+
+## Languages, help and privacy
+- English is the default; Romanian, Croatian and Swedish are in **Profile → Language** (also on the login page). The choice follows the account. The translations are in `i18n.js`; `tests/i18n.test.js` fails the deploy if a text is missing in a language. They were written without a native review, so corrections are welcome.
+- The first time someone opens the app, a one-screen **How it works** explains the sign-up and the 5-match rotation. The **?** button at the top (or Profile) shows it again.
+- Errors such as "email rate limit exceeded" are shown in plain words.
+- **Sharing stats:** in Profile everyone chooses whether others see their rating, badges and partner/rival stats (default: shared). Leaderboard results are always visible, and admins see everything. This hides the numbers in the app; the match results themselves stay readable by every member, because the leaderboards are built from them.
 
 ## Sign-up, ratings, photos
 - **Thursday sign-up:** the Play screen shows the coming play date with *I'm in / I'm out*. Everyone answers for themselves; admins can tap a name to answer for guests, and **Reset answers** clears everyone's answers for the coming play date. The player list fills itself (in, then no answer, then out) and 4 or 5 confirmed players set the 4/5 mode.
@@ -53,6 +57,7 @@ update schedule set tz = 'Europe/Berlin', dow = 4 /* 0=Sunday .. 6=Saturday */, 
 |---|---|---|
 | See scores, leaderboards, photos | ✅ | ✅ |
 | Rename players, set the order | ✅ | ✅ |
+| Choose whether others see your rating and stats | ✅ | ✅ (admins also see everyone's) |
 | Start a day | Thursday from 17:30 | any time |
 | Change *your own* avatar | ✅ | ✅ |
 | Add a guest player (no account) | ❌ | ✅ |
@@ -60,7 +65,7 @@ update schedule set tz = 'Europe/Berlin', dow = 4 /* 0=Sunday .. 6=Saturday */, 
 | Take or retake the group photo | ✅ | ✅ |
 | Close / reopen / reset a day | ❌ | ✅ |
 | Remove a player, delete a photo, erase all data | ❌ | ✅ |
-| Promote members to admin, remove accounts, reset all scores | ❌ | ✅ |
+| Promote members to admin, remove accounts, reset all scores, edit the play schedule | ❌ | ✅ |
 
 These rules are enforced by the database (see the migration file), not just by hidden buttons.
 

@@ -14,6 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: node tests/analytics.test.js   # ratings and badges must stay correct before anything is published
+      - run: node tests/i18n.test.js        # every text translated in every language
       - uses: actions/upload-pages-artifact@v3
         with: { path: . }
       - uses: actions/deploy-pages@v4
