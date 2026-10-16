@@ -21,11 +21,15 @@ function login_() {
 }
 
 function profileView() {
-  const mine = db.players.find(p => p.user === session.user.id);
+  const mine = db.players.find(p => p.user === session.user.id), an = analyse(db.days, db.players), ms = mine && stats(db.days.flatMap(d => d.matches)).find(r => r.id === mine.id);
+  const pst = mine && ms && { rating: an.rating.get(mine.id), p: ms.p, w: ms.w };
   return `<h1>${t('Your profile')}</h1>
-    ${mine ? `<div class="card" style="display:flex;align-items:center;gap:14px;margin-bottom:20px">${av(mine.id, 64)}
-      <div style="flex:1"><b>${esc(mine.name)}</b><div class="mut" style="margin:0">${t('Only you can change your photo')}</div></div>
-      <button onclick="avatar(${mine.id})">📷 ${t('Change photo')}</button></div>` : ''}
+    ${mine ? `<div class="card" style="margin-bottom:20px"><div style="display:flex;align-items:center;gap:14px">${av(mine.id, 72)}
+      <div style="flex:1;min-width:0"><b style="font-size:var(--fs-lg)">${esc(mine.name)}</b><div class="mut" style="margin:0">@${esc(me.username || '')} · ${isAdmin() ? t('admin') : t('Member')}</div></div>
+      <button onclick="avatar(${mine.id})" >📷 ${t('Change photo')}</button></div>
+      <div class="mut" style="margin:12px 0 0">${t('Email')}: ${esc(session.user.email || '')}<br>${t('Member since')}: ${esc(niceDate(String(session.user.created_at || '').slice(0, 10) || tzParts().date, { day: 'numeric', month: 'long', year: 'numeric' }))}</div>
+      ${pst ? `<div class="tiles" style="margin-top:12px"><div class="tile"><b>${Math.round(pst.rating)}</b>${t('Rating')}</div><div class="tile"><b>${pst.p}</b>${t('matches')}</div><div class="tile"><b>${pst.p ? Math.round(100 * pst.w / pst.p) : 0}%</b>${t('win rate')}</div></div>
+        <button class="add" style="margin:12px 0 0" onclick="statsId=${mine.id};go('stats')">📊 ${t('View my stats')}</button>` : ''}</div>` : ''}
     <label class="field">${t('Language')}${langPicker()}</label>
     <div class="field">${t('Theme')}<div class="seg" style="margin-top:6px">${[['auto', t('Auto')], ['light', t('Light')], ['dark', t('Dark')]].map(([k, l]) => `<button class="${themePref() === k ? 'on' : ''}" onclick="setTheme('${k}')">${l}</button>`).join('')}</div></div>
     <label class="card check"><input type="checkbox" ${me.share_stats !== false ? 'checked' : ''} onchange="setShare(this.checked)">
