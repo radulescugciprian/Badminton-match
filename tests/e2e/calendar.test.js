@@ -18,7 +18,7 @@ run('compact sign-up card and play calendar', async h => {
   await B.click('[aria-label=Calendar]'); await B.waitForSelector('text=October 2026');
   assert.equal(await B.locator('.cal .d.play').count(), 5, 'five Thursdays in October 2026');
   assert.equal(await B.locator('.cal button.d').count(), 0, 'members only look');
-  assert((await B.textContent('#app')).includes('Only admins can change the play days'));
+  assert(!/admin/i.test(await B.textContent('.cal, .legend')), 'no admin talk for members in the calendar');
 
   // admin: Wednesday 21 becomes an extra play day; the sign-up card follows
   await A.click('[aria-label=Calendar]'); await A.waitForSelector('text=October 2026');
