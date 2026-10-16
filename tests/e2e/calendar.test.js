@@ -32,9 +32,16 @@ run('compact sign-up card and play calendar', async h => {
   await A.click('[aria-label=Calendar]'); await A.click('.cal button[aria-label*="22 October"]'); await A.waitForSelector('.cal .d.off');
   await A.click('.cal button[aria-label*="22 October"]'); await A.waitForFunction(() => !document.querySelector('.cal .d.off'));
   await A.click('.cal button[aria-label*="22 October"]'); await A.waitForSelector('.cal .d.off');
-  assert.equal(await A.locator('.cal button[aria-label*="12 October"]').count(), 0, 'past dates cannot be changed');
+  // a past date opens the "old match day" form instead of marking the date
+  await A.click('.cal button[aria-label*="12 October"]'); await A.waitForSelector('text=Add an old match day');
+  for (const n of ['Vali', 'Dani', 'Costi', 'Zjepko']) await A.click(`.chips button:has-text("${n}")`);
+  await A.click('text=Team 1 Wins >> nth=0'); await A.click('text=Team 2 Wins >> nth=1'); await A.click('text=Save this day'); await A.waitForSelector('text=Calendar');
+  await until(() => st.days.some(d => d.date === '2026-10-12' && d.closed), 'the old day on the server');
+  const old = st.days.find(d => d.date === '2026-10-12');
+  assert.deepEqual(st.matches.filter(m => m.day_id === old.id).map(m => m.win), [1, 2], 'two matches saved in rotation order');
+  assert(!st.play_dates.some(x => x.day === '2026-10-12'), 'the past date was not marked');
   await until(() => st.play_dates.some(x => x.day === '2026-10-22' && x.kind === 'cancelled'), 'the cancelled day on the server');
-  assert.deepEqual(st.log.map(x => x.action), ['mark_play_date', 'mark_play_date', 'clear_play_date', 'mark_play_date']);
+  assert.deepEqual(st.log.map(x => x.action).filter(a => a !== 'close_day'), ['mark_play_date', 'mark_play_date', 'clear_play_date', 'mark_play_date']);
 
   await B.waitForFunction(() => playDates.some(p => p.day === '2026-10-22' && p.kind === 'cancelled'));   // Bob's phone has heard about it
   // members can start a day on an extra day from 17:30, and not on a cancelled one

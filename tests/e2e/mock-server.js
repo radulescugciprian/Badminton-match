@@ -66,11 +66,12 @@ function rpc(u, r) {
       old ? Object.assign(old, r.payload) : st.rsvps.push({ ...r.payload }); emit(); return { data: [] };
     }
     case 'insert': {
+      if (Array.isArray(r.payload)) { let out = { data: [] }; for (const x of r.payload) { out = rpc(u, { ...r, payload: x }); if (out.error) return out; } return out; } // bulk insert
       if (st.failInsert && r.table === 'matches') return err('simulated server failure');
       const row = { ...r.payload };
       if (r.table === 'reactions') { row.user_id = u; if (st.reactions.some(x => x.day_id === row.day_id && x.user_id === u && x.kind === row.kind)) return err('duplicate key', '23505'); st.reactions.push(row); emit(); return { data: [row] }; }
       if (r.table === 'players') { if (!isAdmin(u)) return err('new row violates row-level security policy'); row.id = ++st.seq.p; row.active = true; row.avatar = null; row.user_id = null; }
-      if (r.table === 'days') { row.id = ++st.seq.d; Object.assign(row, { started: false, closed: false, photo_path: null }); }
+      if (r.table === 'days') { row.id = ++st.seq.d; Object.assign(row, { started: isAdmin(u) && !!r.payload.started, closed: false, photo_path: null }); }
       if (r.table === 'matches') {
         const d = st.days.find(d => d.id === row.day_id);
         if (!d || !d.started || d.closed) return err('new row violates row-level security policy');

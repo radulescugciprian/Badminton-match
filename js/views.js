@@ -65,13 +65,24 @@ function calendarView() {
   const cells = Array.from({ length: lead }, () => '<div></div>').concat(Array.from({ length: count }, (_, i) => {
     const iso = `${Y}-${String(M).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`, k = markOf(iso);
     const cls = ['d', isPlayDate(iso) ? 'play' : '', k === 'extra' ? 'extra' : '', k === 'cancelled' ? 'off' : '', iso === now.date ? 'today' : '', played.has(iso) ? 'dot' : ''].join(' ');
+    if (admin && iso < now.date) return `<button class="${cls}" onclick="backfill('${iso}')" aria-label="${esc(niceDate(iso, { weekday: 'long', day: 'numeric', month: 'long' }))}">${i + 1}</button>`;
     return admin && iso >= now.date ? `<button class="${cls}" onclick="markDate('${iso}')" aria-label="${esc(niceDate(iso, { weekday: 'long', day: 'numeric', month: 'long' }))}">${i + 1}</button>` : `<div class="${cls}">${i + 1}</div>`;
   })).join('');
   return `<div class="top"><button class="link" onclick="go('play')">← ${t('Back')}</button></div><h1>📅 ${t('Calendar')}</h1>
     <div class="calnav"><button onclick="calShift(-1)" aria-label="${t('Previous month')}">‹</button><b>${esc(title)}</b><button onclick="calShift(1)" aria-label="${t('Next month')}">›</button></div>
     <div class="cal">${head}${cells}</div>
     <p class="mut legend"><span class="key play"></span>${t('Play day')} <span class="key extra"></span>${t('Extra play day')} <span class="key off"></span>${t('Cancelled')} <span class="key dot"></span>${t('Played')}</p>
-    ${admin ? `<p class="mut">${t('Tap a date to add an extra play day or cancel a normal one.')}</p>` : ''}`;
+    ${admin ? `<p class="mut">${t('Tap a date to add an extra play day or cancel a normal one.')} ${t('Tap an earlier date to add the results of a day that was played.')}</p>` : ''}`;
+}
+
+function backfillView() {
+  const ids = bf.ids, cyc = ids.length === 4 ? C4 : ids.length === 5 ? C5 : null, who_ = id => `<button class="chip ${ids.includes(id) ? 'in' : ''}" onclick="bfWho(${id})" aria-pressed="${ids.includes(id)}">${av(id, 22)} ${name(id)}${ids.includes(id) ? ' ' + (ids.indexOf(id) + 1) : ''}</button>`;
+  const rows = cyc ? cyc.map(([t1, t2], i) => `<div class="card"><div>${t('Match {n}', { n: i + 1 })}: ${pair(slots(ids, t1))} <span class="mut">${t('vs')}</span> ${pair(slots(ids, t2))}</div>
+    <div class="seg" style="margin-top:8px"><button class="${bf.res[i] === 1 ? 'on' : ''}" onclick="bfWin(${i},1)">${t('Team 1 Wins')}</button><button class="${bf.res[i] === 2 ? 'on' : ''}" onclick="bfWin(${i},2)">${t('Team 2 Wins')}</button></div></div>`).join('') : '';
+  return `<div class="top"><button class="link" onclick="go('calendar')">← ${t('Back')}</button></div><h1>${t('Add an old match day')}</h1><p class="mut">${niceDate(bf.date)}</p>
+    <p class="mut">${t('Who played? Pick 4 or 5 players, in the order they were listed.')}</p>
+    <div class="chips">${db.players.filter(p => !p.removed).map(p => who_(p.id)).join('')}</div>
+    ${rows}${cyc ? `<p class="mut">${t('Set the winner of each match; matches are saved up to the first one left empty.')}</p><button class="primary" onclick="bfSave()" ${bf.res[0] ? '' : 'disabled'}>${t('Save this day')}</button>` : ''}`;
 }
 
 function setup(d) {
@@ -277,13 +288,14 @@ async function openPhoto(id) {
 }
 
 const drawReactions = () => { const el = document.getElementById('rx'); if (el && lbDay) el.innerHTML = reactionBar(lbDay); };
-const NAV = { play: () => '🏸 ' + t('Play'), board: () => '🏆 ' + t('Board'), photos: () => '📷 ' + t('Photos'), stats: () => '📊 ' + t('Stats') };
+const ICON = k => `<img class="on" src="ic-${k}-on.png" alt=""><img class="off" src="ic-${k}-off.png" alt="">`;
+const NAV = { play: () => ICON('play') + '<span>' + t('Play') + '</span>', board: () => ICON('board') + '<span>' + t('Board') + '</span>', photos: () => ICON('photos') + '<span>' + t('Photos') + '</span>', stats: () => ICON('stats') + '<span>' + t('Stats') + '</span>' };
 
 function render() {
   document.body.classList.toggle('out', !session);
   document.body.dataset.view = session ? view : '';
   document.documentElement.lang = lang;
-  document.querySelectorAll('nav button').forEach(b => { b.textContent = NAV[b.dataset.v](); b.setAttribute('aria-current', b.dataset.v === view ? 'page' : ''); });
+  document.querySelectorAll('nav button').forEach(b => { b.innerHTML = NAV[b.dataset.v](); b.setAttribute('aria-current', b.dataset.v === view ? 'page' : ''); });
   if (!sb) { app.innerHTML = `<h1>${t('Almost there')}</h1><p class="mut">${t('Add your Supabase URL and key to config.js (see SETUP.md).')}</p>`; return; }
   if (!authReady) { app.innerHTML = `<p class="mut">${t('Loading…')}</p>`; return; }
   if (!session) { app.innerHTML = login_(); return; }
@@ -291,7 +303,7 @@ function render() {
   const top = `<div class="top"><span>👤 ${esc(me.username || '')}${isAdmin() ? ' · ' + t('admin') : ''}</span>
     <span>${me.is_admin && !asMember ? `<button class="link" onclick="toggleView()" aria-label="${t('View as member')}" title="${t('View as member')}">👁</button>` : ''}<button class="link" onclick="showHelp()" aria-label="${t('How it works')}">?</button><button class="link" onclick="go('members')">${t('Members')}</button><button class="link" onclick="go('profile')">${t('Profile')}</button><button class="link" onclick="logout()">${t('Log out')}</button></span></div>`;
   const strip = me.is_admin && asMember ? `<div class="strip"><span>👁 ${t('You are viewing the app as a member. Admin tools are hidden.')}</span><button onclick="toggleView()">${t('Back to admin')}</button></div>` : '';
-  app.innerHTML = top + strip + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : `<h1>${t('Photos')}</h1><div id="gal"></div>`);
+  app.innerHTML = top + strip + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : view === 'backfill' && bf ? backfillView() : `<h1>${t('Photos')}</h1><div id="gal"></div>`);
   drawReactions();
   if (view === 'photos') gallery().catch(e => { gal.innerHTML = `<p class="msg">${esc(friendly(e))}</p>`; });
 }

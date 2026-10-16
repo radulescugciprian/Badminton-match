@@ -67,7 +67,7 @@ async function refresh() {
   sched = !sc.error && sc.data[0] ? sc.data[0] : null;
   rsvps = rs.error ? [] : rs.data; reactions = rx.error ? [] : rx.data; // empty until the migration has been applied
   db.players = ok(p).map(x => ({ id: x.id, name: x.name, avatar: x.avatar, removed: !x.active, user: x.user_id }));
-  db.days = ok(d).map(x => ({ id: x.id, date: x.date, order: x.player_order, mode: x.mode, started: x.started, closed: x.closed,
+  db.days = ok(d).sort((a, b) => a.closed === b.closed ? (a.closed ? (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) : 0) : a.closed ? -1 : 1).map(x => ({ id: x.id, date: x.date, order: x.player_order, mode: x.mode, started: x.started, closed: x.closed,
     photo: x.photo_path, matches: x.matches.sort((a, b) => a.n - b.n) }));
   if (!session) return; // logged out while loading
   members = ok(m); me = members.find(x => x.id === session.user.id);
@@ -299,6 +299,21 @@ const markDate = iso => {
   const kind = markOf(iso), normal = dowOf(iso) === sched.dow, want = normal ? 'cancelled' : 'extra', clear = kind === want;
   return act(async () => clear ? ok(await sb.from('play_dates').delete().eq('day', iso)) : ok(await sb.from('play_dates').upsert({ day: iso, kind: want })),
     () => { playDates = playDates.filter(p => p.day !== iso); if (!clear) playDates.push({ day: iso, kind: want }); });
+};
+// admins: add the results of a day that was played earlier (tap a past date in the calendar)
+let bf = null;
+const backfill = iso => { if (!isAdmin() || iso >= tzParts().date) return; bf = { date: iso, ids: [], res: [] }; go('backfill'); };
+const bfWho = id => { const i = bf.ids.indexOf(id); if (i >= 0) bf.ids.splice(i, 1); else if (bf.ids.length < 5) bf.ids.push(id); bf.res = []; render(); };
+const bfWin = (n, w) => { bf.res[n] = bf.res[n] === w ? 0 : w; render(); };
+const bfSave = () => {
+  const ids = bf.ids, cyc = ids.length === 4 ? C4 : C5, w = bf.res.slice(0, cyc.length), n = w.findIndex(x => !x), res = n < 0 ? w : w.slice(0, n), date = bf.date;
+  if (ids.length < 4 || !res.length) return;
+  act(async () => {
+    const d = ok(await sb.from('days').insert({ date, player_order: ids, mode: ids.length, started: true }).select().single());
+    ok(await sb.from('matches').insert(res.map((win, i) => { const [t1, t2, rest] = cyc[i]; return { day_id: d.id, n: i + 1, t1: slots(ids, t1), t2: slots(ids, t2), rest: rest ? ids[rest - 1] : null, win }; })));
+    await patchDay(d.id, { closed: true })();
+    bf = null; go('calendar');
+  });
 };
 const calShift = n => { const [y, m] = (calMonth || tzParts().date.slice(0, 7)).split('-').map(Number); calMonth = new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 7); render(); };
 const rsvpIsOpen = date => rsvpOpen && rsvpOpen.date === date ? rsvpOpen.open : date === tzParts().date;   // compact until the play day, unless toggled by hand for this date

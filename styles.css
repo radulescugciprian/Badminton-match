@@ -143,4 +143,6 @@
   /* nav */
   nav{position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:var(--nav);backdrop-filter:blur(10px);border-top:1px solid var(--line)}
   nav button{flex:1;background:none;color:var(--mut);padding:12px 2px;font-weight:600;font-size:14px}
+  nav button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 2px;font-size:12px} nav img{width:30px;height:30px}
+  nav .on{display:none} nav [aria-current=page] .on{display:block} nav [aria-current=page] .off{display:none}
   nav button[aria-current=page]{color:var(--acc);background:var(--card)}
