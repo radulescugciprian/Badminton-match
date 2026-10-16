@@ -351,6 +351,8 @@ const setRsvp = (id, status) => act(async () => {
   if (status) ok(await sb.from('rsvps').upsert({ day_date: date, player_id: id, status, updated_at: new Date().toISOString() }));
   else ok(await sb.from('rsvps').delete().eq('day_date', date).eq('player_id', id));
 });
+const resetRsvps = () => { const date = nextPlayDate();
+  if (confirm(`Clear everyone's answers for ${date}? Everybody will show as "no answer" again.`)) act(async () => ok(await sb.from('rsvps').delete().eq('day_date', date))); };
 const cycleRsvp = id => setRsvp(id, { in: 'out', out: null }[answerOf(id, nextPlayDate())] ?? 'in'); // admins: in -> out -> no answer
 const remindMe = () => saveFile(calendarFile(sched || { tz: 'Europe/Berlin', dow: 4, play_time: '18:30', opens_minutes: 60 }, nextPlayDate(), location.href), 'badminton-thursdays.ics');
 
@@ -482,6 +484,7 @@ function rsvpCard() {
     <div class="chips">${act_.map(p => admin ? `<button class="chip ${ans(p.id) || ''}" onclick="cycleRsvp(${p.id})" aria-label="Answer for ${esc(p.name)}">${av(p.id, 22)} ${esc(p.name)} ${icon(p.id)}</button>`
       : `<span class="chip ${ans(p.id) || ''}">${av(p.id, 22)} ${esc(p.name)} ${icon(p.id)}</span>`).join('')}</div>
     <p class="mut" style="margin:6px 0 0">${by ? `Answer before ${by}. ` : ''}The list below fills itself: players who are in first.${admin ? ' Admins can tap a name to answer for them.' : ''}</p>
+    ${admin && rsvps.some(x => x.day_date === date) ? '<button class="link danger" onclick="resetRsvps()">↺ Reset answers</button>' : ''}
     <button class="link" onclick="remindMe()">🔔 Remind me every ${sched ? ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][sched.dow] : 'Thursday'}</button></div>`;
 }
 

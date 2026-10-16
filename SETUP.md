@@ -42,7 +42,7 @@ update schedule set tz = 'Europe/Berlin', dow = 4 /* 0=Sunday .. 6=Saturday */, 
 ```
 
 ## Sign-up, ratings, photos
-- **Thursday sign-up:** the Play screen shows the coming play date with *I'm in / I'm out*. Everyone answers for themselves; admins can tap a name to answer for guests. The player list fills itself (in, then no answer, then out) and 4 or 5 confirmed players set the 4/5 mode.
+- **Thursday sign-up:** the Play screen shows the coming play date with *I'm in / I'm out*. Everyone answers for themselves; admins can tap a name to answer for guests, and **Reset answers** clears everyone's answers for the coming play date. The player list fills itself (in, then no answer, then out) and 4 or 5 confirmed players set the 4/5 mode.
 - **Reminder:** *Remind me every Thursday* downloads a calendar event with an alert when starting opens, so the phone notifies you without any server. (Real push notifications from the app would need a Supabase Edge Function plus secrets; not set up.)
 - **Rating (Elo):** everyone starts at 1000 and moves after every match; computed from the match log (`analytics.js`, tested in `tests/`). Badges: 5 in a row, perfect night (4+ matches, all won), comeback (lost the first two, finished ahead), most improved (last 4 nights), player of the night.
 - **Result card:** on the closed-day screen or in a photo, *Share result card* makes a 1080×1350 picture of the podium over the group photo.
