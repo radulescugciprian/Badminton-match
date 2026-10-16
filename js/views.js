@@ -33,7 +33,7 @@ function profileView() {
     <label class="field">${t('Language')}${langPicker()}</label>
     <div class="field">${t('Theme')}<div class="seg" style="margin-top:6px">${[['auto', t('Auto')], ['light', t('Light')], ['dark', t('Dark')]].map(([k, l]) => `<button class="${themePref() === k ? 'on' : ''}" onclick="setTheme('${k}')">${l}</button>`).join('')}</div></div>
     <label class="card check"><input type="checkbox" ${me.share_stats !== false ? 'checked' : ''} onchange="setShare(this.checked)">
-      <span>🔓 ${t('Share my rating and stats with the others')}<br><small class="mut">${t('The leaderboards always show results. Admins can always see everything.')}</small></span></label>
+      <span>🔓 ${t('Share my rating and stats with the others')}<br><small class="mut">${t('The leaderboards always show results.')}</small></span></label>
     <label class="card check"><input type="checkbox" ${fxOn() ? 'checked' : ''} onchange="setFx(this.checked)">
       <span>🎉 ${t('Confetti and sound when a match is recorded')}</span></label>
     <button class="add" onclick="showHelp()">❓ ${t('How it works')}</button>
