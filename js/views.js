@@ -4,7 +4,7 @@ const langPicker = () => `<select class="lang" onchange="setLang(this.value)" ar
 
 function login_() {
   const m = authMode, up = m === 'up';
-  return `<h1 style="font-size:32px;margin-top:40px">🏸 Badminton</h1>${lostSession && m === 'in' ? `<p class="mut" role="status">${t('You were signed out. Please log in again.')}</p>` : ''}<p class="mut">${up ? t('Create your account') : m === 'reset' ? t('Reset your password') : t('Log in to see the scores')}</p>
+  return `<h1 style="font-size:var(--fs-2xl);margin-top:40px">🏸 Badminton</h1>${lostSession && m === 'in' ? `<p class="mut" role="status">${t('You were signed out. Please log in again.')}</p>` : ''}<p class="mut">${up ? t('Create your account') : m === 'reset' ? t('Reset your password') : t('Log in to see the scores')}</p>
     <form onsubmit="authForm(event)">
       ${up ? `<input type="text" name="username" placeholder="${t('Username (3-20 letters, numbers, . _)')}" required pattern="[A-Za-z0-9_.]{3,20}" title="${t('3-20 letters, numbers, dot or underscore')}" autocapitalize="none" autocomplete="username">` : ''}
       ${up ? `<select name="player" aria-label="${t('Which player are you?')}"><option value="">${t("I'm a new player")}</option>${unclaimed.map(p => `<option value="${p.id}">${t("I'm {name}", { name: esc(p.name) })}</option>`).join('')}</select>` : ''}
@@ -33,7 +33,7 @@ function profileView() {
     <label class="card check"><input type="checkbox" ${fxOn() ? 'checked' : ''} onchange="setFx(this.checked)">
       <span>🎉 ${t('Confetti and sound when a match is recorded')}</span></label>
     <button class="add" onclick="showHelp()">❓ ${t('How it works')}</button>
-    <h2 style="font-size:18px;margin:0 0 8px">${t('New password')}</h2>
+    <h2 style="margin:0 0 8px">${t('New password')}</h2>
     <form onsubmit="newPassword(event)">
       <input type="password" name="password" placeholder="${t('New password (6+ characters)')}" required minlength="6" autocomplete="new-password">
       <p class="msg" role="alert"></p><button class="primary" type="submit">${t('Save password')}</button></form>`;
@@ -45,7 +45,7 @@ function rsvpCard() {
   const by = sched ? hhmm(playMins() - sched.opens_minutes) : '';
   const n = act_.filter(p => ans(p.id) === 'in').length;
   const open = rsvpIsOpen(date);
-  return `<div class="card rsvp"><div class="rhead"><div><div class="mut" style="margin:0;font-size:13px">${t('Next match day')}</div><b>${niceDate(date)}</b> <span class="mut">· ${t('{n} in', { n })}</span></div>
+  return `<div class="card rsvp"><div class="rhead"><div><div class="mut" style="margin:0;font-size:var(--fs-sm)">${t('Next match day')}</div><b>${niceDate(date)}</b> <span class="mut">· ${t('{n} in', { n })}</span></div>
       <span><button class="link" onclick="go('calendar')" aria-label="${t('Calendar')}">📅</button><button class="link" onclick="toggleRsvp()" aria-expanded="${open}">${open ? '▴' : '▾'} ${t('Details')}</button></span></div>
     ${mine ? `<div class="seg"><button class="${ans(mine.id) === 'in' ? 'on' : ''}" onclick="setRsvp(${mine.id}, ${ans(mine.id) === 'in' ? 'null' : "'in'"})">✅ ${t("I'm in")}</button>
       <button class="${ans(mine.id) === 'out' ? 'on' : ''}" onclick="setRsvp(${mine.id}, ${ans(mine.id) === 'out' ? 'null' : "'out'"})">❌ ${t("I'm out")}</button></div>` : ''}
@@ -111,7 +111,7 @@ const AWARD = { perfect: () => '💯 ' + t('Perfect night'), comeback: () => '�
 function closedExtras(d) {
   const an = analyse(db.days, db.players), top = playerOfNight(an, d.id);
   if (!top) return '';
-  return `<div class="card potn">${av(top.id, 56)}<div><div class="mut">⭐ ${t('Player of the night')}</div><b style="font-size:20px">${name(top.id)}</b>
+  return `<div class="card potn">${av(top.id, 56)}<div><div class="mut">⭐ ${t('Player of the night')}</div><b style="font-size:var(--fs-lg)">${name(top.id)}</b>
       <div class="mut">${canSee(top.id) ? `${top.delta >= 0 ? '+' : ''}${Math.round(top.delta)} ${t('rating')} · ` : ''}${t('{w} of {p} won', { w: top.w, p: top.p })}</div></div></div>
     ${nightAwards(an, d.id).map(x => `<span class="badge">${name(x.id)}: ${AWARD[x.kind]()}</span>`).join('')}<div style="height:10px"></div>`;
 }
@@ -204,8 +204,8 @@ function statsView() {
   return `<h1>${t('Stats')}</h1>
     <select onchange="statsId=+this.value;render()" aria-label="${t('Player')}">${played.map(p => `<option value="${p.id}" ${p.id === id ? 'selected' : ''}>${esc(p.name)}${sharing(p.id) ? '' : ' 🔒'}</option>`).join('')}</select>
     ${sharing(id) ? '' : `<p class="mut" role="status">🔒 ${t('{name} keeps these stats private. You can see them because you are an admin or it is you.', { name: esc(player(id).name) })}</p>`}
-    <div class="card" style="display:flex;align-items:center;gap:14px;margin:12px 0">${av(id, 64)}<div style="flex:1"><b style="font-size:20px">${name(id)}</b>
-      <div class="mut" style="margin:0">${t('Rating')}</div></div><b style="font-size:34px">${Math.round(an.rating.get(id))}</b></div>
+    <div class="card" style="display:flex;align-items:center;gap:14px;margin:12px 0">${av(id, 64)}<div style="flex:1"><b style="font-size:var(--fs-lg)">${name(id)}</b>
+      <div class="mut" style="margin:0">${t('Rating')}</div></div><b style="font-size:var(--fs-2xl)">${Math.round(an.rating.get(id))}</b></div>
     <div class="tiles"><div class="tile"><b>${me_.p}</b>${t('matches')}</div><div class="tile"><b>${Math.round(100 * pct(me_))}%</b>${t('win rate')}</div><div class="tile"><b>${b.bestStreak}</b>${t('best streak')}</div></div>
     <h2 class="sec">${t('Badges')}</h2>${badges.map(x => `<span class="badge">${x}</span>`).join('') || `<p class="mut">${t('None yet. Win 5 in a row or finish a night unbeaten.')}</p>`}
     <h2 class="sec">${t('Rating over time')}</h2><div class="card" style="color:var(--mut)">${ratingChart(h.map(x => x.r), 320, 150, t('Rating over time')) || `<p class="mut" style="margin:0">${t('Play a few more matches to see the chart.')}</p>`}</div>
@@ -230,11 +230,11 @@ function scheduleForm() {
 function membersView() {
   const admin = isAdmin(), own = id => db.players.find(p => p.user === id);
   return `<h1>${t('Members')}</h1>${admin ? `<p class="mut">${t('Accounts can log in. Admins can close or reset days, remove players, delete photos and remove accounts.')}</p>` : ''}
-    <h2 style="font-size:18px;margin:0 0 8px">${t('Accounts ({n})', { n: members.length })}</h2>
+    <h2 style="margin:0 0 8px">${t('Accounts ({n})', { n: members.length })}</h2>
     <div class="card" style="padding:4px 16px;margin-bottom:20px">${members.map(m => `<div class="member"><span>${own(m.id) ? av(own(m.id).id, 28) + ' ' : ''}${esc(m.username)}${m.is_admin ? ` · <b>${t('admin')}</b>` : ''}</span>
       ${admin && m.id !== me.id ? `<span><button class="link" onclick="toggleAdmin('${m.id}',${!m.is_admin})">${m.is_admin ? t('Remove admin') : t('Make admin')}</button>
         <button class="link danger" onclick="removeAccount('${m.id}','${esc(m.username)}')" aria-label="${t('Remove account {name}', { name: esc(m.username) })}">✕</button></span>` : ''}</div>`).join('')}</div>
-    <h2 style="font-size:18px;margin:0 0 8px">${t('Players')}</h2>
+    <h2 style="margin:0 0 8px">${t('Players')}</h2>
     <div class="card" style="padding:4px 16px">${db.players.filter(p => !p.removed).map(p => `<div class="member"><span>${av(p.id, 28)} ${esc(p.name)}</span>
       ${p.user ? `<span class="mut" style="margin:0">${esc((members.find(m => m.id === p.user) || {}).username || '')}</span>` : `<span class="tag">${t('no account')}</span>`}</div>`).join('')}</div>
     ${admin ? `<div class="card"><b>${t('Play background')}</b><p class="mut" style="margin:4px 0 8px">${t('Shown behind the Play tab for everyone.')}</p>
