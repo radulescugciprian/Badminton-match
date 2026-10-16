@@ -35,11 +35,18 @@ select pr.username, p.name as player from profiles pr left join players p on p.u
 select name from players where user_id is null and active;   -- guests (no account)
 ```
 
+## Play schedule
+We play on Thursday at 18:30 (Europe/Berlin time). Regular members can only press **Start day** on Thursday from 17:30 until midnight; admins can start a day at any time. The database enforces this, not just the button. To change it, run in SQL Editor:
+```sql
+update schedule set tz = 'Europe/Berlin', dow = 4 /* 0=Sunday .. 6=Saturday */, play_time = '18:30', opens_minutes = 60;
+```
+
 ## Who can do what
 | | Member | Admin |
 |---|---|---|
 | See scores, leaderboards, photos | ✅ | ✅ |
-| Rename players, set the order, start a day | ✅ | ✅ |
+| Rename players, set the order | ✅ | ✅ |
+| Start a day | Thursday from 17:30 | any time |
 | Change *your own* avatar | ✅ | ✅ |
 | Add a guest player (no account) | ❌ | ✅ |
 | Record a match result, undo the last one | ✅ | ✅ |

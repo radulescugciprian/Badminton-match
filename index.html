@@ -125,6 +125,7 @@ const today = () => new Date().toLocaleDateString('sv-SE'); // local YYYY-MM-DD
 
 // Everything lives in Supabase (see supabase/migrations); this is the last fetched copy, shared by all logged-in members.
 let db = { players: [], days: [] }, members = [], me = {}, session = null, loaded = false, busy = false, authReady = false;
+let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let view = 'play', tab = 'day', selId = null, authMode = 'in', unclaimed = [];
 const sb = window.supabase && CONFIG.url && !CONFIG.url.includes('YOUR-') ? supabase.createClient(CONFIG.url, CONFIG.key) : null;
 
@@ -145,11 +146,13 @@ const ok = r => { if (r.error) throw r.error; return r.data; };
 // ---- loading + live updates
 async function refresh() {
   if (!session) return;
-  const [p, d, m] = await Promise.all([
+  const [p, d, m, sc] = await Promise.all([
     sb.from('players').select('*').order('id'),
     sb.from('days').select('*, matches(*)').order('id'),
     sb.from('profiles').select('*').order('name'),
+    sb.from('schedule').select('*'),
   ]);
+  sched = !sc.error && sc.data[0] ? sc.data[0] : null;
   db.players = ok(p).map(x => ({ id: x.id, name: x.name, avatar: x.avatar, removed: !x.active, user: x.user_id }));
   db.days = ok(d).map(x => ({ id: x.id, date: x.date, order: x.player_order, mode: x.mode, started: x.started, closed: x.closed,
     photo: x.photo_path, matches: x.matches.sort((a, b) => a.n - b.n) }));
@@ -344,6 +347,21 @@ function stats(matches) {
   return [...s.values()].filter(r => r.p).sort((a, b) => b.w - a.w || pct(b) - pct(a) || a.name.localeCompare(b.name));
 }
 
+// regular members may start a day on the play day from `opens_minutes` before play time (server enforces the same rule)
+function startOpen() {
+  if (!sched) return true;
+  const f = new Intl.DateTimeFormat('en-US', { timeZone: sched.tz, weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
+  const g = t => f.find(x => x.type === t).value, [h, m] = sched.play_time.split(':');
+  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(g('weekday')) === sched.dow
+    && +g('hour') * 60 + +g('minute') >= +h * 60 + +m - sched.opens_minutes;
+}
+const hhmm = mins => String(Math.floor(mins / 60) % 24).padStart(2, '0') + ':' + String(mins % 60).padStart(2, '0');
+function startNote() {
+  const [h, m] = sched.play_time.split(':'), day = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][sched.dow];
+  return `We play on ${day} at ${hhmm(+h * 60 + +m)}. Starting a day opens at ${hhmm(+h * 60 + +m - sched.opens_minutes)} that day. Admins can start any time.`;
+}
+setInterval(() => { if (session && loaded && view === 'play' && !cur().started) render(); }, 30000); // so the button unlocks by itself
+
 // ---- views
 function login_() {
   const m = authMode, up = m === 'up';
@@ -388,7 +406,8 @@ function setup(d) {
         ${admin ? `<button class="danger" onclick="removePlayer(${id})" aria-label="Remove ${name(id)}">✕</button>` : ''}</li>`).join('')}</ol>
       ${admin ? '<button class="add" onclick="addPlayer()">+ Add guest player (no account)</button>' : ''}
       <p class="preview">Match 1: ${pair(slots(o, a))} vs ${pair(slots(o, b))}${r ? ` · ${name(o[r - 1])} rests` : ''}</p>
-      <button class="primary" onclick="start()">Start day</button>`;
+      ${me.is_admin || startOpen() ? '' : `<p class="mut" role="status">🔒 ${startNote()}</p>`}
+      <button class="primary" onclick="start()" ${me.is_admin || startOpen() ? '' : 'disabled'}>Start day</button>`;
 }
 
 function play() {
