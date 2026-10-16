@@ -94,21 +94,24 @@ function setup(d) {
   const m = d.mode, cyc = m === 4 ? C4 : C5, o = d.order, [a, b, r] = cyc[0], admin = isAdmin();
   const date = nextPlayDate(), ins = o.filter(id => answerOf(id, date) === 'in').length, auto = ins >= 4, icon = id => ({ in: '✅', out: '❌' }[answerOf(id, date)] || '⏳');
   const open = admin || startOpen();
-  // the sign-ups fill the list and decide 4 or 5 players; the date is today's. Only when nobody has answered can an admin pick 4 or 5 by hand.
-  return `${rsvpCard()}${rsvps.some(x => x.day_date === date) && ins < 4 ? `<p class="mut">${t('Only {n} confirmed so far, you need at least 4.', { n: ins })}</p>` : ''}
-      ${admin && !auto ? `<div class="seg" style="margin:0 0 12px"><button class="${m === 4 ? 'on' : ''}" onclick="setMode(4)">${t('4 players')}</button>
-        <button class="${m === 5 ? 'on' : ''}" onclick="setMode(5)" ${o.length < 5 ? 'disabled' : ''}>${t('5 players')}</button></div>` : ''}
-      <ol>${o.map((id, i) => `${i === m ? `<li class="sep">${t('Sitting out')}</li>` : ''}<li class="row ${i >= m ? 'bench' : ''}">
+  const rowOf = (id, i) => `<li class="row ${i >= m ? 'bench' : ''}">
         <span class="slot">${i + 1}</span>
-        ${player(id).user === session.user.id ? `<button class="ph" onclick="avatar(${id})" aria-label="${t('Change your photo')}">${av(id)}</button>` : `<span class="ph">${av(id)}</span>`}
+        ${player(id).user === session.user.id ? `<button class="ph" onclick="avatar(${id})" aria-label="${t('Change your photo')}">${av(id, 32)}</button>` : `<span class="ph">${av(id, 32)}</span>`}
         <button class="nm" onclick="rename(${id})" aria-label="${t('Rename {name}', { name: name(id) })}">${icon(id)} ${name(id)} ✎${player(id).user ? '' : `<span class="tag">${t('no account')}</span>`}</button>
         <button onclick="move(${i},-1)" aria-label="${t('Move up')}" ${i === 0 ? 'disabled' : ''}>▲</button>
-        <button onclick="move(${i},1)" aria-label="${t('Move down')}" ${i === o.length - 1 ? 'disabled' : ''}>▼</button>
-        ${admin ? `<button class="danger" onclick="removePlayer(${id})" aria-label="${t('Remove {name}', { name: name(id) })}">✕</button>` : ''}</li>`).join('')}</ol>
-      ${admin ? `<button class="add" onclick="addPlayer()">${t('+ Add guest player (no account)')}</button>` : ''}
+        <button onclick="move(${i},1)" aria-label="${t('Move down')}" ${i === o.length - 1 ? 'disabled' : ''}>▼</button></li>`;
+  // the sign-ups fill the list and decide 4 or 5 players; the date is today's. Only when nobody has answered can an admin pick 4 or 5 by hand.
+  return `${rsvpCard()}${rsvps.some(x => x.day_date === date) && ins < 4 ? `<p class="mut">${t('Only {n} confirmed so far, you need at least 4.', { n: ins })}</p>` : ''}
+      <ol>${o.slice(0, m).map((id, i) => rowOf(id, i)).join('')}</ol>
+      ${o.length > m ? `<details class="fold" ${benchOpen ? 'open' : ''} ontoggle="benchOpen=this.open"><summary>${t('Sitting out')} (${o.length - m})</summary><ol>${o.slice(m).map((id, k) => rowOf(id, m + k)).join('')}</ol></details>` : ''}
+      ${admin ? `<details class="fold" ${admOpen ? 'open' : ''} ontoggle="admOpen=this.open"><summary>⚙ ${t('Admin tools')}</summary>
+        ${auto ? '' : `<div class="seg" style="margin:8px 0"><button class="${m === 4 ? 'on' : ''}" onclick="setMode(4)">${t('4 players')}</button>
+          <button class="${m === 5 ? 'on' : ''}" onclick="setMode(5)" ${o.length < 5 ? 'disabled' : ''}>${t('5 players')}</button></div>`}
+        <div class="chips" style="margin:8px 0">${o.map(id => `<button class="chip" onclick="removePlayer(${id})" aria-label="${t('Remove {name}', { name: name(id) })}">${av(id, 22)} ${name(id)} ✕</button>`).join('')}</div>
+        <button class="add" onclick="addPlayer()">${t('+ Add guest player (no account)')}</button></details>` : ''}
       <p class="preview">${t('Match 1: {a} vs {b}', { a: pair(slots(o, a)), b: pair(slots(o, b)) })}${r ? ' · ' + t('{name} rests', { name: name(o[r - 1]) }) : ''}</p>
-      ${open ? '' : `<p class="mut" role="status">🔒 ${startNote()}</p>`}
-      <button class="primary" onclick="start()" ${open ? '' : 'disabled'}>${t('Start playing')}</button>`;
+      <div class="startbar">${open ? '' : `<p class="mut" role="status">🔒 ${startNote()}</p>`}
+      <button class="primary" onclick="start()" ${open ? '' : 'disabled'}>${t('Start playing')}</button></div>`;
 }
 
 const AWARD = { perfect: () => '💯 ' + t('Perfect night'), comeback: () => '🔄 ' + t('Comeback') };

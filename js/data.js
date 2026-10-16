@@ -17,7 +17,7 @@ let db = { players: [], days: [] }, members = [], me = {}, session = null, loade
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
-let bgLoaded = false, rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
+let benchOpen = false, admOpen = false, bgLoaded = false, rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
 let view = 'play', tab = 'day', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0, manualLogout = false, lostSession = false, asMember = false;   // asMember: an admin previewing the app as a normal member
 // the sign-in is kept on the phone (localStorage) and renewed automatically, so people stay logged in until they log out
 const sb = window.supabase && CONFIG.url && !CONFIG.url.includes('YOUR-')
