@@ -13,7 +13,7 @@ The app stores everything in a free [Supabase](https://supabase.com) project so 
    Admins can then promote others under *Members*.
 
 ## Usernames and password reset
-- Run the migrations in `supabase/migrations/` **in order** (`..._init.sql`, then `..._username.sql`, then `..._player_accounts.sql`).
+- Run the migrations in `supabase/migrations/` **in order** (`..._init.sql`, then `..._username.sql`, then `..._player_accounts.sql`, then `..._admin_tools.sql`).
 - People log in with a username **or** an email. Trade-off: the login box looks up the email for a username, so anyone who knows a username can find that account's email. Fine for a friends group; say if you want it locked down.
 - "Forgot password?" emails a reset link. Add the app address under *Authentication → URL Configuration → Redirect URLs* or the link will not return to the app. Supabase's built-in email sender is limited to a few emails per hour; add your own SMTP under *Authentication → Emails* if that is not enough.
 
@@ -21,6 +21,16 @@ The app stores everything in a free [Supabase](https://supabase.com) project so 
 - Every account is a player. On the sign-up form people pick which existing player they are (Vali, Dani, ...) or "I'm a new player", which creates one.
 - Only the account owner can change their own avatar (**Profile** at the top of the app). The database refuses anyone else, admins included.
 - Players without an account (guests) are added by admins only, with "Add guest player" on the new-day screen. Guests have no avatar until someone claims them.
+
+## Admin tools
+- **Members** lists every account and every player. Players without an account are tagged "no account" (also on the new-day screen).
+- Admins can remove an account (✕). The person can no longer log in; their player and results stay and become a "no account" guest.
+- **Reset all scores** (Board → General) deletes every day, match and group photo; players and accounts are kept.
+- Check that every account has a player (the second list should be empty after running `..._admin_tools.sql`, which also repairs any gaps):
+```sql
+select pr.username, p.name as player from profiles pr left join players p on p.user_id = pr.id order by pr.username;
+select name from players where user_id is null and active;   -- guests (no account)
+```
 
 ## Who can do what
 | | Member | Admin |
@@ -33,7 +43,7 @@ The app stores everything in a free [Supabase](https://supabase.com) project so 
 | Take or retake the group photo | ✅ | ✅ |
 | Close / reopen / reset a day | ❌ | ✅ |
 | Remove a player, delete a photo, erase all data | ❌ | ✅ |
-| Promote members to admin | ❌ | ✅ |
+| Promote members to admin, remove accounts, reset all scores | ❌ | ✅ |
 
 These rules are enforced by the database (see the migration file), not just by hidden buttons.
 

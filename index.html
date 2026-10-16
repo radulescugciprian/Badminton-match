@@ -41,6 +41,7 @@
   button.ph{padding:0;background:none;border-radius:50%;line-height:0}
   .row .nm{background:none;text-align:left;padding:8px 0;font-weight:600}
   .row.bench{opacity:.5}
+  .tag{display:inline-block;font-size:11px;font-weight:600;color:var(--mut);border:1px solid var(--line);border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:middle}
   .sep{color:var(--mut);font-size:13px;text-transform:uppercase;letter-spacing:.08em;padding:6px 4px 0}
   .add{width:100%;background:none;border:2px dashed var(--line);color:var(--mut);margin-bottom:16px}
   .who{display:flex;align-items:center;gap:8px;justify-content:center;margin-top:8px}
@@ -151,7 +152,9 @@ async function refresh() {
   db.days = ok(d).map(x => ({ id: x.id, date: x.date, order: x.player_order, mode: x.mode, started: x.started, closed: x.closed,
     photo: x.photo_path, matches: x.matches.sort((a, b) => a.n - b.n) }));
   if (!session) return; // logged out while loading
-  members = ok(m); me = members.find(x => x.id === session.user.id) || {};
+  members = ok(m); me = members.find(x => x.id === session.user.id);
+  if (!me) { me = {}; await sb.auth.signOut(); return; } // an admin removed this account
+
   if (!db.days.length) { ok(await sb.from('days').insert(dayRow(null))); return refresh(); }
   const day = cur(), missing = db.players.filter(x => !x.removed && !day.order.includes(x.id)).map(x => x.id);
   if (!day.started && missing.length) { await patchDay(day.id, { player_order: [...day.order, ...missing] })(); return refresh(); } // new accounts join today's setup
@@ -305,11 +308,13 @@ const newDayBtn = () => act(async () => {
   if (cur().matches.length) ok(await sb.from('days').insert(dayRow(cur())));
   else await patchDay(cur().id, { started: false })();
 });
-const eraseAll = () => confirm('Erase ALL days, matches, photos and standings for everyone? This cannot be undone.') && act(async () => {
+const eraseAll = () => confirm('Reset ALL scores? This deletes every day, match and group photo for everyone. Players and accounts are kept. This cannot be undone.') && act(async () => {
   await dropPhotos(db.days.map(d => d.photo));
   ok(await sb.from('days').delete().gt('id', 0));
   selId = null;
 });
+const removeAccount = (id, who) => confirm(`Remove the account of ${who}? They can no longer log in. Their player and results stay and show as "no account".`)
+  && act(async () => ok(await sb.rpc('delete_account', { uid: id })));
 const toggleAdmin = (id, v) => act(async () => ok(await sb.from('profiles').update({ is_admin: v }).eq('id', id)));
 
 // ---- stats
@@ -361,7 +366,7 @@ function setup(d) {
       <ol>${o.map((id, i) => `${i === m ? '<li class="sep">Sitting out</li>' : ''}<li class="row ${i >= m ? 'bench' : ''}">
         <span class="slot">${i + 1}</span>
         ${player(id).user === session.user.id ? `<button class="ph" onclick="avatar(${id})" aria-label="Change your photo">${av(id)}</button>` : `<span class="ph">${av(id)}</span>`}
-        <button class="nm" onclick="rename(${id})" aria-label="Rename ${name(id)}">${name(id)} ✎</button>
+        <button class="nm" onclick="rename(${id})" aria-label="Rename ${name(id)}">${name(id)} ✎${player(id).user ? '' : '<span class="tag">no account</span>'}</button>
         <button onclick="move(${i},-1)" aria-label="Move up" ${i === 0 ? 'disabled' : ''}>▲</button>
         <button onclick="move(${i},1)" aria-label="Move down" ${i === o.length - 1 ? 'disabled' : ''}>▼</button>
         ${admin ? `<button class="danger" onclick="removePlayer(${id})" aria-label="Remove ${name(id)}">✕</button>` : ''}</li>`).join('')}</ol>
@@ -420,13 +425,19 @@ function board() {
       <div class="card" style="padding:4px 16px">${rows.slice(3).map((r, i) => `<div class="rank"><span class="r">${i + 4}</span>${av(r.id, 32)}
         <b>${esc(r.name)}</b><span class="mut" style="margin:0">${r.w}/${r.p}</span><b>${Math.round(pct(r) * 100)}%</b></div>`).join('')}</div>`
       : '<div class="empty">No matches yet.<br>Play one and the podium shows up here.</div>'}
-    ${tab === 'all' && me.is_admin ? '<div class="actions"><button class="link danger" onclick="eraseAll()">Erase all data</button></div>' : ''}`;
+    ${tab === 'all' && me.is_admin ? '<div class="actions"><button class="link danger" onclick="eraseAll()">Reset all scores</button></div>' : ''}`;
 }
 
 function membersView() {
-  return `<h1>Members</h1><p class="mut">Everyone who has an account. Admins can close or reset days, remove players and delete photos.</p>
-    <div class="card" style="padding:4px 16px">${members.map(m => `<div class="member"><span>${esc(m.username)}${m.is_admin ? ' · <b>admin</b>' : ''}</span>
-      ${me.is_admin && m.id !== me.id ? `<button class="link" onclick="toggleAdmin('${m.id}',${!m.is_admin})">${m.is_admin ? 'Remove admin' : 'Make admin'}</button>` : ''}</div>`).join('')}</div>`;
+  const admin = me.is_admin, own = id => db.players.find(p => p.user === id);
+  return `<h1>Members</h1><p class="mut">Accounts can log in. Admins can close or reset days, remove players, delete photos and remove accounts.</p>
+    <h2 style="font-size:18px;margin:0 0 8px">Accounts (${members.length})</h2>
+    <div class="card" style="padding:4px 16px;margin-bottom:20px">${members.map(m => `<div class="member"><span>${own(m.id) ? av(own(m.id).id, 28) + ' ' : ''}${esc(m.username)}${m.is_admin ? ' · <b>admin</b>' : ''}</span>
+      ${admin && m.id !== me.id ? `<span><button class="link" onclick="toggleAdmin('${m.id}',${!m.is_admin})">${m.is_admin ? 'Remove admin' : 'Make admin'}</button>
+        <button class="link danger" onclick="removeAccount('${m.id}','${esc(m.username)}')" aria-label="Remove account ${esc(m.username)}">✕</button></span>` : ''}</div>`).join('')}</div>
+    <h2 style="font-size:18px;margin:0 0 8px">Players</h2>
+    <div class="card" style="padding:4px 16px">${db.players.filter(p => !p.removed).map(p => `<div class="member"><span>${av(p.id, 28)} ${esc(p.name)}</span>
+      ${p.user ? `<span class="mut" style="margin:0">${esc((members.find(m => m.id === p.user) || {}).username || '')}</span>` : '<span class="tag">no account</span>'}</div>`).join('')}</div>`;
 }
 
 let urls = {};
