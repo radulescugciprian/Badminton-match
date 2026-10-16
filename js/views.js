@@ -238,7 +238,8 @@ function membersView() {
     <div class="card" style="padding:4px 16px">${db.players.filter(p => !p.removed).map(p => `<div class="member"><span>${av(p.id, 28)} ${esc(p.name)}</span>
       ${p.user ? `<span class="mut" style="margin:0">${esc((members.find(m => m.id === p.user) || {}).username || '')}</span>` : `<span class="tag">${t('no account')}</span>`}</div>`).join('')}</div>
     ${admin ? `<div class="card"><b>${t('Play background')}</b><p class="mut" style="margin:4px 0 8px">${t('Shown behind the Play tab for everyone.')}</p>
-      <button onclick="pickBg()">🖼 ${t('Change background')}</button> <button class="link" onclick="resetBg()">${t('Use default background')}</button></div>` : ''}
+      <button onclick="pickBg()">🖼 ${t('Change background')}</button> <button class="link" onclick="resetBg()">${t('Use default background')}</button>
+      <label class="field" style="margin:12px 0 0">${t('Photo dimming')}: <b id="dimv">${dim()}%</b><input type="range" min="0" max="90" step="5" value="${dim()}" oninput="previewDim(this.value)" onchange="saveDim(this.value)"></label></div>` : ''}
     ${scheduleForm()}${logCard()}`;
 }
 
@@ -293,6 +294,7 @@ const ICON = k => `<img class="on" src="ic-${k}-on.png" alt=""><img class="off" 
 const NAV = { play: () => ICON('play') + '<span>' + t('Play') + '</span>', board: () => ICON('board') + '<span>' + t('Board') + '</span>', photos: () => ICON('photos') + '<span>' + t('Photos') + '</span>', stats: () => ICON('stats') + '<span>' + t('Stats') + '</span>' };
 
 function render() {
+  document.documentElement.style.setProperty('--dim', dim() / 100);
   document.body.classList.toggle('out', !session);
   document.body.dataset.view = session ? view : '';
   document.documentElement.lang = lang;

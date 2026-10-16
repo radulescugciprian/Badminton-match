@@ -29,5 +29,11 @@ run('admin tools', async h => {
   assert.deepEqual(st.log.map(x => x.action), ['delete_match', 'close_day', 'delete_day']);
   await B.click('text=Members'); await B.waitForSelector('text=Accounts');
   assert(!(await B.textContent('#app')).includes('Activity log'), 'members cannot see the log');
+  // photo dimming: the admin's slider is saved for everyone, members have no slider
+  assert.equal(await B.locator('input[type=range]').count(), 0, 'members cannot set the dimming');
+  await A.locator('input[type=range]').evaluate(el => { el.value = 40; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); });
+  await h.until(() => st.schedule[0].bg_dim === 40, 'dimming saved');
+  assert.equal(await A.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--dim').trim()), '0.4');
+  await B.reload(); await B.waitForSelector('text=Next match day').catch(() => {});
   assert(h.assert && A.errs.length + B.errs.length === 0, 'no page errors');
 });
