@@ -155,6 +155,5 @@
   nav button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 2px;font-size:12px} nav img{width:30px;height:30px}
   nav .on{display:none} nav [aria-current=page] .on{display:block} nav [aria-current=page] .off{display:none}
   nav button[aria-current=page]{color:var(--acc);background:var(--card)}
-  /* the neon icons are drawn for a dark ground: give them a dark tile on the light theme */
-  :root[data-theme=light] nav img,:root[data-theme=light] .top img:not(.adm){background:#0b1220;border-radius:9px;padding:3px}
-  :root[data-theme=light] .top img.adm{background:#0b1220;border-radius:8px;padding:2px 3px}
+  /* the neon icons are drawn for a dark ground: darken them on the light theme */
+  :root[data-theme=light] nav img,:root[data-theme=light] .top img{filter:brightness(.55) saturate(1.8) contrast(1.15)}
