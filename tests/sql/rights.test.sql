@@ -29,6 +29,7 @@ create temp table ids as select '00000000-0000-0000-0000-00000000000a'::uuid adm
 grant all on ids to authenticated, anon;
 
 -- ================= as a member =================
+update schedule set opens_minutes = 60;   -- the tests below assume Start playing opens 60 minutes before play time
 set role authenticated; select as_user((select m1 from ids));
 select check_that((select count(*) from players) = 6, 'members read players');
 update players set avatar = 'data:ok' where id = 2;
@@ -53,9 +54,9 @@ reset role; update schedule set dow = (extract(dow from now() at time zone tz)::
 select must_fail($$update days set started = true where id = 1$$, 'play window');
 
 -- reactions, sign-ups
-select must_fail($$insert into rsvps values ('2026-10-22', 1, 'in')$$, 'row-level security');    -- someone else's player
-select must_fail($$insert into rsvps values ('2026-10-22', 4, 'in')$$, 'row-level security');    -- a guest
-insert into rsvps values ('2026-10-22', 2, 'in');
+select must_fail($$insert into rsvps values ('2099-10-22', 1, 'in')$$, 'row-level security');    -- someone else's player
+select must_fail($$insert into rsvps values ('2099-10-22', 4, 'in')$$, 'row-level security');    -- a guest
+insert into rsvps values ('2099-10-22', 2, 'in');
 update rsvps set status = 'out' where player_id = 2;
 select check_that((select status from rsvps where player_id = 2) = 'out', 'own answer changed');
 -- profile settings
@@ -77,7 +78,7 @@ select check_that((select count(*) from matches where created_at > now() - inter
 update players set active = false where id = 5;
 select must_fail($$update players set avatar = 'x' where id = 4$$, 'own avatar');                       -- not even admins change someone else's avatar
 insert into players (name) values ('Guest');
-insert into rsvps values ('2026-10-22', 4, 'in');                                                  -- admins answer for guests
+insert into rsvps values ('2099-10-22', 4, 'in');                                                  -- admins answer for guests
 select check_that((select count(*) from rsvps) = 2, 'both answers visible');
 select check_that(rows_changed($$update schedule set play_time = '19:00', tz = 'Europe/Zagreb', opens_minutes = 45$$) = 1, 'admin edits the schedule');
 select must_fail($$update schedule set tz = 'Mars/Olympus'$$, 'unknown time zone');
@@ -147,7 +148,15 @@ select as_user((select m1 from ids));
 select must_fail($$insert into play_dates values ('2026-10-23', 'extra')$$, 'row-level security');
 select check_that(rows_changed($$delete from play_dates$$) = 0, 'members cannot clear marks');
 select check_that((select count(*) from play_dates) = 2, 'members can read the calendar');
+-- sign-up window (18:30 game, answers close 120 min before = 16:30 Berlin): members cannot answer for a day that is over, admins can
+select check_that(rsvp_open('2026-10-22', '2026-10-22 14:29Z') and not rsvp_open('2026-10-22', '2026-10-22 14:31Z'), 'answers close at 16:30 on the play day');
+select check_that(rsvp_open('2026-10-29', '2026-10-22 20:00Z') and not rsvp_open('2026-10-21', '2026-10-22 12:00Z'), 'later days stay open, past days are closed');
+select must_fail($$insert into rsvps values ('2020-01-01', 2, 'in')$$, 'Answers are closed');
 select as_user((select adm from ids));
+insert into rsvps values ('2020-01-01', 4, 'in');
+select check_that(true, 'admins may answer after the deadline');
+select must_fail($$update schedule set rsvp_hide_minutes = 200$$, 'cannot be hidden before');
+select must_fail($$update schedule set rsvp_until_minutes = 5000$$, 'between 0 and 1440');
 delete from play_dates where day = '2026-10-22';
 select check_that((select count(*) from admin_log where action = 'clear_play_date') = 1, 'clearing logged');
 select must_fail($$insert into play_dates values ('2026-10-24', 'party')$$, 'check constraint');

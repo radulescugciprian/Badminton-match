@@ -25,6 +25,7 @@ function friendly(e) {
   if (has(/not.?confirmed/i)) return t('Please confirm your email first: open the link we sent you (check the spam folder too).');
   if (has(/already.?(registered|exists)/i)) return t('This email already has an account. Log in instead, or use "Forgot password?".');
   if (has(/failed to fetch|networkerror|load failed|network request failed/i)) return t('No connection. Check your internet and try again.');
+  if (has(/answers are closed/i)) return t('Answers are closed. Ask an admin.');
   if (has(/play window/i)) return t('A day can only be started during the play window. Ask an admin.');
   if (has(/admins only|row-level security|permission denied/i)) return t("You don't have permission to do that. Ask an admin.");
   if (has(/own avatar/i)) return t('Only the player can change their own photo.');
@@ -119,6 +120,12 @@ const TR = {
     'Reset answers': 'Resetează răspunsurile',
     'Remind me every {day}': 'Amintește-mi în fiecare {day}',
     'Next match day': 'Următoarea zi de meci',
+    'Answers closed at {time}.': 'Răspunsurile s-au închis la {time}.',
+    'Members can press Start playing this many minutes before play time': 'Membrii pot apăsa Începe jocul cu atâtea minute înainte de ora de joc',
+    'Answers (in / out) close this many minutes before play time': 'Răspunsurile (particip / nu particip) se închid cu atâtea minute înainte de ora de joc',
+    'The sign-up section is hidden this many minutes before play time': 'Secțiunea de înscriere se ascunde cu atâtea minute înainte de ora de joc',
+    'The sign-up section cannot be hidden before the answers close.': 'Secțiunea de înscriere nu poate fi ascunsă înainte de închiderea răspunsurilor.',
+    'Answers are closed. Ask an admin.': 'Răspunsurile sunt închise. Cere unui admin.',
     'Remove a player': 'Elimină un jucător',
     'Admin tools': 'Instrumente admin',
     'Member': 'Membru',
@@ -208,7 +215,6 @@ const TR = {
     'Play schedule': 'Programul de joc',
     'Play day': 'Ziua de joc',
     'Play time': 'Ora de joc',
-    'Members can start a day this many minutes before play time': 'Membrii pot porni ziua cu atâtea minute înainte de ora de joc',
     'Time zone': 'Fus orar',
     'Save schedule': 'Salvează programul',
     'Members': 'Membri',
@@ -362,6 +368,12 @@ const TR = {
     'Reset answers': 'Poništi odgovore',
     'Remind me every {day}': 'Podsjeti me svaki {day}',
     'Next match day': 'Sljedeći dan igranja',
+    'Answers closed at {time}.': 'Odgovori su zatvoreni u {time}.',
+    'Members can press Start playing this many minutes before play time': 'Članovi mogu pritisnuti Počni igrati toliko minuta prije početka igre',
+    'Answers (in / out) close this many minutes before play time': 'Odgovori (dolazim / ne dolazim) zatvaraju se toliko minuta prije početka igre',
+    'The sign-up section is hidden this many minutes before play time': 'Odjeljak prijava skriva se toliko minuta prije početka igre',
+    'The sign-up section cannot be hidden before the answers close.': 'Odjeljak prijava ne može biti skriven prije zatvaranja odgovora.',
+    'Answers are closed. Ask an admin.': 'Odgovori su zatvoreni. Pitajte admina.',
     'Remove a player': 'Ukloni igrača',
     'Admin tools': 'Admin alati',
     'Member': 'Član',
@@ -451,7 +463,6 @@ const TR = {
     'Play schedule': 'Raspored igranja',
     'Play day': 'Dan igranja',
     'Play time': 'Vrijeme igranja',
-    'Members can start a day this many minutes before play time': 'Članovi mogu pokrenuti dan toliko minuta prije početka igre',
     'Time zone': 'Vremenska zona',
     'Save schedule': 'Spremi raspored',
     'Members': 'Članovi',
@@ -605,6 +616,12 @@ const TR = {
     'Reset answers': 'Nollställ svar',
     'Remind me every {day}': 'Påminn mig varje {day}',
     'Next match day': 'Nästa matchdag',
+    'Answers closed at {time}.': 'Svaren stängde kl. {time}.',
+    'Members can press Start playing this many minutes before play time': 'Medlemmar kan trycka på Börja spela så många minuter före speltid',
+    'Answers (in / out) close this many minutes before play time': 'Svar (jag kommer / kommer inte) stänger så många minuter före speltid',
+    'The sign-up section is hidden this many minutes before play time': 'Anmälningsdelen döljs så många minuter före speltid',
+    'The sign-up section cannot be hidden before the answers close.': 'Anmälningsdelen kan inte döljas innan svaren stängs.',
+    'Answers are closed. Ask an admin.': 'Svaren är stängda. Fråga en admin.',
     'Remove a player': 'Ta bort en spelare',
     'Admin tools': 'Adminverktyg',
     'Member': 'Medlem',
@@ -694,7 +711,6 @@ const TR = {
     'Play schedule': 'Speltider',
     'Play day': 'Speldag',
     'Play time': 'Speltid',
-    'Members can start a day this many minutes before play time': 'Medlemmar kan starta dagen så många minuter före speltid',
     'Time zone': 'Tidszon',
     'Save schedule': 'Spara schema',
     'Members': 'Medlemmar',

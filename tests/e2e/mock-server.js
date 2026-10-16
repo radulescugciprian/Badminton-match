@@ -1,10 +1,15 @@
 // Fake Supabase server (in memory) mirroring the rules in supabase/migrations that the screens depend on.
-const st = { players: ['Vali','Dani','Costi','Zjepko','Ciprian'].map((name,i)=>({id:i+1,name,avatar:null,active:true,user_id:null})), days: [], matches: [], profiles: [], rsvps: [], reactions: [], play_dates: [], log: [], attempts: {}, schedule: [{ id: true, tz: 'Europe/Berlin', dow: 4, play_time: '18:30:00', opens_minutes: 60 }], now: null, users: {}, files: {}, seq: { p: 5, d: 0, m: 0 } };
+const st = { players: ['Vali','Dani','Costi','Zjepko','Ciprian'].map((name,i)=>({id:i+1,name,avatar:null,active:true,user_id:null})), days: [], matches: [], profiles: [], rsvps: [], reactions: [], play_dates: [], log: [], attempts: {}, schedule: [{ id: true, tz: 'Europe/Berlin', dow: 4, play_time: '18:30:00', opens_minutes: 60, rsvp_until_minutes: 120, rsvp_hide_minutes: 90 }], now: null, users: {}, files: {}, seq: { p: 5, d: 0, m: 0 } };
 const pages = [];
 const emit = () => pages.forEach(p => p.evaluate(() => window.__emit && window.__emit()).catch(() => {}));
 const isAdmin = u => (st.profiles.find(p => p.id === u) || {}).is_admin;
 const err = (message, code) => ({ error: { message, code } });
 const logAct = (u, action, detail) => st.log.push({ id: st.log.length + 1, at: new Date().toISOString(), actor: u, actor_name: (st.profiles.find(p => p.id === u) || {}).username || null, action, detail });
+function rsvpOpen(date) { // like the database: later days are open, on the play day until play time minus rsvp_until_minutes
+  const f = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(st.now || Date.now())), g = x => f.find(p => p.type === x).value;
+  const today = `${g('year')}-${g('month')}-${g('day')}`, s = st.schedule[0], pm = +s.play_time.slice(0, 2) * 60 + +s.play_time.slice(3, 5);
+  return date > today || (date === today && +g('hour') * 60 + +g('minute') < pm - s.rsvp_until_minutes);
+}
 function canStart() {
   const when = new Date(st.now || Date.now()), pf = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(when);
   const iso = `${pf.find(p => p.type === 'year').value}-${pf.find(p => p.type === 'month').value}-${pf.find(p => p.type === 'day').value}`, mark = (st.play_dates.find(p => p.day === iso) || {}).kind;
@@ -62,6 +67,7 @@ function rpc(u, r) {
       }
       const pl = st.players.find(p => p.id === r.payload.player_id);
       if (!pl || (pl.user_id !== u && !isAdmin(u))) return err('new row violates row-level security policy for table "rsvps"');
+      if (!isAdmin(u) && !rsvpOpen(r.payload.day_date)) return err('Answers are closed');
       const old = st.rsvps.find(x => x.day_date === r.payload.day_date && x.player_id === r.payload.player_id);
       old ? Object.assign(old, r.payload) : st.rsvps.push({ ...r.payload }); emit(); return { data: [] };
     }

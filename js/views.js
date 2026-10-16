@@ -46,16 +46,18 @@ function profileView() {
 function rsvpCard() {
   const date = nextPlayDate(), mine = db.players.find(p => p.user === session.user.id), act_ = db.players.filter(p => !p.removed), admin = isAdmin();
   const ans = id => answerOf(id, date), icon = id => ({ in: '✅', out: '❌' }[ans(id)] || '⏳');
-  const by = sched ? hhmm(playMins() - sched.opens_minutes) : '';
+  const by = sched ? hhmm(playMins() - sched.rsvp_until_minutes) : '', phase = rsvpPhase(date), locked = phase !== 'open' && !admin;
+  if (phase === 'hidden' && !admin) return '';
   const n = act_.filter(p => ans(p.id) === 'in').length;
   const open = rsvpIsOpen(date);
   return `<div class="card rsvp"><div class="rhead"><div><div class="mut" style="margin:0;font-size:var(--fs-sm)">${t('Next match day')}</div><b>${niceDate(date)}</b> <span class="mut">· ${t('{n} in', { n })}</span></div>
       <span><button class="link" onclick="go('calendar')" aria-label="${t('Calendar')}">📅</button><button class="link" onclick="toggleRsvp()" aria-expanded="${open}">${open ? '▴' : '▾'} ${t('Details')}</button></span></div>
-    ${mine ? `<div class="seg"><button class="${ans(mine.id) === 'in' ? 'on' : ''}" onclick="setRsvp(${mine.id}, ${ans(mine.id) === 'in' ? 'null' : "'in'"})">✅ ${t("I'm in")}</button>
+    ${mine && locked ? `<p class="mut" style="margin:8px 0 0">🔒 ${t('Answers closed at {time}.', { time: by })}</p>` : ''}
+    ${mine && !locked ? `<div class="seg"><button class="${ans(mine.id) === 'in' ? 'on' : ''}" onclick="setRsvp(${mine.id}, ${ans(mine.id) === 'in' ? 'null' : "'in'"})">✅ ${t("I'm in")}</button>
       <button class="${ans(mine.id) === 'out' ? 'on' : ''}" onclick="setRsvp(${mine.id}, ${ans(mine.id) === 'out' ? 'null' : "'out'"})">❌ ${t("I'm out")}</button></div>` : ''}
     ${open ? `<div class="chips">${act_.map(p => admin ? `<button class="chip ${ans(p.id) || ''}" onclick="cycleRsvp(${p.id})" aria-label="${t('Answer for {name}', { name: esc(p.name) })}">${av(p.id, 22)} ${esc(p.name)} ${icon(p.id)}</button>`
       : `<span class="chip ${ans(p.id) || ''}">${av(p.id, 22)} ${esc(p.name)} ${icon(p.id)}</span>`).join('')}</div>
-    <p class="mut" style="margin:6px 0 0">${by ? t('Answer before {time}.', { time: by }) + ' ' : ''}${t('The list below fills itself: players who are in first.')}${admin ? ' ' + t('Admins can tap a name to answer for them.') : ''}</p>
+    <p class="mut" style="margin:6px 0 0">${by && !locked ? t('Answer before {time}.', { time: by }) + ' ' : ''}${t('The list below fills itself: players who are in first.')}${admin ? ' ' + t('Admins can tap a name to answer for them.') : ''}</p>
     ${admin && rsvps.some(x => x.day_date === date) ? `<button class="link danger" onclick="resetRsvps()">↺ ${t('Reset answers')}</button>` : ''}
     <button class="link" onclick="remindMe()">🔔 ${t('Remind me every {day}', { day: dayName(sched ? sched.dow : 4) })}</button>` : ''}</div>`;
 }
@@ -228,7 +230,9 @@ function scheduleForm() {
   return `<h2 class="sec">${t('Play schedule')}</h2><form class="card" onsubmit="saveSchedule(event)">
     <label class="field">${t('Play day')}<select name="dow">${[1, 2, 3, 4, 5, 6, 0].map(d => `<option value="${d}" ${d === sched.dow ? 'selected' : ''}>${dayName(d)}</option>`).join('')}</select></label>
     <label class="field">${t('Play time')}<input type="time" name="time" value="${sched.play_time.slice(0, 5)}" required></label>
-    <label class="field">${t('Members can start a day this many minutes before play time')}<input type="number" name="mins" min="0" max="720" value="${sched.opens_minutes}" required></label>
+    <label class="field">${t('Members can press Start playing this many minutes before play time')}<input type="number" name="mins" min="0" max="720" value="${sched.opens_minutes}" required></label>
+    <label class="field">${t('Answers (in / out) close this many minutes before play time')}<input type="number" name="until" min="0" max="1440" value="${sched.rsvp_until_minutes}" required></label>
+    <label class="field">${t('The sign-up section is hidden this many minutes before play time')}<input type="number" name="hide" min="0" max="1440" value="${sched.rsvp_hide_minutes}" required></label>
     <label class="field">${t('Time zone')}<input type="text" name="tz" list="tzs" value="${esc(sched.tz)}" required autocapitalize="none"><datalist id="tzs">${zones.map(z => `<option value="${z}">`).join('')}</datalist></label>
     <p class="msg" role="alert"></p><button class="primary" type="submit">${t('Save schedule')}</button></form>`;
 }

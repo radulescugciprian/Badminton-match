@@ -77,4 +77,15 @@ run('sign-up list, ratings, badges, result card and reactions', async h => {
   await B.click('nav >> text=Play'); await B.waitForFunction(() => document.querySelector('.card').textContent.includes('0 in'));
   assert(rpc('u2', { table: 'rsvps', op: 'delete', f: [['eq', 'day_date', '2026-10-15']] }) && true);
 
+  // ---- sign-up window on the play day: answers close at 16:30, the section is gone for members at 17:00 (admins keep it)
+  const at = async iso => { st.now = Date.parse(iso); for (const p of [A, B, C]) await p.evaluate(t => { window.__t = t; render(); }, st.now); };
+  await B.click('nav >> text=Play');
+  await at('2026-10-15T14:29:00Z'); assert.equal(await B.locator("button:has-text(\"I'm in\")").count(), 1, 'open at 16:29');
+  await at('2026-10-15T14:31:00Z');
+  assert.equal(await B.locator("button:has-text(\"I'm in\")").count(), 0, 'locked at 16:31'); assert((await B.textContent('.rsvp')).includes('Answers closed at 16:30'));
+  assert.equal(await A.locator("button:has-text(\"I'm in\")").count(), 1, 'admins can still answer');
+  assert(rpc('u2', { table: 'rsvps', op: 'upsert', payload: { day_date: '2026-10-15', player_id: 2, status: 'in' } }).error, 'the server refuses a late answer');
+  await at('2026-10-15T15:01:00Z');
+  assert.equal(await B.locator('.rsvp').count(), 0, 'section hidden at 17:01'); assert.equal(await A.locator('.rsvp').count(), 1, 'admins still see it');
+
 });

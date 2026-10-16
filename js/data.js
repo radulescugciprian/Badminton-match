@@ -323,6 +323,13 @@ const bfSave = () => {
 const calShift = n => { const [y, m] = (calMonth || tzParts().date.slice(0, 7)).split('-').map(Number); calMonth = new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 7); render(); };
 const rsvpIsOpen = date => rsvpOpen && rsvpOpen.date === date ? rsvpOpen.open : date === tzParts().date;   // compact until the play day, unless toggled by hand for this date
 const toggleRsvp = () => { const date = nextPlayDate(); rsvpOpen = { date, open: !rsvpIsOpen(date) }; render(); };
+// sign-up window on the play day: 'open' until the answers close, 'locked' (visible, read-only) until it is hidden. Later play days stay open.
+function rsvpPhase(date) {
+  const n = tzParts();
+  if (!sched || date !== n.date) return date > n.date ? 'open' : 'hidden';
+  const pm = playMins();
+  return n.mins >= pm - sched.rsvp_hide_minutes ? 'hidden' : n.mins >= pm - sched.rsvp_until_minutes ? 'locked' : 'open';
+}
 const answerOf = (id, date) => (rsvps.find(r => r.day_date === date && r.player_id === id) || {}).status;
 const setRsvp = (id, status) => { const date = nextPlayDate();
   return act(async () => {
@@ -400,9 +407,10 @@ const toggleAdmin = (id, v) => act(async () => ok(await sb.from('profiles').upda
 function saveSchedule(e) { // admins only; the database also refuses unknown time zones
   e.preventDefault();
   const f = new FormData(e.target), tz = f.get('tz').trim();
+  if (+f.get('hide') > +f.get('until')) return showMsg(t('The sign-up section cannot be hidden before the answers close.'));
   try { new Intl.DateTimeFormat('en', { timeZone: tz }); } catch { return showMsg(t('Unknown time zone.')); }
   act(async () => {
-    ok(await sb.from('schedule').update({ tz, dow: +f.get('dow'), play_time: f.get('time'), opens_minutes: +f.get('mins') }).eq('id', true));
+    ok(await sb.from('schedule').update({ tz, dow: +f.get('dow'), play_time: f.get('time'), opens_minutes: +f.get('mins'), rsvp_until_minutes: +f.get('until'), rsvp_hide_minutes: +f.get('hide') }).eq('id', true));
     alert(t('Schedule saved.'));
   });
 }
