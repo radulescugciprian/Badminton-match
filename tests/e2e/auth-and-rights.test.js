@@ -4,9 +4,9 @@ run('sign-in, rights, photos and the play schedule', async h => {
   const A = await mk(), B = await mk();
   await A.waitForSelector('text=Log in to see the scores',{timeout:4000}).catch(async e=>{console.log(await A.textContent('body'), A.errs); throw e});
   await signup(A, 'Anna', 'a@x.com', '1'); await A.waitForSelector('text=Next match day');
-  assert((await A.textContent('.top')).includes('admin'));
+  assert.equal(await A.locator('.top img.adm').count(), 1);
   await signup(B, 'Bob', 'b@x.com', '2'); await B.waitForSelector('text=Next match day');
-  assert(!(await B.textContent('.top')).includes('admin'));
+  assert.equal(await B.locator('.top img.adm').count(), 0);
   assert((await A.locator('[aria-label^="Remove"]').count()) === 5 && (await B.locator('[aria-label^="Remove"]').count()) === 0, 'remove only for admin');
   // each account is its own player: avatar buttons only on your own row; guests are added by admins only
   assert((await A.locator('button.ph').count()) === 1 && (await B.locator('button.ph').count()) === 1, 'only own avatar editable');
@@ -46,7 +46,7 @@ run('sign-in, rights, photos and the play schedule', async h => {
   await B.click('#lb >> text=Close');
   // admin promotes Bob
   await A.click('text=Members'); await A.click('text=Make admin');
-  await B.waitForFunction(() => document.querySelector('.top').textContent.includes('admin'));
+  await B.waitForFunction(() => document.querySelector('.top img.adm'));
   // logout / bad login / login
   await A.click('text=Log out'); await A.waitForSelector('text=Log in to see the scores',{timeout:4000}).catch(async e=>{console.log(await A.textContent('body'), A.errs); throw e});
   await A.fill('[name=login]', 'a@x.com'); await A.fill('[name=password]', 'nope123'); await A.click('button[type=submit]'); await A.waitForSelector('text=Wrong username');

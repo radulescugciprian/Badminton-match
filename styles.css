@@ -87,6 +87,7 @@
   .top .me{flex:1} .top .menu{flex:1 0 100%;display:flex;gap:6px} .top .menu .link{flex:1;justify-content:center;background:rgba(255,255,255,.07)}
   .top .bar{display:flex;align-items:center;gap:2px;flex-shrink:0}
   .top .link{display:inline-flex;align-items:center;gap:4px;padding:6px 8px;border-radius:10px;color:var(--text);font-size:13px;font-weight:600} .top .link:active{background:var(--line)}
+  .top img{width:20px;height:20px} .top .ico img{width:26px;height:26px} .top img.adm{width:auto;height:22px}
   .top .link.ico{font-size:16px;padding:6px 8px}
   .msg{color:var(--danger);min-height:1.4em;font-size:14px}
   body.out nav{display:none}
