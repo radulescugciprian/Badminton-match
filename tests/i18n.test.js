@@ -2,7 +2,7 @@
 const assert = require('assert'), fs = require('fs');
 const { LANGS, TR, PL, tp, friendly, setLangLocal } = require('../i18n.js');
 
-const code = fs.readFileSync(__dirname + '/../index.html', 'utf8').split('<script>')[1] + fs.readFileSync(__dirname + '/../i18n.js', 'utf8').split('function friendly')[1].split('const TR')[0];
+const code = ['data', 'views', 'main'].map(f => fs.readFileSync(`${__dirname}/../js/${f}.js`, 'utf8')).join('\n') + fs.readFileSync(__dirname + '/../i18n.js', 'utf8').split('function friendly')[1].split('const TR')[0];
 const used = new Set();
 for (const m of code.matchAll(/\bt\(\s*(?:'((?:\\.|[^'\\])*)'|"((?:\\.|[^"\\])*)")/g)) used.add(new Function('return ' + (m[1] !== undefined ? `'${m[1]}'` : `"${m[2]}"`))());
 assert(used.size > 150, 'found the t() calls: ' + used.size);

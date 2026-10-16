@@ -14,8 +14,8 @@ The app stores everything in a free [Supabase](https://supabase.com) project so 
    Admins can then promote others under *Members*.
 
 ## Usernames and password reset
-- Run the migrations in `supabase/migrations/` **in order** (`..._init.sql`, then `..._username.sql`, then `..._player_accounts.sql`, then `..._admin_tools.sql`, then `..._play_schedule.sql`, then `..._fun_features.sql`, then `..._settings.sql`).
-- People log in with a username **or** an email. Trade-off: the login box looks up the email for a username, so anyone who knows a username can find that account's email. Fine for a friends group; say if you want it locked down.
+- Run the migrations in `supabase/migrations/` **in order** (`..._init.sql`, then `..._username.sql`, then `..._player_accounts.sql`, then `..._admin_tools.sql`, then `..._play_schedule.sql`, then `..._fun_features.sql`, then `..._settings.sql`, then `..._hardening.sql`).
+
 - "Forgot password?" emails a reset link. Add the app address under *Authentication → URL Configuration → Redirect URLs* or the link will not return to the app. Supabase's built-in email sender is limited to a few emails per hour; add your own SMTP under *Authentication → Emails* if that is not enough.
 
 ## Accounts and players
@@ -51,6 +51,12 @@ Admins change the schedule in the app: **Members → Play schedule** (day, time,
 - **Rating (Elo):** everyone starts at 1000 and moves after every match; computed from the match log (`analytics.js`, tested in `tests/`). Badges: 5 in a row, perfect night (4+ matches, all won), comeback (lost the first two, finished ahead), most improved (last 4 nights), player of the night.
 - **Result card:** on the closed-day screen or in a photo, *Share result card* makes a 1080×1350 picture of the podium over the group photo.
 - **Team names** (✎ under a team on the match screen) are saved with the match and shown in the day's match list. **Reactions** (👏🔥😂❤️🏆) go on the group photo.
+
+## Safer username login, activity log, tests
+- People log in with a username **or** an email. For a username, the database returns the account's email **only when the password is right**, and five wrong guesses lock that username for 15 minutes (the email still works). Nobody can look up other people's emails. Password reset is by email only, for the same reason.
+- Admins see an **Activity log** at the bottom of Members: who removed a match, closed or deleted a day, removed a player or account, changed a role or the schedule. The database writes it; nobody can edit it. Matches also carry the time they were recorded.
+- The General leaderboard is counted by the database (`standings()`); ratings and stats still read the full match history.
+- **Tests** (`npm test`, and `bash tests/sql/run.sh` for the database rules) run on every push and pull request; the site is only published when they pass. Locally: `npm install`, then `npx playwright install chromium`.
 
 ## Who can do what
 | | Member | Admin |

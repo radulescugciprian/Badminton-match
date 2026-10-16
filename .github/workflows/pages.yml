@@ -1,20 +1,39 @@
-name: Deploy to Pages
+name: Test and deploy
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 permissions:
   contents: read
   pages: write
   id-token: write
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: postgres }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env: { PGHOST: localhost, PGUSER: postgres, PGPASSWORD: postgres }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm test                 # ratings, translations, and the screens in a headless browser against a fake server
+      - run: bash tests/sql/run.sh    # the database rules on a real PostgreSQL
   deploy:
+    needs: test                       # nothing is published unless every test passed
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment: github-pages
     steps:
       - uses: actions/checkout@v4
-      - run: node tests/analytics.test.js   # ratings and badges must stay correct before anything is published
-      - run: node tests/i18n.test.js        # every text translated in every language
       - uses: actions/upload-pages-artifact@v3
         with: { path: . }
       - uses: actions/deploy-pages@v4
