@@ -19,8 +19,9 @@ run('sign-in, rights, photos and the play schedule', async h => {
   assert(r.error, 'server refuses avatar change for someone else');
   await B.click('nav >> text=Play');
   // shared state: A changes mode, B sees it live
-  await A.click('button:has-text("4 players")'); await B.waitForFunction(() => document.querySelector('.seg .on').textContent.includes('4'));
-  await B.click('button:has-text("5 players")'); await A.waitForFunction(() => document.querySelector('.seg .on').textContent.includes('5'));
+  assert.equal(await B.locator('button:has-text("4 players")').count(), 0, 'members do not pick 4 or 5 by hand');
+  await A.click('button:has-text("4 players")'); await B.waitForFunction(() => cur().mode === 4);
+  await A.click('button:has-text("5 players")'); await B.waitForFunction(() => cur().mode === 5);
   await A.click('text=Start day'); await B.waitForSelector('text=Match 1');
   assert((await B.locator('text=Close day').count()) === 0, 'member cannot close');
   await win(B, 1); await A.waitForSelector('text=Match 2');

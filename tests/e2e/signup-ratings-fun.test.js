@@ -15,13 +15,13 @@ run('sign-up list, ratings, badges, result card and reactions', async h => {
   const d0 = st.days[st.days.length - 1];
   assert(d0.player_order.join() === '1,3,4,5,2', 'players who are in first, Dani (out) last: ' + d0.player_order);
   assert(d0.mode === 4, '4 confirmed -> 4 play');
-  await A.waitForSelector('button:has-text("5 players")[disabled]'); // mode follows the sign-ups
+  assert.equal(await A.locator('button:has-text("5 players")').count(), 0, 'no 4/5 switch: the sign-ups decide');
   assert(rpc('u2', { table: 'rsvps', op: 'upsert', payload: { day_date: '2026-10-15', player_id: 1, status: 'out' } }).error, 'cannot answer for someone else');
   assert(!st.rsvps.some(x => x.player_id === 1 && x.status === 'out'));
   await B.click("text=I'm in");                                                                       // Dani changes their mind -> 5 players
-  await A.waitForFunction(() => document.querySelector('.seg:has(button:nth-child(2):not(:only-child)) .on, .seg .on').textContent !== null && [...document.querySelectorAll('.seg')].find(s => s.textContent.includes('players')).querySelector('.on').textContent.includes('5'));
+  await until(() => st.days[st.days.length - 1].mode === 5, 'five players once everybody is in');
   assert(st.days[st.days.length - 1].mode === 5);
-  await B.click("text=I'm out"); await A.waitForFunction(() => [...document.querySelectorAll('.seg')].find(s => s.textContent.includes('players')).querySelector('.on').textContent.includes('4'));
+  await B.click("text=I'm out"); await until(() => st.days[st.days.length - 1].mode === 4, 'four players again');
   
   // calendar reminder
   const [dl] = await Promise.all([A.waitForEvent('download'), A.click('text=Remind me every Thursday')]);

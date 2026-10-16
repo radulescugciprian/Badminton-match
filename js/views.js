@@ -71,17 +71,17 @@ function calendarView() {
     <div class="calnav"><button onclick="calShift(-1)" aria-label="${t('Previous month')}">‹</button><b>${esc(title)}</b><button onclick="calShift(1)" aria-label="${t('Next month')}">›</button></div>
     <div class="cal">${head}${cells}</div>
     <p class="mut legend"><span class="key play"></span>${t('Play day')} <span class="key extra"></span>${t('Extra play day')} <span class="key off"></span>${t('Cancelled')} <span class="key dot"></span>${t('Played')}</p>
-    <p class="mut">${admin ? t('Tap a date to add an extra play day or cancel a normal one.') : t('Only admins can change the play days.')}</p>`;
+    ${admin ? `<p class="mut">${t('Tap a date to add an extra play day or cancel a normal one.')}</p>` : ''}`;
 }
 
 function setup(d) {
   const m = d.mode, cyc = m === 4 ? C4 : C5, o = d.order, [a, b, r] = cyc[0], admin = isAdmin();
   const date = nextPlayDate(), ins = o.filter(id => answerOf(id, date) === 'in').length, auto = ins >= 4, icon = id => ({ in: '✅', out: '❌' }[answerOf(id, date)] || '⏳');
   const open = admin || startOpen();
-  return `<h1>${t('Next match day')}</h1>${rsvpCard()}<p class="mut">${t('Choose 4 or 5 players and their order. The first {m} in the list play; the rest sit out.', { m })}${auto ? ' ' + t('The 4 / 5 choice follows the sign-ups.') : ''}${rsvps.some(x => x.day_date === date) && ins < 4 ? ' ' + t('Only {n} confirmed so far, you need at least 4.', { n: ins }) : ''}</p>
-      <input type="date" value="${d.date}" onchange="setDate(this.value)" aria-label="${t('Date')}">
-      <div class="seg" style="margin:12px 0"><button class="${m === 4 ? 'on' : ''}" onclick="setMode(4)" ${auto ? 'disabled' : ''}>${t('4 players')}</button>
-        <button class="${m === 5 ? 'on' : ''}" onclick="setMode(5)" ${auto || o.length < 5 ? 'disabled' : ''}>${t('5 players')}</button></div>
+  // the sign-ups fill the list and decide 4 or 5 players; the date is today's. Only when nobody has answered can an admin pick 4 or 5 by hand.
+  return `<h1>${t('Next match day')}</h1>${rsvpCard()}${rsvps.some(x => x.day_date === date) && ins < 4 ? `<p class="mut">${t('Only {n} confirmed so far, you need at least 4.', { n: ins })}</p>` : ''}
+      ${admin && !auto ? `<div class="seg" style="margin:0 0 12px"><button class="${m === 4 ? 'on' : ''}" onclick="setMode(4)">${t('4 players')}</button>
+        <button class="${m === 5 ? 'on' : ''}" onclick="setMode(5)" ${o.length < 5 ? 'disabled' : ''}>${t('5 players')}</button></div>` : ''}
       <ol>${o.map((id, i) => `${i === m ? `<li class="sep">${t('Sitting out')}</li>` : ''}<li class="row ${i >= m ? 'bench' : ''}">
         <span class="slot">${i + 1}</span>
         ${player(id).user === session.user.id ? `<button class="ph" onclick="avatar(${id})" aria-label="${t('Change your photo')}">${av(id)}</button>` : `<span class="ph">${av(id)}</span>`}
@@ -217,7 +217,7 @@ function scheduleForm() {
 
 function membersView() {
   const admin = isAdmin(), own = id => db.players.find(p => p.user === id);
-  return `<h1>${t('Members')}</h1><p class="mut">${t('Accounts can log in. Admins can close or reset days, remove players, delete photos and remove accounts.')}</p>
+  return `<h1>${t('Members')}</h1>${admin ? `<p class="mut">${t('Accounts can log in. Admins can close or reset days, remove players, delete photos and remove accounts.')}</p>` : ''}
     <h2 style="font-size:18px;margin:0 0 8px">${t('Accounts ({n})', { n: members.length })}</h2>
     <div class="card" style="padding:4px 16px;margin-bottom:20px">${members.map(m => `<div class="member"><span>${own(m.id) ? av(own(m.id).id, 28) + ' ' : ''}${esc(m.username)}${m.is_admin ? ` · <b>${t('admin')}</b>` : ''}</span>
       ${admin && m.id !== me.id ? `<span><button class="link" onclick="toggleAdmin('${m.id}',${!m.is_admin})">${m.is_admin ? t('Remove admin') : t('Make admin')}</button>

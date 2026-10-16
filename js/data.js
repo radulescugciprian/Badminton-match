@@ -17,7 +17,7 @@ let db = { players: [], days: [] }, members = [], me = {}, session = null, loade
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
-let rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, dateTouched = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
+let rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
 let view = 'play', tab = 'day', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0, manualLogout = false, lostSession = false, asMember = false;   // asMember: an admin previewing the app as a normal member
 // the sign-in is kept on the phone (localStorage) and renewed automatically, so people stay logged in until they log out
 const sb = window.supabase && CONFIG.url && !CONFIG.url.includes('YOUR-')
@@ -171,7 +171,7 @@ function showHelp() {
     <ol class="steps"><li>${t('Before play day tap “I\'m in” or “I\'m out”. The player list fills itself from the answers.')}</li>
       <li>${t('Starting a day opens one hour before play time. The first 5 (or 4) players in the list play, the others sit out.')}</li>
       <li>${t('After every match tap the winning team. The leaderboards and ratings update for everyone.')}</li>
-      <li>${t('At the end an admin closes the day and anyone can take the group photo.')}</li></ol>
+      <li>${t('At the end the day is closed and anyone can take the group photo.')}</li></ol>
     <h2 class="sec">${t('The rotation')}</h2>
     <p>${t('With 5 players there are 5 matches, 2 against 2, and one player rests each time. Everyone rests exactly once and plays with every other player exactly once.')}</p>
     <table class="rot"><tr><th>${t('Match')}</th><th>${t('Teams')}</th><th>${t('Rests')}</th></tr>${rows}</table>
@@ -192,10 +192,9 @@ const dayRow = prev => { // a new day inherits the previous order/mode; players 
 const patchDay = (id, o) => async () => ok(await sb.from('days').update(o).eq('id', id));
 const move = (i, d) => { const day = cur(), o = [...day.order]; [o[i], o[i + d]] = [o[i + d], o[i]];
   return act(patchDay(day.id, { player_order: o }), () => { day.order = o; }); };
-const setDate = v => v && (dateTouched = cur().id, act(patchDay(cur().id, { date: v })));
 const setMode = n => { const day = cur(); return n <= day.order.length && act(patchDay(day.id, { mode: n }), () => { day.mode = n; }); };
-// the day gets today's date when it starts (it may have been created days earlier), unless someone picked a date by hand
-const start = () => { const day = cur(), date = dateTouched === day.id ? day.date : today();
+// the day gets today's date when it starts (it may have been created days earlier)
+const start = () => { const day = cur(), date = today();
   return act(patchDay(day.id, { started: true, date }), () => Object.assign(day, { started: true, date })); };
 const rename = id => {
   const n = (prompt(t('Player name'), player(id).name) || '').trim().slice(0, 20);
@@ -397,5 +396,5 @@ function startOpen() {
 }
 const hhmm = mins => String(Math.floor(mins / 60) % 24).padStart(2, '0') + ':' + String(mins % 60).padStart(2, '0');
 const playMins = () => +sched.play_time.split(':')[0] * 60 + +sched.play_time.split(':')[1];
-const startNote = () => t('We play on {day} at {time}. Starting a day opens at {open} that day. Admins can start any time.',
+const startNote = () => t('We play on {day} at {time}. Starting a day opens at {open} that day.',
   { day: dayName(sched.dow), time: hhmm(playMins()), open: hhmm(playMins() - sched.opens_minutes) });

@@ -23,7 +23,16 @@ run('admin views the app as a member', async h => {
   await A.click('text=Members'); await A.waitForSelector('text=Accounts');
   assert.equal(await A.locator('text=Make admin').count() + await A.locator('text=Activity log').count() + await A.locator('[aria-label^="Remove account"]').count(), 0, 'Members page without admin tools');
   await A.click('[aria-label=Calendar]').catch(() => {});
-  await A.evaluate(() => go('calendar')); await A.waitForSelector('text=Only admins can change the play days');
+  await A.evaluate(() => go('calendar')); await A.waitForSelector('text=Calendar');
+  assert.equal(await A.locator('.cal button.d').count(), 0, 'nothing to tap in the calendar as a member');
+
+  // a member's screens never talk about what admins can do (the one privacy sentence in Profile is the exception)
+  const seen = [];
+  for (const v of ['play', 'members', 'calendar', 'board', 'stats', 'photos']) { await B.evaluate(x => go(x), v); await B.waitForTimeout(150); seen.push(await B.textContent('#app')); }
+  await B.evaluate(() => { tab = 'all'; go('board'); }); seen.push(await B.textContent('#app'));
+  for (const text of seen) assert(!/Admins can|an admin|Only admins|admin tools|starts any time/i.test(text), 'admin talk on a member screen: ' + text.match(/.{30}(Admins can|an admin|Only admins|admin tools).{30}/i));
+  assert.equal(await B.locator('input[type=date]').count(), 0, 'no date picker: the day gets its date when it starts');
+  await B.evaluate(() => go('play')); assert.equal(await B.locator('text=Choose 4 or 5').count(), 0);
 
   // privacy follows: Bob's stats are hidden from the preview, visible again as admin
   await A.evaluate(() => go('stats')); await A.waitForFunction(() => !document.getElementById('app').textContent.includes('Bob') || true);
