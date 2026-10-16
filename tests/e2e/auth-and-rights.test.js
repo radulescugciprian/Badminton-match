@@ -12,7 +12,7 @@ run('sign-in, rights, photos and the play schedule', async h => {
   assert((await A.locator('button.ph').count()) === 1 && (await B.locator('button.ph').count()) === 1, 'only own avatar editable');
   assert((await A.locator('text=Add guest player').count()) === 1 && (await B.locator('text=Add guest player').count()) === 0);
   assert(st.players.length === 5, 'claiming existing players creates no duplicates');
-  await B.click('text=Profile'); await B.click('text=Change photo'); await B.setInputFiles('#pick', S + 'red.png');
+  await B.click('.top .me'); await B.click('text=Change photo'); await B.setInputFiles('#pick', S + 'red.png');
   await A.waitForSelector('img.av'); // Dani's new avatar is visible to everyone
   assert(st.players[1].avatar && !st.players[0].avatar, 'avatar stored on the right player');
   const r = rpc('u2', { table: 'players', op: 'update', f: [['eq', 'id', 1]], payload: { avatar: 'x' } });

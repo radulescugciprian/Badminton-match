@@ -20,14 +20,14 @@ run('help, plain errors, languages, privacy and the schedule editor', async h =>
   await A.click('text=Back to log in'); await A.fill('[name=login]', 'anna'); await A.fill('[name=password]', 'secret1'); await A.click('button[type=submit]'); await A.waitForSelector('text=Next match day');
   
   // ---- language: follows the account
-  await A.click('text=Profile'); await A.selectOption('.field select', 'ro');
+  await A.click('.top .me'); await A.selectOption('.field select', 'ro');
   await A.waitForSelector('text=Profilul tău');
   assert((await A.textContent('nav')).includes('Joc') && (await A.textContent('nav')).includes('Clasament'), 'navigation translated');
   assert(st.profiles[0].lang === 'ro', 'saved on the account');
   await A.click('nav >> text=Joc'); await A.waitForSelector('text=Următoarea zi de meci');
   assert((await A.textContent('#app')).includes('Răspunde înainte de') || true);
-  for (const [code, word] of [['hr', 'Sljedeći dan igranja'], ['sv', 'Nästa matchdag']]) { await A.click('text=Profil'); await A.selectOption('.field select', code); await A.click('nav >> text=' + { hr: 'Igra', sv: 'Spela' }[code]); await A.waitForSelector('text=' + word); }
-  await A.click('text=Profil'); await A.selectOption('.field select', 'en'); await A.waitForSelector('text=Your profile');
+  for (const [code, word] of [['hr', 'Sljedeći dan igranja'], ['sv', 'Nästa matchdag']]) { await A.click('.top .me'); await A.selectOption('.field select', code); await A.click('nav >> text=' + { hr: 'Igra', sv: 'Spela' }[code]); await A.waitForSelector('text=' + word); }
+  await A.click('.top .me'); await A.selectOption('.field select', 'en'); await A.waitForSelector('text=Your profile');
   await A.click('text=Log out'); await A.waitForSelector('text=Log in to see the scores');   // login page language is a local choice
   await A.selectOption('select.lang', 'ro'); await A.waitForSelector('text=Conectare'); await A.selectOption('select.lang', 'en');
   await A.fill('[name=login]', 'anna'); await A.fill('[name=password]', 'secret1'); await A.click('button[type=submit]'); await A.waitForSelector('text=Next match day');
@@ -38,7 +38,7 @@ run('help, plain errors, languages, privacy and the schedule editor', async h =>
   await A.click('text=Start day'); await A.waitForSelector('text=Match 1');
   for (let i = 0; i < 4; i++) await win(A, 1);
   await A.waitForSelector('text=Match 5');
-  await B.click('text=Profile'); await B.waitForSelector('text=Your profile');
+  await B.click('.top .me'); await B.waitForSelector('text=Your profile');
   await B.click('.check >> nth=0'); await B.waitForFunction(() => document.querySelector('.check input').checked === false);
   assert(st.profiles.find(p => p.username === 'Bob').share_stats === false, 'choice saved');
   // Cleo (member): Dani (Bob's player) is private
@@ -57,7 +57,7 @@ run('help, plain errors, languages, privacy and the schedule editor', async h =>
   // the leaderboard still shows results for everyone
   await C.click('nav >> text=Board'); await C.click('.seg >> text=General');
   assert((await C.textContent('#app')).includes('Dani'), 'results stay visible');
-  await B.click('text=Profile'); await B.click('.check >> nth=0'); await B.waitForFunction(() => document.querySelector('.check input').checked === true);   // Bob shares again
+  await B.click('.top .me'); await B.click('.check >> nth=0'); await B.waitForFunction(() => document.querySelector('.check input').checked === true);   // Bob shares again
   await C.click('.seg >> text=Rating'); await C.waitForFunction(() => !document.getElementById('app').textContent.includes('private'));
   
   // ---- admin edits the schedule in the app

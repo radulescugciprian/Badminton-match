@@ -7,7 +7,7 @@ run('stay signed in', async h => {
   await A.goto(h.base + '/'); await A.waitForSelector('text=Next match day');                         // opening the plain address: still in
 
   // light/dark theme: chosen in the profile, kept after a reload
-  await A.click('text=Profile'); await A.click('.seg >> text=Light');
+  await A.click('.top .me'); await A.click('.seg >> text=Light');
   assert.equal(await A.evaluate(() => document.documentElement.dataset.theme), 'light');
   await A.reload(); await A.waitForSelector('text=Next match day');
   assert.equal(await A.evaluate(() => document.documentElement.dataset.theme), 'light', 'theme survives a reload');
