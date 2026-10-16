@@ -41,6 +41,9 @@ select must_fail($$update players set user_id = null where id = 2$$, 're-linked'
 select must_fail($$insert into players (name, user_id) values ('Hacker', '00000000-0000-0000-0000-00000000000c')$$, 'row-level security');
 insert into players (name) values ('Guest by member');
 select check_that((select count(*) from players where name = 'Guest by member') = 1, 'members may add guests');
+update players set active = false where name = 'Guest by member';
+select check_that((select not active from players where name = 'Guest by member'), 'a member removes the guest they added today');
+select must_fail($$update players set active = false where id = 4$$, 'admins only');
 select must_fail($$update players set active = false where id = 4$$, 'admins only');
 
 insert into days (player_order) values ('{1,2,3,4,5}');
@@ -157,6 +160,12 @@ insert into rsvps values ('2020-01-01', 4, 'in');
 select check_that(true, 'admins may answer after the deadline');
 select must_fail($$update schedule set rsvp_hide_minutes = 200$$, 'cannot be hidden before');
 select must_fail($$update schedule set rsvp_until_minutes = 5000$$, 'between 0 and 1440');
+-- windows that reach back past midnight (a 00:30 game that opens 60 minutes before, on Wednesday evening Berlin)
+update schedule set play_time = '00:30', opens_minutes = 60, rsvp_until_minutes = 120, rsvp_hide_minutes = 90;
+select check_that(can_start_now('2026-10-28 22:35Z') and not can_start_now('2026-10-28 22:25Z'), 'opening the evening before a 00:30 game');
+select check_that(rsvp_open('2026-10-29', '2026-10-28 21:20Z') and not rsvp_open('2026-10-29', '2026-10-28 21:40Z'), 'answers close at 22:30 the evening before');
+update schedule set play_time = '18:30', opens_minutes = 60;
+select check_that(db_version() >= 20261028, 'db_version reports the newest migration');
 delete from play_dates where day = '2026-10-22';
 select check_that((select count(*) from admin_log where action = 'clear_play_date') = 1, 'clearing logged');
 select must_fail($$insert into play_dates values ('2026-10-24', 'party')$$, 'check constraint');

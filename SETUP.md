@@ -14,7 +14,7 @@ The app stores everything in a free [Supabase](https://supabase.com) project so 
    Admins can then promote others under *Members*.
 
 ## Usernames and password reset
-- Run the migrations in `supabase/migrations/` **in order** (`..._init.sql`, then `..._username.sql`, then `..._player_accounts.sql`, then `..._admin_tools.sql`, then `..._play_schedule.sql`, then `..._fun_features.sql`, then `..._settings.sql`, then `..._hardening.sql`, then `..._play_dates.sql`).
+- Run the migrations in `supabase/migrations/` **in order** (`..._init.sql`, then `..._username.sql`, then `..._player_accounts.sql`, then `..._admin_tools.sql`, then `..._play_schedule.sql`, then `..._fun_features.sql`, then `..._settings.sql`, then `..._hardening.sql`, then `..._play_dates.sql`, and every newer file by date). Each file is safe to run more than once. If an admin sees "The database is missing updates" in the app, a migration has not run yet: check the Supabase GitHub integration, or paste the newest files from `supabase/migrations/` into the *SQL Editor* and run them in order.
 
 - "Forgot password?" emails a reset link. Add the app address under *Authentication → URL Configuration → Redirect URLs* or the link will not return to the app. Supabase's built-in email sender is limited to a few emails per hour; add your own SMTP under *Authentication → Emails* if that is not enough.
 

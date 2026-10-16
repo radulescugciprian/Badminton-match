@@ -17,7 +17,8 @@ let db = { players: [], days: [] }, members = [], me = {}, session = null, loade
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
-let benchOpen = false, bgLoaded = false, rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
+const DB_VERSION = 20261028; // bump together with db_version() in the newest migration
+let dbBehind = false, benchOpen = false, bgLoaded = false, rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
 let view = 'play', tab = 'day', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0, manualLogout = false, lostSession = false, asMember = false;   // asMember: an admin previewing the app as a normal member
 // the sign-in is kept on the phone (localStorage) and renewed automatically, so people stay logged in until they log out
 const sb = window.supabase && CONFIG.url && !CONFIG.url.includes('YOUR-')
@@ -66,7 +67,7 @@ async function refresh() {
   std = sd.error ? null : sd.data; playDates = pd.error ? [] : pd.data;
   sched = !sc.error && sc.data[0] ? sc.data[0] : null;
   rsvps = rs.error ? [] : rs.data; reactions = rx.error ? [] : rx.data; // empty until the migration has been applied
-  db.players = ok(p).map(x => ({ id: x.id, name: x.name, avatar: x.avatar, removed: !x.active, user: x.user_id }));
+  db.players = ok(p).map(x => ({ id: x.id, name: x.name, avatar: x.avatar, removed: !x.active, user: x.user_id, by: x.created_by, at: x.created_at }));
   db.days = ok(d).sort((a, b) => a.closed === b.closed ? (a.closed ? (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) : 0) : a.closed ? -1 : 1).map(x => ({ id: x.id, date: x.date, order: x.player_order, mode: x.mode, started: x.started, closed: x.closed,
     photo: x.photo_path, matches: x.matches.sort((a, b) => a.n - b.n) }));
   if (!session) return; // logged out while loading
@@ -74,10 +75,11 @@ async function refresh() {
   if (!me && !members.length) return; // an empty answer is a hiccup, not a removed account: never log anyone out because of it
   if (!me) { me = {}; manualLogout = true; await sb.auth.signOut(); return; } // an admin removed this account
   if (me.lang && me.lang !== lang) setLangLocal(me.lang); // the language follows the account
+  if (me.is_admin) { const v = await sb.rpc('db_version'); dbBehind = !!v.error || v.data < DB_VERSION; }
   if (me.is_admin) { const lg = await sb.from('admin_log').select('*').order('id', { ascending: false }).limit(40); adminLog = lg.error ? [] : lg.data; }
 
   if (!db.days.length) { ok(await sb.from('days').insert(dayRow(null))); return refresh(); }
-  const day = cur(), missing = db.players.filter(x => !x.removed && !day.order.includes(x.id)).map(x => x.id);
+  const day = cur(), missing = db.players.filter(x => !x.removed && !day.order.includes(x.id) && !staleGuest(x)).map(x => x.id);
   if (!day.started && missing.length) { await patchDay(day.id, { player_order: [...day.order, ...missing] })(); return refresh(); } // new accounts join today's setup
   // everyone's "I'm in / I'm out" answers fill the player list: in, then no answer, then out (stable, so manual order is kept inside each group)
   const date = nextPlayDate(), answer = id => (rsvps.find(r => r.day_date === date && r.player_id === id) || {}).status;
@@ -219,8 +221,17 @@ function showHelp() {
 
 // ---- actions
 const go = v => { view = v; render(); };
+// a guest (no account) who has not played for 8 weeks stops joining new days; they can be brought back from the setup screen
+function staleGuest(p) {
+  if (p.user || !p.at || Date.now() - Date.parse(p.at) < 56 * 864e5) return false;
+  const since = addDays(tzParts().date, -56);
+  return !db.days.some(d => d.date >= since && d.matches.some(m => m.t1.includes(p.id) || m.t2.includes(p.id)));
+}
+const bringBack = id => { const d = cur(), o = [...d.order, id]; act(patchDay(d.id, { player_order: o }), () => { d.order = o; }); };
+// whoever added a guest may remove it again the same day (admins can always remove players)
+const ownFreshGuest = p => !p.user && p.by === session.user.id && !!p.at && new Date(p.at).toLocaleDateString('en-CA', { timeZone: sched ? sched.tz : undefined }) === tzParts().date;
 const dayRow = prev => { // a new day inherits the previous order/mode; players added since then go to the end
-  const ids = db.players.filter(p => !p.removed).map(p => p.id), old = prev ? prev.order.filter(id => ids.includes(id)) : [];
+  const ids = db.players.filter(p => !p.removed && !staleGuest(p)).map(p => p.id), old = prev ? prev.order.filter(id => ids.includes(id)) : [];
   return { date: today(), player_order: [...old, ...ids.filter(id => !old.includes(id))], mode: Math.min(prev ? prev.mode : 5, ids.length) };
 };
 const patchDay = (id, o) => async () => ok(await sb.from('days').update(o).eq('id', id));
@@ -343,14 +354,17 @@ const setTheme = k => { try { localStorage.setItem('theme', k); } catch {} apply
 let bf = null;
 const backfill = iso => { if (!isAdmin() || iso >= tzParts().date) return; bf = { date: iso, ids: [], res: [] }; go('backfill'); };
 const bfWho = id => { const i = bf.ids.indexOf(id); if (i >= 0) bf.ids.splice(i, 1); else if (bf.ids.length < 5) bf.ids.push(id); bf.res = []; render(); };
+const bfEdit = id => { const d = db.days.find(x => x.id === id); bf = { date: d.date, ids: d.order.slice(0, d.mode), res: d.matches.map(m => m.win), editId: id }; render(); };
 const bfWin = (n, w) => { bf.res[n] = bf.res[n] === w ? 0 : w; render(); };
 const bfSave = () => {
   const ids = bf.ids, cyc = ids.length === 4 ? C4 : C5, w = bf.res.slice(0, cyc.length), n = w.findIndex(x => !x), res = n < 0 ? w : w.slice(0, n), date = bf.date;
   if (ids.length < 4 || !res.length) return;
   act(async () => {
-    const d = ok(await sb.from('days').insert({ date, player_order: ids, mode: ids.length, started: true }).select().single());
+    const old = bf.editId && db.days.find(x => x.id === bf.editId);   // editing = save the corrected day, then delete the old one (its photo moves over)
+    const d = ok(await sb.from('days').insert({ date, player_order: ids, mode: ids.length, started: true, ...(old && old.photo && { photo_path: old.photo }) }).select().single());
     ok(await sb.from('matches').insert(res.map((win, i) => { const [t1, t2, rest] = cyc[i]; return { day_id: d.id, n: i + 1, t1: slots(ids, t1), t2: slots(ids, t2), rest: rest ? ids[rest - 1] : null, win }; })));
     await patchDay(d.id, { closed: true })();
+    if (old) ok(await sb.from('days').delete().eq('id', old.id));
     bf = null; go('calendar');
   });
 };
@@ -358,11 +372,11 @@ const calShift = n => { const [y, m] = (calMonth || tzParts().date.slice(0, 7)).
 const rsvpIsOpen = date => rsvpOpen && rsvpOpen.date === date ? rsvpOpen.open : date === tzParts().date;   // compact until the play day, unless toggled by hand for this date
 const toggleRsvp = () => { const date = nextPlayDate(); rsvpOpen = { date, open: !rsvpIsOpen(date) }; render(); };
 // sign-up window on the play day: 'open' until the answers close, 'locked' (visible, read-only) until it is hidden. Later play days stay open.
+const minsUntilPlay = date => { const n = tzParts(); return (Date.parse(date) - Date.parse(n.date)) / 6e4 + playMins() - n.mins; };
 function rsvpPhase(date) {
-  const n = tzParts();
-  if (!sched || date !== n.date) return date > n.date ? 'open' : 'hidden';
-  const pm = playMins();
-  return n.mins >= pm - sched.rsvp_hide_minutes ? 'hidden' : n.mins >= pm - sched.rsvp_until_minutes ? 'locked' : 'open';
+  if (!sched) return 'open';
+  const left = minsUntilPlay(date);
+  return left <= sched.rsvp_hide_minutes ? 'hidden' : left <= sched.rsvp_until_minutes ? 'locked' : 'open';
 }
 const answerOf = (id, date) => (rsvps.find(r => r.day_date === date && r.player_id === id) || {}).status;
 const setRsvp = (id, status) => { const date = nextPlayDate();
@@ -374,8 +388,9 @@ const setRsvp = (id, status) => { const date = nextPlayDate();
 const resetRsvps = () => { const date = nextPlayDate();
   if (confirm(t('Clear everyone\'s answers for {date}? Everybody will show as "no answer" again.', { date: niceDate(date) }))) act(async () => ok(await sb.from('rsvps').delete().eq('day_date', date))); };
 const cycleRsvp = id => setRsvp(id, { in: 'out', out: null }[answerOf(id, nextPlayDate())] ?? 'in'); // admins: in -> out -> no answer
-const remindMe = () => saveFile(calendarFile(sched || { tz: 'Europe/Berlin', dow: 4, play_time: '18:30', opens_minutes: 60 }, nextPlayDate(), location.href,
-  t('Badminton: starting opens now'), t('Open the app, answer I\'m in / I\'m out and start the day.')), 'badminton.ics');
+const remindMe = () => { const s = sched || { tz: 'Europe/Berlin', dow: 4, play_time: '18:30', rsvp_until_minutes: 120 };
+  saveFile(calendarFile(s, nextPlayDate(), location.href, t('Badminton: answer if you are coming'),
+    t('Open the app and tap I\'m in or I\'m out before {time}.', { time: hhmm(+s.play_time.slice(0, 2) * 60 + +s.play_time.slice(3, 5) - s.rsvp_until_minutes) })), 'badminton.ics'); };
 
 // ---- photo reactions
 const KINDS = [['clap', '👏'], ['fire', '🔥'], ['laugh', '😂'], ['love', '❤️'], ['trophy', '🏆']];
@@ -460,6 +475,13 @@ function stats(matches) {
   }
   return [...s.values()].filter(r => r.p).sort(byWins);
 }
+// the month leaderboard: matches of the days in month `ym` (YYYY-MM); champions are the winners of finished months
+const monthMatches = ym => db.days.filter(d => d.date.slice(0, 7) === ym).flatMap(d => d.matches);
+const monthChamps = () => [...new Set(db.days.filter(d => d.matches.length).map(d => d.date.slice(0, 7)))]
+  .filter(ym => ym < tzParts().date.slice(0, 7)).map(ym => ({ ym, id: stats(monthMatches(ym))[0].id }));
+const monthName = ym => new Date(ym + '-15T12:00:00Z').toLocaleDateString(LOCALE[lang], { month: 'long', year: 'numeric', timeZone: 'UTC' });
+let lbMonth = null;
+const monthShift = n => { const [y, m] = (lbMonth || tzParts().date.slice(0, 7)).split('-').map(Number); lbMonth = new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 7); render(); };
 // all-time standings: counted by the database (standings()); while taps are still on their way the local count is used
 const allTime = () => std && pending === 0 ? std.filter(r => player(r.player_id)).map(r => ({ id: r.player_id, name: player(r.player_id).name, w: r.wins, p: r.played })).sort(byWins)
   : stats(db.days.flatMap(d => d.matches));
@@ -468,9 +490,10 @@ const allTime = () => std && pending === 0 ? std.filter(r => player(r.player_id)
 function startOpen() {
   if (!sched) return true;
   const n = tzParts();
-  return isPlayDate(n.date) && n.mins >= playMins() - sched.opens_minutes;
+  // the opening may fall on the evening before (e.g. a 00:30 game); it stays open until the end of the play day
+  return [n.date, addDays(n.date, 1)].some(d => isPlayDate(d) && minsUntilPlay(d) <= sched.opens_minutes && minsUntilPlay(d) > playMins() - 1440);
 }
-const hhmm = mins => String(Math.floor(mins / 60) % 24).padStart(2, '0') + ':' + String(mins % 60).padStart(2, '0');
+const hhmm = mins => { mins = ((mins % 1440) + 1440) % 1440; return String(Math.floor(mins / 60)).padStart(2, '0') + ':' + String(mins % 60).padStart(2, '0'); };
 const playMins = () => +sched.play_time.split(':')[0] * 60 + +sched.play_time.split(':')[1];
 const startNote = () => t('We play on {day} at {time}. You can press Start playing from {open}.',
   { day: dayName(sched.dow), time: hhmm(playMins()), open: hhmm(playMins() - sched.opens_minutes) });

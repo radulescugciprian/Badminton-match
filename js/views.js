@@ -86,9 +86,12 @@ function backfillView() {
   const ids = bf.ids, cyc = ids.length === 4 ? C4 : ids.length === 5 ? C5 : null, who_ = id => `<button class="chip ${ids.includes(id) ? 'in' : ''}" onclick="bfWho(${id})" aria-pressed="${ids.includes(id)}">${av(id, 22)} ${name(id)}${ids.includes(id) ? ' ' + (ids.indexOf(id) + 1) : ''}</button>`;
   const rows = cyc ? cyc.map(([t1, t2], i) => `<div class="card"><div>${t('Match {n}', { n: i + 1 })}: ${pair(slots(ids, t1))} <span class="mut">${t('vs')}</span> ${pair(slots(ids, t2))}</div>
     <div class="seg" style="margin-top:8px"><button class="${bf.res[i] === 1 ? 'on' : ''}" onclick="bfWin(${i},1)">${t('Team 1 Wins')}</button><button class="${bf.res[i] === 2 ? 'on' : ''}" onclick="bfWin(${i},2)">${t('Team 2 Wins')}</button></div></div>`).join('') : '';
-  return `<div class="top"><button class="link" onclick="go('calendar')">← ${t('Back')}</button></div><h1>${t('Add an old match day')}</h1><p class="mut">${niceDate(bf.date)}</p>
+  const saved = bf.editId ? [] : db.days.filter(d => d.date === bf.date && d.closed && d.matches.length);
+  return `<div class="top"><button class="link" onclick="go('calendar')">← ${t('Back')}</button></div><h1>${bf.editId ? t('Edit match day') : t('Add an old match day')}</h1><p class="mut">${niceDate(bf.date)}</p>
+    ${saved.map(d => `<div class="card" style="margin-bottom:12px"><b>${tp('{n} matches', d.matches.length)}</b> <span class="mut">· ${d.order.slice(0, d.mode).map(name).join(', ')}</span>
+      <div class="actions" style="margin:8px 0 0"><button class="link" onclick="bfEdit(${d.id})">✎ ${t('Edit')}</button><button class="link danger" onclick="deleteDay(${d.id})">🗑 ${t('Delete')}</button></div></div>`).join('')}
     <p class="mut">${t('Who played? Pick 4 or 5 players, in the order they were listed.')}</p>
-    <div class="chips">${db.players.filter(p => !p.removed).map(p => who_(p.id)).join('')}</div>
+    <div class="chips">${db.players.filter(p => !p.removed || ids.includes(p.id)).map(p => who_(p.id)).join('')}</div>
     ${rows}${cyc ? `<p class="mut">${t('Set the winner of each match; matches are saved up to the first one left empty.')}</p><button class="primary" onclick="bfSave()" ${bf.res[0] ? '' : 'disabled'}>${t('Save this day')}</button>` : ''}`;
 }
 
@@ -101,7 +104,9 @@ function setup(d) {
         ${player(id).user === session.user.id ? `<button class="ph" onclick="avatar(${id})" aria-label="${t('Change your photo')}">${av(id, 32)}</button>` : `<span class="ph">${av(id, 32)}</span>`}
         <button class="nm" onclick="rename(${id})" aria-label="${t('Rename {name}', { name: name(id) })}">${icon(id)} ${name(id)} ✎${player(id).user ? '' : `<span class="tag">${t('no account')}</span>`}</button>
         <button onclick="move(${i},-1)" aria-label="${t('Move up')}" ${i === 0 ? 'disabled' : ''}>▲</button>
-        <button onclick="move(${i},1)" aria-label="${t('Move down')}" ${i === o.length - 1 ? 'disabled' : ''}>▼</button></li>`;
+        <button onclick="move(${i},1)" aria-label="${t('Move down')}" ${i === o.length - 1 ? 'disabled' : ''}>▼</button>
+        ${!admin && ownFreshGuest(player(id)) ? `<button class="danger" onclick="removePlayer(${id})" aria-label="${t('Remove {name}', { name: name(id) })}">✕</button>` : ''}</li>`;
+  const idle = db.players.filter(p => !p.removed && !o.includes(p.id));
   // the sign-ups fill the list and decide 4 or 5 players; the date is today's. Only when nobody has answered can an admin pick 4 or 5 by hand.
   return `${rsvpCard()}${rsvps.some(x => x.day_date === date) && ins < 4 ? `<p class="mut">${t('Only {n} confirmed so far, you need at least 4.', { n: ins })}</p>` : ''}
       ${auto ? '' : `<div class="seg" style="margin:0 0 12px"><button class="${m === 4 ? 'on' : ''}" onclick="setMode(4)">${t('4 players')}</button>
@@ -111,6 +116,7 @@ function setup(d) {
         <div class="vs"><b style="--c:var(--t1)">${pair(slots(o, a))}</b><span>${t('vs')}</span><b style="--c:var(--t2)">${pair(slots(o, b))}</b></div>
         ${r ? `<div class="rs">${t('Resting:')} <b>${name(o[r - 1])}</b></div>` : ''}</div>
       <button class="add" onclick="addPlayer()">${t('+ Add guest player (no account)')}</button>
+      ${idle.length ? `<details class="fold"><summary>${t('Guests who have not played lately')} (${idle.length})</summary><div class="chips">${idle.map(p => `<button class="chip" onclick="bringBack(${p.id})">${av(p.id, 22)} ${esc(p.name)} +</button>`).join('')}</div></details>` : ''}
       ${o.length > m ? `<details class="fold" ${benchOpen ? 'open' : ''} ontoggle="benchOpen=this.open"><summary>${t('Sitting out')} (${o.length - m})</summary><ol>${o.slice(m).map((id, k) => rowOf(id, m + k)).join('')}</ol></details>` : ''}
       <div class="startbar">${open ? '' : `<p class="mut" role="status">🔒 ${startNote()}</p>`}
       <button class="primary" onclick="start()" ${open ? '' : 'disabled'}>${t('Start playing')}</button></div>`;
@@ -161,7 +167,8 @@ function play() {
 
 function board() {
   const days = db.days.filter(d => d.matches.length), sel = days.find(d => d.id === selId) || days[days.length - 1];
-  const ms = tab === 'all' ? db.days.flatMap(d => d.matches) : sel ? sel.matches : [];
+  const ym = lbMonth || tzParts().date.slice(0, 7), champ = monthChamps().find(c => c.ym === ym);
+  const ms = tab === 'all' ? db.days.flatMap(d => d.matches) : tab === 'month' ? monthMatches(ym) : sel ? sel.matches : [];
   const rows = tab === 'all' ? allTime() : stats(ms);
   const picker = tab === 'day' && days.length
     ? `<select onchange="selId=+this.value;render()" aria-label="${t('Day')}">${days.map(d =>
@@ -173,12 +180,15 @@ function board() {
      <div class="bar" style="--c:${c};--h:${h}px">${i + 1}</div></div>`);
   const head = `<h1>${t('Leaderboard')}</h1>
     <div class="seg"><button class="${tab === 'day' ? 'on' : ''}" onclick="tab='day';render()">${t('Day')}</button>
+      <button class="${tab === 'month' ? 'on' : ''}" onclick="tab='month';render()">${t('Month')}</button>
       <button class="${tab === 'all' ? 'on' : ''}" onclick="tab='all';render()">${t('General')}</button>
       <button class="${tab === 'rating' ? 'on' : ''}" onclick="tab='rating';render()">${t('Rating')}</button></div>`;
   if (tab === 'rating') return head + ratingList();
   const side = (m, k) => { const ids = k === 1 ? m.t1 : m.t2, nm = m['team' + k + '_name'];
     return `${m.win === k ? '🏆 ' : ''}${nm ? `<b>${esc(nm)}</b> (${pair(ids)})` : pair(ids)}`; };
-  return head + picker + `${ms.length ? `<div class="podium">${podium[1]}${podium[0]}${podium[2]}</div>
+  const mpick = tab === 'month' ? `<div class="calnav"><button onclick="monthShift(-1)" aria-label="${t('Previous month')}">‹</button><b>${esc(monthName(ym))}</b><button onclick="monthShift(1)" aria-label="${t('Next month')}">›</button></div>
+    ${champ ? `<p class="mut" style="text-align:center">👑 ${t('Champion of {month}: {name}', { month: esc(monthName(ym)), name: name(champ.id) })}</p>` : ''}` : '';
+  return head + picker + mpick + `${ms.length ? `<div class="podium">${podium[1]}${podium[0]}${podium[2]}</div>
       <div class="card" style="padding:4px 16px">${rows.slice(3).map((r, i) => `<div class="rank"><span class="r">${i + 4}</span>${av(r.id, 32)}
         <b>${esc(r.name)}</b><span class="mut" style="margin:0">${r.w}/${r.p}</span><b>${Math.round(pct(r) * 100)}%</b></div>`).join('')}</div>
       ${tab === 'day' && sel ? `<h2 class="sec">${t('Matches')}</h2><div class="card" style="padding:4px 16px">${sel.matches.map(m => `<div class="mrow"><span class="r">${m.n}</span>
@@ -207,7 +217,8 @@ function statsView() {
   const mates = byRate(rel.mate, 1), foes = byRate(rel.foe, 2), pair_ = bestPair(db.days, 3, ids => ids.every(canSee));
   const nemesis = foes.length ? foes[foes.length - 1] : null, victim = foes.length ? foes[0] : null, line = ([pid, x]) => `${av(pid, 24)} ${name(pid)} <span class="mut">${x.w}-${x.g - x.w} · ${rate(x)}%</span>`;
   const none = `<span class="mut">${t('none yet')}</span>`;
-  const badges = [b.potn && `⭐ ${t('Player of the night')} ×${b.potn}`, b.perfect && `💯 ${t('Perfect night')} ×${b.perfect}`, b.fire && `🔥 ${t('5 in a row')} ×${b.fire}`,
+  const crowns = monthChamps().filter(c => c.id === id).length;
+  const badges = [crowns && `👑 ${t('Champion of the month')} ×${crowns}`, b.potn && `⭐ ${t('Player of the night')} ×${b.potn}`, b.perfect && `💯 ${t('Perfect night')} ×${b.perfect}`, b.fire && `🔥 ${t('5 in a row')} ×${b.fire}`,
     b.comeback && `🔄 ${t('Comeback')} ×${b.comeback}`, b.improved && `📈 ${t('Most improved')}`].filter(Boolean);
   return `<h1>${t('Stats')}</h1>
     <select onchange="statsId=+this.value;render()" aria-label="${t('Player')}">${played.map(p => `<option value="${p.id}" ${p.id === id ? 'selected' : ''}>${esc(p.name)}${sharing(p.id) ? '' : ' 🔒'}</option>`).join('')}</select>
@@ -221,6 +232,7 @@ function statsView() {
     <h2 class="sec">${t('Rivals')}</h2><div class="card" style="padding:4px 16px">
       <div class="member"><span>😈 ${t('Nemesis')}</span><span>${nemesis && rate(nemesis[1]) < 50 ? line(nemesis) : none}</span></div>
       <div class="member"><span>🎯 ${t('Favourite victim')}</span><span>${victim && rate(victim[1]) > 50 ? line(victim) : none}</span></div></div>
+    <h2 class="sec">${t('Head-to-head')}</h2><div class="card" style="padding:4px 16px">${[...rel.foe].filter(([pid]) => canSee(pid)).sort((p, q) => q[1].g - p[1].g).map(x => `<div class="member"><span>${line(x)}</span></div>`).join('') || `<p class="mut">${t('No opponents yet.')}</p>`}</div>
     <h2 class="sec">${t('Best pair in the group')}</h2><div class="card">${pair_ ? `${pair(pair_.ids)} <span class="mut">${t('{record} together', { record: `${pair_.w}-${pair_.g - pair_.w}` })}</span>` : `<span class="mut">${t('needs 3 games together')}</span>`}</div>`;
 }
 
@@ -327,7 +339,8 @@ function render() {
   const mp = db.players.find(p => p.user === session.user.id);
   const top = `<div class="top"><button class="me" onclick="go('profile')" aria-label="${t('Profile')}">${mp ? av(mp.id, 44) : '👤'}<span class="col"><span class="n">${esc(me.username || '')}</span></span></button>
     <span class="bar">${me.is_admin && !asMember ? `<button class="link ico" onclick="toggleView()" aria-label="${t('View as member')}" title="${t('View as member')}">👁</button>` : ''}<button class="link ico" onclick="showHelp()" aria-label="${t('How it works')}" title="${t('How it works')}"><img src="tm-help.png" alt=""></button><button class="link" onclick="go('members')"><img src="tm-members.png" alt="">${t('Members')}</button>${isAdmin() ? `<button class="link" onclick="go('admin')" aria-label="${t('Admin tools')}" title="${t('Admin tools')}"><img src="tm-adminkey.png" alt="">${t('admin')}</button>` : ''}<button class="link" onclick="logout()"><img src="tm-logout.png" alt="">${t('Log out')}</button></span></div>`;
-  const strip = me.is_admin && asMember ? `<div class="strip"><span>👁 ${t('You are viewing the app as a member. Admin tools are hidden.')}</span><button onclick="toggleView()">${t('Back to admin')}</button></div>` : '';
+  const behind = isAdmin() && dbBehind ? `<div class="strip"><span>⚠️ ${t('The database is missing updates, so some buttons may fail. Apply the newest migrations in Supabase (see SETUP.md).')}</span></div>` : '';
+  const strip = behind + (me.is_admin && asMember ? `<div class="strip"><span>👁 ${t('You are viewing the app as a member. Admin tools are hidden.')}</span><button onclick="toggleView()">${t('Back to admin')}</button></div>` : '');
   app.innerHTML = top + strip + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'admin' && isAdmin() ? adminView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : view === 'backfill' && bf ? backfillView() : `<h1>${t('Photos')}</h1><div id="gal"></div>`);
   drawReactions();
   if (view === 'photos') gallery().catch(e => { gal.innerHTML = `<p class="msg">${esc(friendly(e))}</p>`; });

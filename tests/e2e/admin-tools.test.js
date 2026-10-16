@@ -29,6 +29,14 @@ run('admin tools', async h => {
   assert.deepEqual(st.log.map(x => x.action), ['delete_match', 'close_day', 'delete_day']);
   await B.click('text=Members'); await B.waitForSelector('text=Accounts');
   assert(!(await B.textContent('#app')).includes('Activity log'), 'members cannot see the log');
+  // an out-of-date database is shown to admins only
+  st.dbVersion = 1; await A.reload(); await A.waitForSelector('text=The database is missing updates');
+  await B.reload(); await B.waitForSelector('text=Next match day'); assert.equal(await B.locator('text=The database is missing updates').count(), 0);
+  st.dbVersion = undefined; await A.reload(); await A.waitForSelector('text=Next match day');
+  // a member adds a guest and may remove that guest again
+  await B.click('text=Add guest player'); await B.click('summary:has-text("Sitting out")'); await B.waitForSelector('[aria-label="Remove Eve"]');
+  await B.click('[aria-label="Remove Eve"]'); await h.until(() => st.players.find(p => p.name === 'Eve').active === false, 'guest removed by the member who added it');
+  await A.click('[aria-label="Admin tools"]');
   // photo dimming: the admin's slider is saved for everyone, members have no slider
   assert.equal(await B.locator('input[type=range]').count(), 0, 'members cannot set the dimming');
   await A.locator('input[type=range]').evaluate(el => { el.value = 40; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); });

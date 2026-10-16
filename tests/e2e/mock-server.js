@@ -23,6 +23,7 @@ function rpc(u, r) {
   const match = row => r.f.every(([op, c, v]) => op === 'eq' ? row[c] === v : row[c] > v);
   switch (r.op) {
     case 'rpc': {
+      if (r.name === 'db_version') return { data: st.dbVersion ?? 20261028 };
       if (r.name === 'delete_account') {
         if (!isAdmin(u)) return err('Admins only'); if (r.args.uid === u) return err('You cannot remove your own account');
         const pr = st.profiles.find(p => p.id === r.args.uid); if (!pr) return err('No such account');
@@ -76,8 +77,8 @@ function rpc(u, r) {
       if (st.failInsert && r.table === 'matches') return err('simulated server failure');
       const row = { ...r.payload };
       if (r.table === 'reactions') { row.user_id = u; if (st.reactions.some(x => x.day_id === row.day_id && x.user_id === u && x.kind === row.kind)) return err('duplicate key', '23505'); st.reactions.push(row); emit(); return { data: [row] }; }
-      if (r.table === 'players') { if (!isAdmin(u) && r.payload.user_id) return err('new row violates row-level security policy'); row.id = ++st.seq.p; row.active = true; row.avatar = null; row.user_id = null; }
-      if (r.table === 'days') { row.id = ++st.seq.d; Object.assign(row, { started: isAdmin(u) && !!r.payload.started, closed: false, photo_path: null }); }
+      if (r.table === 'players') { if (!isAdmin(u) && r.payload.user_id) return err('new row violates row-level security policy'); row.id = ++st.seq.p; row.active = true; row.avatar = null; row.user_id = null; row.created_by = u; row.created_at = new Date(st.now || Date.now()).toISOString(); }
+      if (r.table === 'days') { row.id = ++st.seq.d; Object.assign(row, { started: isAdmin(u) && !!r.payload.started, closed: false, photo_path: (isAdmin(u) && r.payload.photo_path) || null }); }
       if (r.table === 'matches') {
         const d = st.days.find(d => d.id === row.day_id);
         if (!d || !d.started || d.closed) return err('new row violates row-level security policy');
@@ -90,7 +91,7 @@ function rpc(u, r) {
       for (const row of T.filter(match)) {
         if (r.table === 'days' && ((r.payload.closed !== undefined && r.payload.closed !== row.closed) || (row.started && r.payload.started === false) || (row.photo_path && r.payload.photo_path === null)) && !isAdmin(u)) return err('Admins only');
         if (r.table === 'days' && !row.started && r.payload.started === true && !isAdmin(u) && !canStart()) return err('A day can only be started during the play window. Ask an admin.');
-        if (r.table === 'players' && r.payload.active === false && !isAdmin(u)) return err('Admins only');
+        if (r.table === 'players' && r.payload.active === false && !isAdmin(u) && !(row.created_by === u && !row.user_id)) return err('Admins only'); // shortcut: the same-day limit is only checked by the database
         if (r.table === 'players' && r.payload.avatar !== undefined && row.user_id !== u) return err('Only the player can change their own avatar');
         if (r.table === 'profiles' && !isAdmin(u)) { // members may change only their own language / sharing choice
           if (row.id !== u) continue;

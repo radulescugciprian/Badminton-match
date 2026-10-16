@@ -40,8 +40,15 @@ run('compact sign-up card and play calendar', async h => {
   const old = st.days.find(d => d.date === '2026-10-12');
   assert.deepEqual(st.matches.filter(m => m.day_id === old.id).map(m => m.win), [1, 2], 'two matches saved in rotation order');
   assert(!st.play_dates.some(x => x.day === '2026-10-12'), 'the past date was not marked');
+  // the saved day can be corrected or deleted from the same date
+  await A.click('.cal button[aria-label*="12 October"]'); await A.click('text=✎ Edit'); await A.waitForSelector('text=Edit match day');
+  await A.click('text=Team 2 Wins >> nth=0'); await A.click('text=Save this day'); await A.waitForSelector('text=Calendar');
+  await until(() => st.days.filter(d => d.date === '2026-10-12').length === 1 && st.matches.filter(m => m.day_id === st.days.find(d => d.date === '2026-10-12').id).map(m => m.win).join() === '2,2', 'the corrected day replaced the old one');
+  await A.click('.cal button[aria-label*="12 October"]'); await A.click('text=🗑 Delete');
+  await until(() => !st.days.some(d => d.date === '2026-10-12'), 'the old day deleted');
+  await A.click('text=Back');
   await until(() => st.play_dates.some(x => x.day === '2026-10-22' && x.kind === 'cancelled'), 'the cancelled day on the server');
-  assert.deepEqual(st.log.map(x => x.action).filter(a => a !== 'close_day'), ['mark_play_date', 'mark_play_date', 'clear_play_date', 'mark_play_date']);
+  assert.deepEqual(st.log.map(x => x.action).filter(a => !['close_day', 'delete_day'].includes(a)), ['mark_play_date', 'mark_play_date', 'clear_play_date', 'mark_play_date']);
 
   await B.waitForFunction(() => playDates.some(p => p.day === '2026-10-22' && p.kind === 'cancelled'));   // Bob's phone has heard about it
   // members can start a day on an extra day from 17:30, and not on a cancelled one

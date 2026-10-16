@@ -67,6 +67,9 @@ run('sign-up list, ratings, badges, result card and reactions', async h => {
   assert((await A.textContent('.card .rank >> nth=0')).includes('Vali'), 'highest rating first');
   await A.click('.rank.tap >> nth=1'); await A.waitForSelector('text=Rating over time');                    // tapping a player opens their stats
   assert.equal(await A.evaluate(() => statsId), await A.evaluate(() => db.players.find(p => p.name === document.querySelector('#app select option:checked').textContent.replace(/ 🔒/, '').trim()).id), 'the tapped player is selected');
+  await A.click('nav >> text=Board'); await A.click('.seg >> text=Month'); await A.waitForSelector('.podium');
+  assert((await A.textContent('.calnav')).includes('2026'), 'the month leaderboard shows the month');
+  await A.click('nav >> text=Stats'); await A.waitForSelector('text=Head-to-head');
   await A.click('nav >> text=Board'); await A.click('.seg >> text=Rating');
   await A.click('.seg >> text=Day'); await A.waitForSelector('text=Smashers');                              // match list shows the team name
   await A.screenshot({ path: require('os').tmpdir() + '/board2.png', fullPage: true });
