@@ -1,3 +1,4 @@
+-- (Safe to run more than once.)
 -- Admin tools: remove accounts, and make sure every account has a player.
 
 -- 1) repair: any account that has no player yet gets one (links an unowned player with the same name, else creates one).
@@ -25,7 +26,7 @@ begin
 end $$;
 
 -- 3) admins can delete someone's account. Their player stays (with all results) and becomes a guest without an account.
-create function delete_account(uid uuid) returns void
+create or replace function delete_account(uid uuid) returns void
 language plpgsql security definer set search_path = public, auth as $$
 begin
   if not is_admin() then raise exception 'Admins only'; end if;

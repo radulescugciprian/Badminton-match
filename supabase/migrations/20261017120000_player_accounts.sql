@@ -1,12 +1,13 @@
+-- (Safe to run more than once.)
 -- Every account is a player. Only the account owner can change their player's avatar.
 
-alter table players add column user_id uuid unique references auth.users on delete set null;
+alter table players add column if not exists user_id uuid unique references auth.users on delete set null;
 
 -- link existing accounts to the unowned player with the same name, or create one
 do $$
 declare r record; pid bigint;
 begin
-  for r in select id, username from profiles order by id loop
+  for r in select p.id, p.username from profiles p where not exists (select 1 from players x where x.user_id = p.id) order by p.id loop
     select id into pid from players where user_id is null and lower(name) = lower(r.username) order by id limit 1;
     if pid is null then insert into players (name, user_id) values (left(r.username, 20), r.id);
     else update players set user_id = r.id where id = pid; end if;
@@ -26,7 +27,7 @@ begin
 end $$;
 
 -- the sign-up form lists the players nobody has claimed yet (callable before logging in)
-create function unclaimed_players() returns table (id bigint, name text)
+create or replace function unclaimed_players() returns table (id bigint, name text)
 language sql security definer stable set search_path = public as $$
   select id, name from players where user_id is null and active order by name
 $$;
@@ -46,5 +47,6 @@ begin
 end $$;
 
 -- players without an account (guests) are added by admins only; everyone else joins by signing up
-drop policy "members add" on players;
+drop policy if exists "members add" on players;
+drop policy if exists "admin adds guests" on players;
 create policy "admin adds guests" on players for insert to authenticated with check (is_admin());
