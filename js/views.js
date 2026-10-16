@@ -300,8 +300,10 @@ function render() {
   if (!authReady) { app.innerHTML = `<p class="mut">${t('Loading…')}</p>`; return; }
   if (!session) { app.innerHTML = login_(); return; }
   if (!loaded) { app.innerHTML = `<p class="mut">${t('Loading…')}</p>`; return; }
-  const top = `<div class="top"><span>👤 ${esc(me.username || '')}${isAdmin() ? ' · ' + t('admin') : ''}</span>
-    <span>${me.is_admin && !asMember ? `<button class="link" onclick="toggleView()" aria-label="${t('View as member')}" title="${t('View as member')}">👁</button>` : ''}<button class="link" onclick="showHelp()" aria-label="${t('How it works')}">?</button><button class="link" onclick="go('members')">${t('Members')}</button><button class="link" onclick="go('profile')">${t('Profile')}</button><button class="link" onclick="logout()">${t('Log out')}</button></span></div>`;
+  const mp = db.players.find(p => p.user === session.user.id);
+  const top = `<div class="top"><span class="me">${mp ? av(mp.id, 28) : '👤'}<span class="n">${esc(me.username || '')}</span>${isAdmin() ? `<span class="tag">${t('admin')}</span>` : ''}</span>
+    <span class="bar">${me.is_admin && !asMember ? `<button class="link ico" onclick="toggleView()" aria-label="${t('View as member')}" title="${t('View as member')}">👁</button>` : ''}<button class="link ico" onclick="showHelp()" aria-label="${t('How it works')}" title="${t('How it works')}">❔</button></span>
+    <span class="menu"><button class="link" onclick="go('members')">👥 ${t('Members')}</button><button class="link" onclick="go('profile')">⚙️ ${t('Profile')}</button><button class="link" onclick="logout()">⎋ ${t('Log out')}</button></span></div>`;
   const strip = me.is_admin && asMember ? `<div class="strip"><span>👁 ${t('You are viewing the app as a member. Admin tools are hidden.')}</span><button onclick="toggleView()">${t('Back to admin')}</button></div>` : '';
   app.innerHTML = top + strip + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : view === 'backfill' && bf ? backfillView() : `<h1>${t('Photos')}</h1><div id="gal"></div>`);
   drawReactions();
