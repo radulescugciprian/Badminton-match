@@ -83,12 +83,12 @@
   /* login + top bar */
   input[type=text],input[type=email],input[type=password],input[type=time],input[type=number]{display:block;width:100%;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px}
   .top{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin:-16px -16px 14px;padding:calc(8px + env(safe-area-inset-top)) 12px 8px;background:var(--nav);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line);color:var(--text);font-size:var(--fs-sm)}
-  .top .me{display:flex;align-items:center;gap:8px;min-width:0;font-weight:700} .top .me span.n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .top .me{display:flex;align-items:center;gap:10px;min-width:0;font-weight:700;font-size:var(--fs-md);background:none;padding:0;text-align:left;color:var(--text)} .top .me span.n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .top .me .tag{margin:0;color:var(--acc);border-color:var(--acc)}
   .top .me{flex:1} .top .menu{flex:1 0 100%;display:flex;gap:6px} .top .menu .link{flex:1;justify-content:center;background:var(--chip)}
   .top .bar{display:flex;align-items:center;gap:2px;flex-shrink:0}
   .top .link{display:inline-flex;align-items:center;gap:4px;padding:6px 8px;border-radius:10px;color:var(--text);font-size:var(--fs-sm);font-weight:600} .top .link:active{background:var(--line)}
-  .top img{width:20px;height:20px} .top .ico img{width:26px;height:26px} .top img.adm{width:auto;height:22px}
+  .top img:not(.av){width:20px;height:20px} .top .ico img:not(.av){width:26px;height:26px} .top img.adm{width:auto;height:22px}
   .top .link.ico{font-size:var(--fs-md);padding:6px 8px}
   .msg{color:var(--danger);min-height:1.4em;font-size:var(--fs-sm)}
   body.out nav{display:none}
@@ -156,7 +156,7 @@
   nav .on{display:none} nav [aria-current=page] .on{display:block} nav [aria-current=page] .off{display:none}
   nav button[aria-current=page]{color:var(--acc);background:var(--card)}
   /* the neon icons are drawn for a dark ground: darken them on the light theme */
-  :root[data-theme=light] nav img,:root[data-theme=light] .top img{filter:brightness(.55) saturate(1.8) contrast(1.15)}
+  :root[data-theme=light] nav img,:root[data-theme=light] .top img:not(.av){filter:brightness(.55) saturate(1.8) contrast(1.15)}
   /* light theme, photo shown as it is: text straight on the photo is white; light surfaces (cards, buttons, bars) keep dark text */
   :root[data-theme=light] body:is(.out,[data-view=play],[data-view=board],[data-view=photos],[data-view=stats]){--text:#fff;--mut:#eaf2ed;--ts:rgba(0,0,0,.8);--line-t:#c4d8cd}
   :root[data-theme=light] :is(.card,button:not(.link,.primary,.win button),select,input,.row,.team,.rest,.seg,.tile,.badge,.cal .d,.top,nav,.rsvp,.rx){--text:#10231a;--mut:#3d5a4c;--ts:rgba(255,255,255,.95);color:var(--text)}

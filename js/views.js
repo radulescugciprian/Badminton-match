@@ -304,7 +304,7 @@ function render() {
   if (!session) { app.innerHTML = login_(); return; }
   if (!loaded) { app.innerHTML = `<p class="mut">${t('Loading…')}</p>`; return; }
   const mp = db.players.find(p => p.user === session.user.id);
-  const top = `<div class="top"><span class="me">${mp ? av(mp.id, 28) : '👤'}<span class="n">${esc(me.username || '')}</span>${isAdmin() ? `<img class="adm" src="tm-admin.png" alt="${t('admin')}" title="${t('admin')}">` : ''}</span>
+  const top = `<div class="top"><button class="me" onclick="go('profile')" aria-label="${t('Profile')}">${mp ? av(mp.id, 46) : '👤'}<span class="n">${esc(me.username || '')}</span>${isAdmin() ? `<img class="adm" src="tm-admin.png" alt="${t('admin')}" title="${t('admin')}">` : ''}</button>
     <span class="bar">${me.is_admin && !asMember ? `<button class="link ico" onclick="toggleView()" aria-label="${t('View as member')}" title="${t('View as member')}">👁</button>` : ''}<button class="link ico" onclick="showHelp()" aria-label="${t('How it works')}" title="${t('How it works')}"><img src="tm-help.png" alt=""></button></span>
     <span class="menu"><button class="link" onclick="go('members')"><img src="tm-members.png" alt=""> ${t('Members')}</button><button class="link" onclick="go('profile')"><img src="tm-profile.png" alt=""> ${t('Profile')}</button><button class="link" onclick="logout()"><img src="tm-logout.png" alt=""> ${t('Log out')}</button></span></div>`;
   const strip = me.is_admin && asMember ? `<div class="strip"><span>👁 ${t('You are viewing the app as a member. Admin tools are hidden.')}</span><button onclick="toggleView()">${t('Back to admin')}</button></div>` : '';
