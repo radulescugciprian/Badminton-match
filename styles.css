@@ -1,17 +1,18 @@
-  :root{--court:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-100 -100 810 1540'%3E%3Crect x='-100' y='-100' width='810' height='1540' fill='%230b1220'/%3E%3Crect width='610' height='1340' fill='%230f1a2e'/%3E%3Cg fill='none' stroke='%23fff' stroke-opacity='0.1' stroke-width='6'%3E%3Crect x='3' y='3' width='604' height='1334'/%3E%3Cpath d='M46 0V1340M564 0V1340M0 76H610M0 1264H610M0 472H610M0 868H610M305 0V472M305 868V1340'/%3E%3C/g%3E%3Cpath d='M-40 670H650' stroke='%23fff' stroke-width='12' stroke-dasharray='26 14' stroke-opacity='0.14'/%3E%3C/svg%3E") center/cover no-repeat;--on-acc:#10200a;--nav:rgba(11,18,32,.94);--shadow:0 1px 3px rgba(0,0,0,.55);--bg:#0b1220;--card:rgba(6,30,21,.9);--line:#1f4a3b;--text:#eefaf4;--mut:#cfe6da;--acc:#bef264;--t1:#3b82f6;--t2:#f97316;--danger:#ff9a9a}
+  :root{--court:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-100 -100 810 1540'%3E%3Crect x='-100' y='-100' width='810' height='1540' fill='%230b1220'/%3E%3Crect width='610' height='1340' fill='%230f1a2e'/%3E%3Cg fill='none' stroke='%23fff' stroke-opacity='0.1' stroke-width='6'%3E%3Crect x='3' y='3' width='604' height='1334'/%3E%3Cpath d='M46 0V1340M564 0V1340M0 76H610M0 1264H610M0 472H610M0 868H610M305 0V472M305 868V1340'/%3E%3C/g%3E%3Cpath d='M-40 670H650' stroke='%23fff' stroke-width='12' stroke-dasharray='26 14' stroke-opacity='0.14'/%3E%3C/svg%3E") center/cover no-repeat;--on-acc:#10200a;--nav:rgba(11,18,32,.94);--shadow:0 1px 3px rgba(0,0,0,.55);--bg:#0b1220;--card:rgba(6,30,21,.9);--line:#1f4a3b;--text:#eefaf4;--mut:#cfe6da;--acc:#bef264;--t1:#3b82f6;--t2:#f97316;--danger:#ff9a9a;--ov1:rgba(7,12,24,.45);--ov2:rgba(7,12,24,.82);--ts:rgba(0,0,0,.7);--chip:rgba(255,255,255,.07)}
+  :root[data-theme=light]{--court:none;--on-acc:#fff;--nav:rgba(244,249,246,.95);--shadow:0 1px 3px rgba(0,0,0,.15);--bg:#eef4f0;--card:rgba(255,255,255,.92);--line:#c4d8cd;--text:#10231a;--mut:#3d5a4c;--acc:#3a7d0a;--danger:#b42323;--ov1:rgba(238,244,240,.55);--ov2:rgba(238,244,240,.9);--ts:rgba(255,255,255,.8);--chip:rgba(0,0,0,.05)}
 
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   /* top-down badminton court (doubles lines, singles sidelines, service lines, net) behind everything */
   body::before{content:'';position:fixed;inset:0;z-index:-1;background:var(--court)}
   /* one photo per screen, darkened so cards and text stay readable (Play's can be replaced by an admin via --pbg) */
-  body.out::before,body[data-view=play]::before,body[data-view=board]::before,body[data-view=photos]::before,body[data-view=stats]::before{background:linear-gradient(rgba(7,12,24,.45),rgba(7,12,24,.82)),var(--bg-img) center/cover}
+  body.out::before,body[data-view=play]::before,body[data-view=board]::before,body[data-view=photos]::before,body[data-view=stats]::before{background:linear-gradient(var(--ov1),var(--ov2)),var(--bg-img) center/cover}
   body.out{--bg-img:url(bg-login.jpg)} body[data-view=play]{--bg-img:var(--pbg,url(bg-play.jpg))}
   body[data-view=board]{--bg-img:url(bg-board.jpg)} body[data-view=photos]{--bg-img:url(bg-photos.jpg)} body[data-view=stats]{--bg-img:url(bg-stats.jpg)}
   body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;font-variant-numeric:tabular-nums;min-height:100dvh;
        padding:16px 16px calc(88px + env(safe-area-inset-bottom))}
   main{max-width:480px;margin:auto}
-  h1{font-size:26px;font-weight:800;letter-spacing:-.01em;line-height:1.15;margin:6px 0 4px;text-shadow:0 2px 12px rgba(0,0,0,.6)} h2{font-weight:700;letter-spacing:-.005em}
-  .mut{color:var(--mut);font-size:15px;margin:0 0 16px;text-shadow:0 1px 6px rgba(0,0,0,.7)} .card .mut,.card small{text-shadow:none}
+  h1{font-size:26px;font-weight:800;letter-spacing:-.01em;line-height:1.15;margin:6px 0 4px;text-shadow:0 2px 12px var(--ts)} h2{font-weight:700;letter-spacing:-.005em}
+  .mut{color:var(--mut);font-size:15px;margin:0 0 16px;text-shadow:0 1px 6px var(--ts)} .card .mut,.card small{text-shadow:none}
   b,strong{font-weight:700} button{letter-spacing:.005em}
   .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
   body{text-shadow:var(--shadow)} button,select,input{font:inherit;color:inherit;text-shadow:none}
@@ -81,10 +82,10 @@
 
   /* login + top bar */
   input[type=text],input[type=email],input[type=password],input[type=time],input[type=number]{display:block;width:100%;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px}
-  .top{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin:-16px -16px 14px;padding:calc(8px + env(safe-area-inset-top)) 12px 8px;background:rgba(7,12,24,.72);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line);color:var(--text);font-size:14px}
+  .top{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin:-16px -16px 14px;padding:calc(8px + env(safe-area-inset-top)) 12px 8px;background:var(--nav);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line);color:var(--text);font-size:14px}
   .top .me{display:flex;align-items:center;gap:8px;min-width:0;font-weight:700} .top .me span.n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .top .me .tag{margin:0;color:var(--acc);border-color:var(--acc)}
-  .top .me{flex:1} .top .menu{flex:1 0 100%;display:flex;gap:6px} .top .menu .link{flex:1;justify-content:center;background:rgba(255,255,255,.07)}
+  .top .me{flex:1} .top .menu{flex:1 0 100%;display:flex;gap:6px} .top .menu .link{flex:1;justify-content:center;background:var(--chip)}
   .top .bar{display:flex;align-items:center;gap:2px;flex-shrink:0}
   .top .link{display:inline-flex;align-items:center;gap:4px;padding:6px 8px;border-radius:10px;color:var(--text);font-size:13px;font-weight:600} .top .link:active{background:var(--line)}
   .top img{width:20px;height:20px} .top .ico img{width:26px;height:26px} .top img.adm{width:auto;height:22px}
@@ -154,3 +155,6 @@
   nav button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 2px;font-size:12px} nav img{width:30px;height:30px}
   nav .on{display:none} nav [aria-current=page] .on{display:block} nav [aria-current=page] .off{display:none}
   nav button[aria-current=page]{color:var(--acc);background:var(--card)}
+  /* the neon icons are drawn for a dark ground: give them a dark tile on the light theme */
+  :root[data-theme=light] nav img,:root[data-theme=light] .top img:not(.adm){background:#0b1220;border-radius:9px;padding:3px}
+  :root[data-theme=light] .top img.adm{background:#0b1220;border-radius:8px;padding:2px 3px}

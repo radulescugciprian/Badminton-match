@@ -300,6 +300,8 @@ const markDate = iso => {
   return act(async () => clear ? ok(await sb.from('play_dates').delete().eq('day', iso)) : ok(await sb.from('play_dates').upsert({ day: iso, kind: want })),
     () => { playDates = playDates.filter(p => p.day !== iso); if (!clear) playDates.push({ day: iso, kind: want }); });
 };
+const themePref = () => { try { return localStorage.getItem('theme') || 'auto'; } catch { return 'auto'; } };
+const setTheme = k => { try { localStorage.setItem('theme', k); } catch {} applyTheme(); render(); };
 // admins: add the results of a day that was played earlier (tap a past date in the calendar)
 let bf = null;
 const backfill = iso => { if (!isAdmin() || iso >= tzParts().date) return; bf = { date: iso, ids: [], res: [] }; go('backfill'); };

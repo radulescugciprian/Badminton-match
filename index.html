@@ -4,6 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b1220">
+<script>
+// theme: 'auto' follows the phone, or 'light' / 'dark'; runs before the first paint so there is no flash
+function applyTheme() {
+  let p = 'auto'; try { p = localStorage.getItem('theme') || 'auto'; } catch {}
+  const light = p === 'light' || (p === 'auto' && matchMedia('(prefers-color-scheme: light)').matches);
+  document.documentElement.dataset.theme = light ? 'light' : 'dark';
+  document.querySelector('meta[name=theme-color]').content = light ? '#eef4f0' : '#0b1220';
+}
+applyTheme(); matchMedia('(prefers-color-scheme: light)').addEventListener('change', applyTheme);
+</script>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Badminton Tracker</title>

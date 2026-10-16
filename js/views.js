@@ -27,6 +27,7 @@ function profileView() {
       <div style="flex:1"><b>${esc(mine.name)}</b><div class="mut" style="margin:0">${t('Only you can change your photo')}</div></div>
       <button onclick="avatar(${mine.id})">📷 ${t('Change photo')}</button></div>` : ''}
     <label class="field">${t('Language')}${langPicker()}</label>
+    <div class="field">${t('Theme')}<div class="seg" style="margin-top:6px">${[['auto', t('Auto')], ['light', t('Light')], ['dark', t('Dark')]].map(([k, l]) => `<button class="${themePref() === k ? 'on' : ''}" onclick="setTheme('${k}')">${l}</button>`).join('')}</div></div>
     <label class="card check"><input type="checkbox" ${me.share_stats !== false ? 'checked' : ''} onchange="setShare(this.checked)">
       <span>🔓 ${t('Share my rating and stats with the others')}<br><small class="mut">${t('The leaderboards always show results. Admins can always see everything.')}</small></span></label>
     <label class="card check"><input type="checkbox" ${fxOn() ? 'checked' : ''} onchange="setFx(this.checked)">
