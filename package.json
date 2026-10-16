@@ -3,7 +3,7 @@
   "private": true,
   "description": "Badminton Thursdays tracker. No build step; this file only runs the tests.",
   "scripts": {
-    "test": "node tests/analytics.test.js && node tests/i18n.test.js && node tests/e2e/run.js",
+    "test": "node tests/analytics.test.js && node tests/i18n.test.js && node tests/build.test.js && node tests/e2e/run.js",
     "test:sql": "bash tests/sql/run.sh"
   },
   "devDependencies": {

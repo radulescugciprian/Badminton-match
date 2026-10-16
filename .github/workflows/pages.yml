@@ -34,6 +34,7 @@ jobs:
     environment: github-pages
     steps:
       - uses: actions/checkout@v4
+      - run: sed -i "s/__BUILD__/${GITHUB_SHA::7}/g" index.html   # new file addresses for every release, so phones never keep an old copy
       - uses: actions/upload-pages-artifact@v3
         with: { path: . }
       - uses: actions/deploy-pages@v4
