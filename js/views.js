@@ -103,13 +103,10 @@ function setup(d) {
   // the sign-ups fill the list and decide 4 or 5 players; the date is today's. Only when nobody has answered can an admin pick 4 or 5 by hand.
   return `${rsvpCard()}${rsvps.some(x => x.day_date === date) && ins < 4 ? `<p class="mut">${t('Only {n} confirmed so far, you need at least 4.', { n: ins })}</p>` : ''}
       <ol>${o.slice(0, m).map((id, i) => rowOf(id, i)).join('')}</ol>
+      <div class="next"><small>${t('Match {n}', { n: 1 })}</small>
+        <div class="vs"><b style="--c:var(--t1)">${pair(slots(o, a))}</b><span>${t('vs')}</span><b style="--c:var(--t2)">${pair(slots(o, b))}</b></div>
+        ${r ? `<div class="rs">${t('Resting:')} <b>${name(o[r - 1])}</b></div>` : ''}</div>
       ${o.length > m ? `<details class="fold" ${benchOpen ? 'open' : ''} ontoggle="benchOpen=this.open"><summary>${t('Sitting out')} (${o.length - m})</summary><ol>${o.slice(m).map((id, k) => rowOf(id, m + k)).join('')}</ol></details>` : ''}
-      ${admin ? `<details class="fold" ${admOpen ? 'open' : ''} ontoggle="admOpen=this.open"><summary>⚙ ${t('Admin tools')}</summary>
-        ${auto ? '' : `<div class="seg" style="margin:8px 0"><button class="${m === 4 ? 'on' : ''}" onclick="setMode(4)">${t('4 players')}</button>
-          <button class="${m === 5 ? 'on' : ''}" onclick="setMode(5)" ${o.length < 5 ? 'disabled' : ''}>${t('5 players')}</button></div>`}
-        <div class="chips" style="margin:8px 0">${o.map(id => `<button class="chip" onclick="removePlayer(${id})" aria-label="${t('Remove {name}', { name: name(id) })}">${av(id, 22)} ${name(id)} ✕</button>`).join('')}</div>
-        <button class="add" onclick="addPlayer()">${t('+ Add guest player (no account)')}</button></details>` : ''}
-      <p class="preview">${t('Match 1: {a} vs {b}', { a: pair(slots(o, a)), b: pair(slots(o, b)) })}${r ? ' · ' + t('{name} rests', { name: name(o[r - 1]) }) : ''}</p>
       <div class="startbar">${open ? '' : `<p class="mut" role="status">🔒 ${startNote()}</p>`}
       <button class="primary" onclick="start()" ${open ? '' : 'disabled'}>${t('Start playing')}</button></div>`;
 }
@@ -181,8 +178,7 @@ function board() {
         <b>${esc(r.name)}</b><span class="mut" style="margin:0">${r.w}/${r.p}</span><b>${Math.round(pct(r) * 100)}%</b></div>`).join('')}</div>
       ${tab === 'day' && sel ? `<h2 class="sec">${t('Matches')}</h2><div class="card" style="padding:4px 16px">${sel.matches.map(m => `<div class="mrow"><span class="r">${m.n}</span>
         <span style="flex:1">${side(m, 1)} <span class="mut">${t('vs')}</span> ${side(m, 2)}</span><span class="mut">${m.created_at ? new Date(m.created_at).toLocaleTimeString(LOCALE[lang], { hour: '2-digit', minute: '2-digit' }) : ''}</span></div>`).join('')}</div>` : ''}`
-      : `<div class="empty">${t('No matches yet.')}<br>${t('Play one and the podium shows up here.')}</div>`}
-    ${tab === 'all' && isAdmin() ? `<div class="actions"><button class="link danger" onclick="eraseAll()">${t('Reset all scores')}</button></div>` : ''}`;
+      : `<div class="empty">${t('No matches yet.')}<br>${t('Play one and the podium shows up here.')}</div>`}`;
 }
 
 function ratingList() {
@@ -235,19 +231,33 @@ function scheduleForm() {
 }
 
 function membersView() {
-  const admin = isAdmin(), own = id => db.players.find(p => p.user === id);
-  return `<h1>${t('Members')}</h1>${admin ? `<p class="mut">${t('Accounts can log in. Admins can close or reset days, remove players, delete photos and remove accounts.')}</p>` : ''}
+  const own = id => db.players.find(p => p.user === id);
+  return `<h1>${t('Members')}</h1>
     <h2 style="margin:0 0 8px">${t('Accounts ({n})', { n: members.length })}</h2>
-    <div class="card" style="padding:4px 16px;margin-bottom:20px">${members.map(m => `<div class="member"><span>${own(m.id) ? av(own(m.id).id, 28) + ' ' : ''}${esc(m.username)}${m.is_admin ? ` · <b>${t('admin')}</b>` : ''}</span>
-      ${admin && m.id !== me.id ? `<span><button class="link" onclick="toggleAdmin('${m.id}',${!m.is_admin})">${m.is_admin ? t('Remove admin') : t('Make admin')}</button>
-        <button class="link danger" onclick="removeAccount('${m.id}','${esc(m.username)}')" aria-label="${t('Remove account {name}', { name: esc(m.username) })}">✕</button></span>` : ''}</div>`).join('')}</div>
+    <div class="card" style="padding:4px 16px;margin-bottom:20px">${members.map(m => `<div class="member"><span>${own(m.id) ? av(own(m.id).id, 28) + ' ' : ''}${esc(m.username)}${m.is_admin ? ` · <b>${t('admin')}</b>` : ''}</span></div>`).join('')}</div>
     <h2 style="margin:0 0 8px">${t('Players')}</h2>
     <div class="card" style="padding:4px 16px">${db.players.filter(p => !p.removed).map(p => `<div class="member"><span>${av(p.id, 28)} ${esc(p.name)}</span>
-      ${p.user ? `<span class="mut" style="margin:0">${esc((members.find(m => m.id === p.user) || {}).username || '')}</span>` : `<span class="tag">${t('no account')}</span>`}</div>`).join('')}</div>
-    ${admin ? `<div class="card"><b>${t('Play background')}</b><p class="mut" style="margin:4px 0 8px">${t('Shown behind the Play tab for everyone.')}</p>
+      ${p.user ? `<span class="mut" style="margin:0">${esc((members.find(m => m.id === p.user) || {}).username || '')}</span>` : `<span class="tag">${t('no account')}</span>`}</div>`).join('')}</div>`;
+}
+
+// every admin tool on one page (opened from the top bar)
+function adminView() {
+  const d = cur(), m = d.mode, o = d.order, date = nextPlayDate(), auto = o.filter(id => answerOf(id, date) === 'in').length >= 4, own = id => db.players.find(p => p.user === id);
+  return `<h1>${t('Admin tools')}</h1><p class="mut">${t('Accounts can log in. Admins can close or reset days, remove players, delete photos and remove accounts.')}</p>
+    ${d.started ? '' : `<h2 class="sec">${t('Next match day')}</h2><div class="card">
+      ${auto ? `<p class="mut" style="margin:0 0 8px">${t('The sign-ups decide who plays.')}</p>` : `<div class="seg" style="margin-bottom:12px"><button class="${m === 4 ? 'on' : ''}" onclick="setMode(4)">${t('4 players')}</button>
+        <button class="${m === 5 ? 'on' : ''}" onclick="setMode(5)" ${o.length < 5 ? 'disabled' : ''}>${t('5 players')}</button></div>`}
+      <div class="chips" style="margin:0 0 12px">${o.map(id => `<button class="chip" onclick="removePlayer(${id})" aria-label="${t('Remove {name}', { name: name(id) })}">${av(id, 22)} ${name(id)} ✕</button>`).join('')}</div>
+      <button class="add" style="margin:0" onclick="addPlayer()">${t('+ Add guest player (no account)')}</button></div>`}
+    <h2 class="sec">${t('Accounts ({n})', { n: members.length })}</h2>
+    <div class="card" style="padding:4px 16px">${members.map(a => `<div class="member"><span>${own(a.id) ? av(own(a.id).id, 28) + ' ' : ''}${esc(a.username)}${a.is_admin ? ` · <b>${t('admin')}</b>` : ''}</span>
+      ${a.id !== me.id ? `<span><button class="link" onclick="toggleAdmin('${a.id}',${!a.is_admin})">${a.is_admin ? t('Remove admin') : t('Make admin')}</button>
+        <button class="link danger" onclick="removeAccount('${a.id}','${esc(a.username)}')" aria-label="${t('Remove account {name}', { name: esc(a.username) })}">✕</button></span>` : ''}</div>`).join('')}</div>
+    <h2 class="sec">${t('Play background')}</h2><div class="card"><p class="mut" style="margin:0 0 8px">${t('Shown behind the Play tab for everyone.')}</p>
       <button onclick="pickBg()">🖼 ${t('Change background')}</button> <button class="link" onclick="resetBg()">${t('Use default background')}</button>
-      <label class="field" style="margin:12px 0 0">${t('Photo dimming')}: <b id="dimv">${dim()}%</b><input type="range" min="0" max="90" step="5" value="${dim()}" oninput="previewDim(this.value)" onchange="saveDim(this.value)"></label></div>` : ''}
-    ${scheduleForm()}${logCard()}`;
+      <label class="field" style="margin:12px 0 0">${t('Photo dimming')}: <b id="dimv">${dim()}%</b><input type="range" min="0" max="90" step="5" value="${dim()}" oninput="previewDim(this.value)" onchange="saveDim(this.value)"></label></div>
+    ${scheduleForm()}${logCard()}
+    <div class="actions"><button class="link danger" onclick="eraseAll()">${t('Reset all scores')}</button></div>`;
 }
 
 // admins only: who did what (written by the database itself, nobody can edit it)
@@ -301,6 +311,7 @@ const ICON = k => `<img class="on" src="ic-${k}-on.png" alt=""><img class="off" 
 const NAV = { play: () => ICON('play') + '<span>' + t('Play') + '</span>', board: () => ICON('board') + '<span>' + t('Board') + '</span>', photos: () => ICON('photos') + '<span>' + t('Photos') + '</span>', stats: () => ICON('stats') + '<span>' + t('Stats') + '</span>' };
 
 function render() {
+  if (view === 'admin' && !isAdmin()) view = 'play';
   document.documentElement.style.setProperty('--dim', dim() / 100);
   document.body.classList.toggle('out', !session);
   document.body.dataset.view = session ? view : '';
@@ -311,10 +322,10 @@ function render() {
   if (!session) { app.innerHTML = login_(); return; }
   if (!loaded) { app.innerHTML = `<p class="mut">${t('Loading…')}</p>`; return; }
   const mp = db.players.find(p => p.user === session.user.id);
-  const top = `<div class="top"><button class="me" onclick="go('profile')" aria-label="${t('Profile')}">${mp ? av(mp.id, 44) : '👤'}<span class="col"><span class="n">${esc(me.username || '')}</span>${isAdmin() ? `<img class="adm" src="tm-admin.png" alt="${t('admin')}" title="${t('admin')}">` : ''}</span></button>
-    <span class="bar">${me.is_admin && !asMember ? `<button class="link ico" onclick="toggleView()" aria-label="${t('View as member')}" title="${t('View as member')}">👁</button>` : ''}<button class="link ico" onclick="showHelp()" aria-label="${t('How it works')}" title="${t('How it works')}"><img src="tm-help.png" alt=""></button><button class="link" onclick="go('members')"><img src="tm-members.png" alt="">${t('Members')}</button><button class="link" onclick="logout()"><img src="tm-logout.png" alt="">${t('Log out')}</button></span></div>`;
+  const top = `<div class="top"><button class="me" onclick="go('profile')" aria-label="${t('Profile')}">${mp ? av(mp.id, 44) : '👤'}<span class="col"><span class="n">${esc(me.username || '')}</span></span></button>
+    <span class="bar">${me.is_admin && !asMember ? `<button class="link ico" onclick="toggleView()" aria-label="${t('View as member')}" title="${t('View as member')}">👁</button>` : ''}<button class="link ico" onclick="showHelp()" aria-label="${t('How it works')}" title="${t('How it works')}"><img src="tm-help.png" alt=""></button><button class="link" onclick="go('members')"><img src="tm-members.png" alt="">${t('Members')}</button>${isAdmin() ? `<button class="link ico" onclick="go('admin')" aria-label="${t('Admin tools')}" title="${t('Admin tools')}"><img class="adm" src="tm-admin.png" alt=""></button>` : ''}<button class="link" onclick="logout()"><img src="tm-logout.png" alt="">${t('Log out')}</button></span></div>`;
   const strip = me.is_admin && asMember ? `<div class="strip"><span>👁 ${t('You are viewing the app as a member. Admin tools are hidden.')}</span><button onclick="toggleView()">${t('Back to admin')}</button></div>` : '';
-  app.innerHTML = top + strip + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : view === 'backfill' && bf ? backfillView() : `<h1>${t('Photos')}</h1><div id="gal"></div>`);
+  app.innerHTML = top + strip + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'admin' && isAdmin() ? adminView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : view === 'backfill' && bf ? backfillView() : `<h1>${t('Photos')}</h1><div id="gal"></div>`);
   drawReactions();
   if (view === 'photos') gallery().catch(e => { gal.innerHTML = `<p class="msg">${esc(friendly(e))}</p>`; });
 }

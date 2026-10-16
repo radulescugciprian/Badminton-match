@@ -61,7 +61,7 @@ run('help, plain errors, languages, privacy and the schedule editor', async h =>
   await C.click('.seg >> text=Rating'); await C.waitForFunction(() => !document.getElementById('app').textContent.includes('private'));
   
   // ---- admin edits the schedule in the app
-  await A.click('text=Members'); await A.waitForSelector('text=Play schedule');
+  await A.click('[aria-label="Admin tools"]'); await A.waitForSelector('text=Play schedule');
   assert((await B.locator('text=Play schedule').count()) === 0);
   await B.click('text=Members'); await B.waitForSelector('text=Accounts'); assert((await B.locator('form >> text=Save schedule').count()) === 0, 'members have no schedule form');
   await A.fill('[name=tz]', 'Mars/Olympus'); await A.click('text=Save schedule'); await A.waitForSelector('text=Unknown time zone');

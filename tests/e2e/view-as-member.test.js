@@ -10,12 +10,12 @@ run('admin views the app as a member', async h => {
   await A.waitForFunction(() => (members.find(m => m.username === 'Bob') || {}).share_stats === false);
 
   // as admin: guest controls, remove buttons, a start button that always works
-  assert((await A.locator('[aria-label^="Remove"]').count()) > 0 && (await A.locator('text=Add guest player').count()) === 1);
+  await A.click('[aria-label="Admin tools"]'); assert((await A.locator('[aria-label^="Remove"]').count()) > 0 && (await A.locator('text=Add guest player').count()) === 1); await A.click('nav >> text=Play');
   assert(await A.locator('button:has-text("Start playing")').isEnabled());
   await A.click('[aria-label="View as member"]');
   await A.waitForSelector('.strip');
   assert((await A.textContent('.strip')).includes('viewing the app as a member'));
-  assert.equal(await A.locator('[aria-label^="Remove"]').count(), 0, 'no remove buttons in the preview');
+  assert.equal(await A.locator('[aria-label="Admin tools"]').count(), 0, 'no admin button in the preview');
   assert.equal(await A.locator('text=Add guest player').count(), 0);
   assert(await A.locator('button:has-text("Start playing")').isDisabled(), 'locked outside the play window, like for a member');
   assert.equal(await A.locator('.top img.adm').count(), 0, 'the top bar shows no admin tag');
@@ -40,7 +40,7 @@ run('admin views the app as a member', async h => {
   await A.click('text=Back to admin'); await A.waitForFunction(() => !document.querySelector('.strip'));
   assert.equal(await A.evaluate(() => canSee(2)), true, 'the admin sees everything again');
   await A.evaluate(() => go('play'));
-  assert((await A.locator('[aria-label^="Remove"]').count()) > 0 && await A.locator('button:has-text("Start playing")').isEnabled(), 'admin tools are back');
+  assert((await A.locator('[aria-label="Admin tools"]').count()) === 1 && await A.locator('button:has-text("Start playing")').isEnabled(), 'admin tools are back');
   // it is only a preview: the choice is not kept after logging out
   await A.click('[aria-label="View as member"]'); await A.click('text=Log out'); await A.waitForSelector('text=Log in to see the scores');
   await A.fill('[name=login]', 'a@x.com'); await A.fill('[name=password]', 'secret1'); await A.click('button[type=submit]'); await A.waitForSelector('text=Next match day');

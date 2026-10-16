@@ -7,10 +7,13 @@ run('sign-in, rights, photos and the play schedule', async h => {
   assert.equal(await A.locator('.top img.adm').count(), 1);
   await signup(B, 'Bob', 'b@x.com', '2'); await B.waitForSelector('text=Next match day');
   assert.equal(await B.locator('.top img.adm').count(), 0);
-  assert((await A.locator('[aria-label^="Remove"]').count()) === 5 && (await B.locator('[aria-label^="Remove"]').count()) === 0, 'remove only for admin');
+  await A.click('[aria-label="Admin tools"]'); await A.waitForSelector('text=Add guest player');
+  assert((await A.locator('.chip[aria-label^="Remove"]').count()) === 5 && (await B.locator('[aria-label^="Remove"]').count()) === 0, 'remove only for admin');
+  assert((await A.locator('text=Add guest player').count()) === 1, 'guests are added by admins');
+  await A.click('nav >> text=Play');
   // each account is its own player: avatar buttons only on your own row; guests are added by admins only
   assert((await A.locator('button.ph').count()) === 1 && (await B.locator('button.ph').count()) === 1, 'only own avatar editable');
-  assert((await A.locator('text=Add guest player').count()) === 1 && (await B.locator('text=Add guest player').count()) === 0);
+  assert((await B.locator('text=Add guest player').count()) === 0);
   assert(st.players.length === 5, 'claiming existing players creates no duplicates');
   await B.click('.top .me'); await B.click('text=Change photo'); await B.setInputFiles('#pick', S + 'red.png');
   await A.waitForSelector('img.av'); // Dani's new avatar is visible to everyone
@@ -20,8 +23,8 @@ run('sign-in, rights, photos and the play schedule', async h => {
   await B.click('nav >> text=Play');
   // shared state: A changes mode, B sees it live
   assert.equal(await B.locator('button:has-text("4 players")').count(), 0, 'members do not pick 4 or 5 by hand');
-  await A.click('summary:has-text("Admin tools")'); await A.click('button:has-text("4 players")'); await B.waitForFunction(() => cur().mode === 4);
-  await A.click('button:has-text("5 players")'); await B.waitForFunction(() => cur().mode === 5);
+  await A.click('[aria-label="Admin tools"]'); await A.click('button:has-text("4 players")'); await B.waitForFunction(() => cur().mode === 4);
+  await A.click('button:has-text("5 players")'); await B.waitForFunction(() => cur().mode === 5); await A.click('nav >> text=Play');
   await A.click('text=Start playing'); await B.waitForSelector('text=Match 1');
   assert((await B.locator('text=Close day').count()) === 0, 'member cannot close');
   await win(B, 1); await A.waitForSelector('text=Match 2');
@@ -45,7 +48,7 @@ run('sign-in, rights, photos and the play schedule', async h => {
   assert((await B.locator('#lb >> text=Delete').count()) === 0, 'member cannot delete photo');
   await B.click('#lb >> text=Close');
   // admin promotes Bob
-  await A.click('text=Members'); await A.click('text=Make admin');
+  await A.click('[aria-label="Admin tools"]'); await A.click('text=Make admin');
   await B.waitForFunction(() => document.querySelector('.top img.adm'));
   // logout / bad login / login
   await A.click('text=Log out'); await A.waitForSelector('text=Log in to see the scores',{timeout:4000}).catch(async e=>{console.log(await A.textContent('body'), A.errs); throw e});
@@ -73,17 +76,18 @@ run('sign-in, rights, photos and the play schedule', async h => {
   // admin tools: guests are marked, accounts can be removed, scores can be reset
   await A.click('nav >> text=Play'); await A.waitForSelector('text=Next match day');
   assert((await A.locator('.row .tag').count()) === 3, 'three players have no account (Costi, Zjepko, Ciprian)');
-  await A.click('text=Members'); await A.waitForSelector('text=Players');
+  await A.click('text=Members'); await A.waitForSelector('text=Accounts');
   assert((await A.locator('.card .tag').count()) === 3, 'guests marked in the Members list too');
+  await A.click('[aria-label="Admin tools"]'); await A.waitForSelector('text=Play background');
   assert((await B.locator('[aria-label^="Remove account"]').count()) === 0, 'member has no remove-account button');
   await A.click('[aria-label="Remove account bob"], [aria-label="Remove account Bob"]');
   await B.waitForSelector('text=Log in to see the scores');                       // removed account is signed out
   assert(!st.profiles.some(p => p.username === 'Bob') && st.players.find(p => p.name === 'Dani').user_id === null, 'Bob gone, Dani kept as guest');
-  await A.waitForFunction(() => document.querySelectorAll('.card .tag').length === 4);
+  await A.click('text=Members'); await A.waitForFunction(() => document.querySelectorAll('.card .tag').length === 4);
   // reset all scores
   await A.click('nav >> text=Play'); await A.click('text=Start playing'); await win(A, 1);
-  await A.click('nav >> text=Board'); await A.click('text=General'); await A.click('text=Reset all scores');
-  await A.waitForSelector('text=No matches yet');
+  await A.click('[aria-label="Admin tools"]'); await A.click('text=Reset all scores');
+  await A.click('nav >> text=Board'); await A.waitForSelector('text=No matches yet');
   assert(st.matches.length === 0 && st.players.length === 5 && st.profiles.length === 1, 'scores reset, players and accounts kept');
   // delete a photo (card button) and delete single days (admin)
   await A.click('nav >> text=Play'); await A.waitForSelector('text=Next match day');

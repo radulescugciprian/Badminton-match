@@ -22,7 +22,7 @@ run('admin tools', async h => {
   await B.click('text=Undo last'); await A.waitForFunction(() => cur().matches.length === 2);
   await A.click('nav >> text=Play'); await A.click('text=Close day'); await A.waitForSelector('text=Day closed');
   await A.click('nav >> text=Board'); await A.click('text=Delete this day'); await A.waitForSelector('text=No matches yet');
-  await A.click('text=Members'); await A.waitForSelector('text=Activity log');
+  await A.click('[aria-label="Admin tools"]'); await A.waitForSelector('text=Activity log');
   const log = await A.textContent('#app');
   assert(log.includes('Bob') && log.includes('removed match 3'), 'the undo is attributed to Bob');
   assert(log.includes('Anna') && log.includes('closed the day') && /deleted the day .* with 2 matches/.test(log), 'closing and deleting are attributed to Anna');

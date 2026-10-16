@@ -17,7 +17,7 @@ let db = { players: [], days: [] }, members = [], me = {}, session = null, loade
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
-let benchOpen = false, admOpen = false, bgLoaded = false, rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
+let benchOpen = false, bgLoaded = false, rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
 let view = 'play', tab = 'day', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0, manualLogout = false, lostSession = false, asMember = false;   // asMember: an admin previewing the app as a normal member
 // the sign-in is kept on the phone (localStorage) and renewed automatically, so people stay logged in until they log out
 const sb = window.supabase && CONFIG.url && !CONFIG.url.includes('YOUR-')
@@ -41,7 +41,7 @@ const niceDate = (iso, o = { weekday: 'long', day: 'numeric', month: 'short' }) 
 
 // an admin can look at the app the way a member sees it (a preview only: the server still knows who they are)
 const isAdmin = () => !!me.is_admin && !asMember;
-const toggleView = () => { asMember = !asMember; if (asMember && view === 'members') view = 'play'; render(); };
+const toggleView = () => { asMember = !asMember; if (asMember && (view === 'members' || view === 'admin')) view = 'play'; render(); };
 
 // ---- who may see whose rating and stats: players decide for themselves, admins see everything. Guests (no account) are shared.
 const profileOf = pid => { const u = player(pid).user; return u && members.find(m => m.id === u); };
@@ -170,7 +170,7 @@ function showHelp() {
   const el = document.createElement('div'); el.id = 'help'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
   el.innerHTML = `<div class="card"><h1>${t('How it works')}</h1>
     <ol class="steps"><li>${t('Before play day tap “I\'m in” or “I\'m out”. The player list fills itself from the answers.')}</li>
-      <li>${t('Playing opens one hour before play time. The first 5 (or 4) players in the list play, the others sit out.')}</li>
+      <li>${t('Start playing opens shortly before play time. The first 5 (or 4) players in the list play, the others sit out.')}</li>
       <li>${t('After every match tap the winning team. The leaderboards and ratings update for everyone.')}</li>
       <li>${t('At the end the day is closed and anyone can take the group photo.')}</li></ol>
     <h2 class="sec">${t('The rotation')}</h2>
@@ -430,5 +430,5 @@ function startOpen() {
 }
 const hhmm = mins => String(Math.floor(mins / 60) % 24).padStart(2, '0') + ':' + String(mins % 60).padStart(2, '0');
 const playMins = () => +sched.play_time.split(':')[0] * 60 + +sched.play_time.split(':')[1];
-const startNote = () => t('We play on {day} at {time}. You can start playing from {open}.',
+const startNote = () => t('We play on {day} at {time}. You can press Start playing from {open}.',
   { day: dayName(sched.dow), time: hhmm(playMins()), open: hhmm(playMins() - sched.opens_minutes) });
