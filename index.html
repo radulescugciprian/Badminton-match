@@ -76,6 +76,8 @@
   .grid button{padding:0;overflow:hidden;background:var(--card);text-align:left;border:1px solid var(--line)}
   .grid img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
   .grid span{display:block;padding:8px 10px;font-size:13px}
+  .grid .cell{position:relative}
+  .grid .x{position:absolute;top:6px;right:6px;padding:4px 10px;background:rgba(0,0,0,.65);border-radius:999px;color:#fff;font-weight:700;border:0}
   #lb{position:fixed;inset:0;z-index:10;background:rgba(0,0,0,.92);display:flex;flex-direction:column;gap:12px;padding:16px;align-items:center;justify-content:center}
   #lb img{max-width:100%;max-height:68dvh;border-radius:12px}
   #lb .actions{margin:0}
@@ -315,6 +317,20 @@ const eraseAll = () => confirm('Reset ALL scores? This deletes every day, match 
 });
 const removeAccount = (id, who) => confirm(`Remove the account of ${who}? They can no longer log in. Their player and results stay and show as "no account".`)
   && act(async () => ok(await sb.rpc('delete_account', { uid: id })));
+// delete one day's leaderboard = delete the day with its matches and group photo (admins only)
+const deleteDay = id => {
+  const d = db.days.find(x => x.id === id);
+  if (!d || !confirm(`Delete the leaderboard of ${d.date}? Its ${d.matches.length} matches and group photo are removed for everyone. This cannot be undone.`)) return;
+  act(async () => {
+    ok(await sb.from('days').delete().eq('id', id));
+    if (d === cur()) ok(await sb.from('days').insert(dayRow(d))); // the app always needs an open day
+    await dropPhotos([d.photo]); selId = null;
+  });
+};
+const removePhoto = id => {
+  const d = db.days.find(x => x.id === id);
+  if (d && confirm('Delete this photo for everyone?')) act(async () => { await patchDay(id, { photo_path: null })(); await dropPhotos([d.photo]); });
+};
 const toggleAdmin = (id, v) => act(async () => ok(await sb.from('profiles').update({ is_admin: v }).eq('id', id)));
 
 // ---- stats
@@ -413,7 +429,8 @@ function board() {
   const rows = stats(ms);
   const picker = tab === 'day' && days.length
     ? `<select onchange="selId=+this.value;render()" aria-label="Day">${days.map(d =>
-        `<option value="${d.id}" ${d === sel ? 'selected' : ''}>${esc(d.date)} · ${d.matches.length} matches</option>`).join('')}</select>` : '';
+        `<option value="${d.id}" ${d === sel ? 'selected' : ''}>${esc(d.date)} · ${d.matches.length} matches</option>`).join('')}</select>`
+      + (me.is_admin && sel ? `<div class="actions" style="margin:4px 0 0"><button class="link danger" onclick="deleteDay(${sel.id})">🗑 Delete this day's leaderboard</button></div>` : '') : '';
   const podium = !ms.length ? [] : [[0, '🥇', '#facc15', 120], [1, '🥈', '#cbd5e1', 90], [2, '🥉', '#d97706', 64]].map(([i, medal, c, h]) =>
     `<div class="pod"><div class="medal">${medal}</div>${av(rows[i].id)}<div class="pn">${esc(rows[i].name)}</div>
      <div class="pw">${rows[i].w} wins · ${Math.round(pct(rows[i]) * 100)}%</div>
@@ -446,8 +463,9 @@ async function gallery() {
   urls = {};
   if (days.length) for (const x of ok(await sb.storage.from('photos').createSignedUrls(days.map(d => d.photo), 3600))) urls[x.path] = x.signedUrl;
   if (view !== 'photos') return;
-  gal.innerHTML = days.length ? `<div class="grid">${days.map(d => `<button onclick="openPhoto(${d.id})">
-      <img src="${urls[d.photo]}" alt=""><span>${esc(d.date)} · ${d.matches.length} matches<br>🏆 ${esc(stats(d.matches)[0].name)}</span></button>`).join('')}</div>`
+  gal.innerHTML = days.length ? `<div class="grid">${days.map(d => `<div class="cell"><button onclick="openPhoto(${d.id})">
+      <img src="${urls[d.photo]}" alt=""><span>${esc(d.date)} · ${d.matches.length} matches<br>🏆 ${esc((stats(d.matches)[0] || { name: '-' }).name)}</span></button>
+      ${me.is_admin ? `<button class="x" onclick="removePhoto(${d.id})" aria-label="Delete photo of ${esc(d.date)}">✕</button>` : ''}</div>`).join('')}</div>`
     : '<div class="empty">No photos yet.<br>Close the day and take the group photo.</div>';
 }
 async function openPhoto(id) {
@@ -461,9 +479,7 @@ async function openPhoto(id) {
   document.body.append(el);
   el.querySelector('#cl').onclick = () => { el.remove(); URL.revokeObjectURL(u); };
   const rm = el.querySelector('#rm');
-  if (rm) rm.onclick = () => confirm('Delete this photo for everyone?') && (el.remove(), act(async () => {
-    await patchDay(d.id, { photo_path: null })(); await dropPhotos([d.photo]);
-  }));
+  if (rm) rm.onclick = () => { el.remove(); removePhoto(d.id); };
   const sh = el.querySelector('#sh'); if (sh) sh.onclick = () => navigator.share({ files: [f] }).catch(() => {});
 }
 

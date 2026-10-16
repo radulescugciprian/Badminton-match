@@ -26,6 +26,8 @@ The app stores everything in a free [Supabase](https://supabase.com) project so 
 ## Admin tools
 - **Members** lists every account and every player. Players without an account are tagged "no account" (also on the new-day screen).
 - Admins can remove an account (✕). The person can no longer log in; their player and results stay and become a "no account" guest.
+- **Delete this day's leaderboard** (Board → Day) removes that day, its matches and its group photo. Deleting today's day starts a fresh one.
+- **Delete a photo**: ✕ on a photo card in Photos, or Delete when it's open.
 - **Reset all scores** (Board → General) deletes every day, match and group photo; players and accounts are kept.
 - Check that every account has a player (the second list should be empty after running `..._admin_tools.sql`, which also repairs any gaps):
 ```sql
