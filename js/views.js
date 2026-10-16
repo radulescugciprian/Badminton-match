@@ -193,7 +193,7 @@ function ratingList() {
   const shown = ranked.filter(p => canSee(p.id)), hidden = ranked.filter(p => !canSee(p.id));
   return `<p class="mut">${t('Everyone starts at 1000. Beat a stronger team and you gain more.')}</p><div class="card" style="padding:4px 16px">${shown.map((p, i) => {
     const dl = (an.night.get(lastDay).get(p.id) || {}).delta;
-    return `<div class="rank"><span class="r">${i + 1}</span>${av(p.id, 32)}<b>${esc(p.name)}${sharing(p.id) ? '' : ' 🔒'}</b>
+    return `<div class="rank tap" role="button" tabindex="0" onclick="openStats(${p.id})" onkeydown="if(event.key==='Enter')openStats(${p.id})"><span class="r">${i + 1}</span>${av(p.id, 32)}<b>${esc(p.name)}${sharing(p.id) ? '' : ' 🔒'}</b>
       <span class="mut" style="margin:0">${dl === undefined ? '' : (dl >= 0 ? '▲' : '▼') + Math.abs(Math.round(dl))}</span><b>${Math.round(an.rating.get(p.id))}</b></div>`; }).join('')}
     ${hidden.map(p => `<div class="rank" style="opacity:.6"><span class="r">–</span>${av(p.id, 32)}<b>${esc(p.name)}</b><span class="mut" style="margin:0">🔒 ${t('private')}</span><span></span></div>`).join('')}</div>`;
 }

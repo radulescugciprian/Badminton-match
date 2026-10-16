@@ -255,6 +255,7 @@ const loadBg = async () => {
   const u = (await sb.storage.from('photos').createSignedUrl(BG, 86400)).data;
   document.documentElement.style.setProperty('--pbg', u ? `url("${u.signedUrl}")` : 'url(bg-play.jpg)');
 };
+const openStats = id => { statsId = id; go('stats'); };
 const dim = () => (sched && sched.bg_dim) || 0;
 const previewDim = v => { document.documentElement.style.setProperty('--dim', v / 100); dimv.textContent = v + '%'; };
 const saveDim = v => act(async () => ok(await sb.from('schedule').update({ bg_dim: +v }).eq('id', true)), () => { if (sched) sched.bg_dim = +v; });

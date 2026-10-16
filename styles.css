@@ -169,3 +169,4 @@
   .next .vs{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px}
   .next .vs b{font-size:var(--fs-md);padding:8px 6px;border-radius:10px;border:2px solid var(--c);line-height:1.25} .next .vs span{color:var(--mut);font-size:var(--fs-sm);font-weight:700}
   .next .rs{margin-top:8px;font-size:var(--fs-sm);color:var(--mut)} .next .rs b{color:var(--text)}
+  .rank.tap{cursor:pointer} .rank.tap:active{background:var(--line)}
