@@ -7,13 +7,12 @@ run('sign-in, rights, photos and the play schedule', async h => {
   assert.equal(await A.locator('.top img.adm').count(), 1);
   await signup(B, 'Bob', 'b@x.com', '2'); await B.waitForSelector('text=Next match day');
   assert.equal(await B.locator('.top img.adm').count(), 0);
-  await A.click('[aria-label="Admin tools"]'); await A.waitForSelector('text=Add guest player');
+  await A.click('[aria-label="Admin tools"]'); await A.waitForSelector('text=Remove a player');
   assert((await A.locator('.chip[aria-label^="Remove"]').count()) === 5 && (await B.locator('[aria-label^="Remove"]').count()) === 0, 'remove only for admin');
-  assert((await A.locator('text=Add guest player').count()) === 1, 'guests are added by admins');
   await A.click('nav >> text=Play');
   // each account is its own player: avatar buttons only on your own row; guests are added by admins only
   assert((await A.locator('button.ph').count()) === 1 && (await B.locator('button.ph').count()) === 1, 'only own avatar editable');
-  assert((await B.locator('text=Add guest player').count()) === 0);
+  assert((await B.locator('text=Add guest player').count()) === 1, 'members can add guests too');
   assert(st.players.length === 5, 'claiming existing players creates no duplicates');
   await B.click('.top .me'); await B.click('text=Change photo'); await B.setInputFiles('#pick', S + 'red.png');
   await A.waitForSelector('img.av'); // Dani's new avatar is visible to everyone
@@ -22,9 +21,9 @@ run('sign-in, rights, photos and the play schedule', async h => {
   assert(r.error, 'server refuses avatar change for someone else');
   await B.click('nav >> text=Play');
   // shared state: A changes mode, B sees it live
-  assert.equal(await B.locator('button:has-text("4 players")').count(), 0, 'members do not pick 4 or 5 by hand');
-  await A.click('[aria-label="Admin tools"]'); await A.click('button:has-text("4 players")'); await B.waitForFunction(() => cur().mode === 4);
-  await A.click('button:has-text("5 players")'); await B.waitForFunction(() => cur().mode === 5); await A.click('nav >> text=Play');
+  assert.equal(await B.locator('button:has-text("4 players")').count(), 1, 'members pick 4 or 5 too');
+  await A.click('button:has-text("4 players")'); await B.waitForFunction(() => cur().mode === 4);
+  await A.click('button:has-text("5 players")'); await B.waitForFunction(() => cur().mode === 5);
   await A.click('text=Start playing'); await B.waitForSelector('text=Match 1');
   assert((await B.locator('text=Close day').count()) === 0, 'member cannot close');
   await win(B, 1); await A.waitForSelector('text=Match 2');

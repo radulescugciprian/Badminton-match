@@ -102,10 +102,13 @@ function setup(d) {
         <button onclick="move(${i},1)" aria-label="${t('Move down')}" ${i === o.length - 1 ? 'disabled' : ''}>▼</button></li>`;
   // the sign-ups fill the list and decide 4 or 5 players; the date is today's. Only when nobody has answered can an admin pick 4 or 5 by hand.
   return `${rsvpCard()}${rsvps.some(x => x.day_date === date) && ins < 4 ? `<p class="mut">${t('Only {n} confirmed so far, you need at least 4.', { n: ins })}</p>` : ''}
+      ${auto ? '' : `<div class="seg" style="margin:0 0 12px"><button class="${m === 4 ? 'on' : ''}" onclick="setMode(4)">${t('4 players')}</button>
+        <button class="${m === 5 ? 'on' : ''}" onclick="setMode(5)" ${o.length < 5 ? 'disabled' : ''}>${t('5 players')}</button></div>`}
       <ol>${o.slice(0, m).map((id, i) => rowOf(id, i)).join('')}</ol>
       <div class="next"><small>${t('Match {n}', { n: 1 })}</small>
         <div class="vs"><b style="--c:var(--t1)">${pair(slots(o, a))}</b><span>${t('vs')}</span><b style="--c:var(--t2)">${pair(slots(o, b))}</b></div>
         ${r ? `<div class="rs">${t('Resting:')} <b>${name(o[r - 1])}</b></div>` : ''}</div>
+      <button class="add" onclick="addPlayer()">${t('+ Add guest player (no account)')}</button>
       ${o.length > m ? `<details class="fold" ${benchOpen ? 'open' : ''} ontoggle="benchOpen=this.open"><summary>${t('Sitting out')} (${o.length - m})</summary><ol>${o.slice(m).map((id, k) => rowOf(id, m + k)).join('')}</ol></details>` : ''}
       <div class="startbar">${open ? '' : `<p class="mut" role="status">🔒 ${startNote()}</p>`}
       <button class="primary" onclick="start()" ${open ? '' : 'disabled'}>${t('Start playing')}</button></div>`;
@@ -242,13 +245,9 @@ function membersView() {
 
 // every admin tool on one page (opened from the top bar)
 function adminView() {
-  const d = cur(), m = d.mode, o = d.order, date = nextPlayDate(), auto = o.filter(id => answerOf(id, date) === 'in').length >= 4, own = id => db.players.find(p => p.user === id);
+  const d = cur(), o = d.order, own = id => db.players.find(p => p.user === id);
   return `<h1>${t('Admin tools')}</h1><p class="mut">${t('Accounts can log in. Admins can close or reset days, remove players, delete photos and remove accounts.')}</p>
-    ${d.started ? '' : `<h2 class="sec">${t('Next match day')}</h2><div class="card">
-      ${auto ? `<p class="mut" style="margin:0 0 8px">${t('The sign-ups decide who plays.')}</p>` : `<div class="seg" style="margin-bottom:12px"><button class="${m === 4 ? 'on' : ''}" onclick="setMode(4)">${t('4 players')}</button>
-        <button class="${m === 5 ? 'on' : ''}" onclick="setMode(5)" ${o.length < 5 ? 'disabled' : ''}>${t('5 players')}</button></div>`}
-      <div class="chips" style="margin:0 0 12px">${o.map(id => `<button class="chip" onclick="removePlayer(${id})" aria-label="${t('Remove {name}', { name: name(id) })}">${av(id, 22)} ${name(id)} ✕</button>`).join('')}</div>
-      <button class="add" style="margin:0" onclick="addPlayer()">${t('+ Add guest player (no account)')}</button></div>`}
+    ${d.started ? '' : `<h2 class="sec">${t('Remove a player')}</h2><div class="card"><div class="chips">${o.map(id => `<button class="chip" onclick="removePlayer(${id})" aria-label="${t('Remove {name}', { name: name(id) })}">${av(id, 22)} ${name(id)} ✕</button>`).join('')}</div></div>`}
     <h2 class="sec">${t('Accounts ({n})', { n: members.length })}</h2>
     <div class="card" style="padding:4px 16px">${members.map(a => `<div class="member"><span>${own(a.id) ? av(own(a.id).id, 28) + ' ' : ''}${esc(a.username)}${a.is_admin ? ` · <b>${t('admin')}</b>` : ''}</span>
       ${a.id !== me.id ? `<span><button class="link" onclick="toggleAdmin('${a.id}',${!a.is_admin})">${a.is_admin ? t('Remove admin') : t('Make admin')}</button>

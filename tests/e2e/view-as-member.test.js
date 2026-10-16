@@ -10,13 +10,13 @@ run('admin views the app as a member', async h => {
   await A.waitForFunction(() => (members.find(m => m.username === 'Bob') || {}).share_stats === false);
 
   // as admin: guest controls, remove buttons, a start button that always works
-  await A.click('[aria-label="Admin tools"]'); assert((await A.locator('[aria-label^="Remove"]').count()) > 0 && (await A.locator('text=Add guest player').count()) === 1); await A.click('nav >> text=Play');
+  await A.click('[aria-label="Admin tools"]'); assert((await A.locator('[aria-label^="Remove"]').count()) > 0 ); await A.click('nav >> text=Play');
   assert(await A.locator('button:has-text("Start playing")').isEnabled());
   await A.click('[aria-label="View as member"]');
   await A.waitForSelector('.strip');
   assert((await A.textContent('.strip')).includes('viewing the app as a member'));
   assert.equal(await A.locator('[aria-label="Admin tools"]').count(), 0, 'no admin button in the preview');
-  assert.equal(await A.locator('text=Add guest player').count(), 0);
+  assert.equal(await A.locator('text=Add guest player').count(), 1, 'members can add guests');
   assert(await A.locator('button:has-text("Start playing")').isDisabled(), 'locked outside the play window, like for a member');
   assert.equal(await A.locator('.top img.adm').count(), 0, 'the top bar shows no admin tag');
   assert.equal(await A.locator('[aria-label="View as member"]').count(), 0);
