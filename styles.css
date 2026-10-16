@@ -157,5 +157,6 @@
   nav button[aria-current=page]{color:var(--acc);background:var(--card)}
   /* the neon icons are drawn for a dark ground: darken them on the light theme */
   :root[data-theme=light] nav img,:root[data-theme=light] .top img{filter:brightness(.55) saturate(1.8) contrast(1.15)}
-  /* light theme, photo shown as it is: text that sits straight on the photo turns white (cards stay light) */
-  :root[data-theme=light] body:is(.out,[data-view=play],[data-view=board],[data-view=photos],[data-view=stats]) main>:is(h1,.mut,.empty,p){color:#fff;text-shadow:0 1px 8px rgba(0,0,0,.85)}
+  /* light theme, photo shown as it is: text straight on the photo is white; light surfaces (cards, buttons, bars) keep dark text */
+  :root[data-theme=light] body:is(.out,[data-view=play],[data-view=board],[data-view=photos],[data-view=stats]){--text:#fff;--mut:#eaf2ed;--ts:rgba(0,0,0,.8);--line-t:#c4d8cd}
+  :root[data-theme=light] :is(.card,button:not(.link,.primary),select,input,.row,.team,.rest,.seg,.tile,.badge,.cal .d,.top,nav,.rsvp,.rx){--text:#10231a;--mut:#3d5a4c;--ts:rgba(255,255,255,.95);color:var(--text)}
