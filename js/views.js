@@ -101,7 +101,7 @@ function setup(d) {
   const open = admin || startOpen();
   const rowOf = (id, i) => `<li class="row ${i >= m ? 'bench' : ''}">
         <span class="slot">${i + 1}</span>
-        ${player(id).user === session.user.id ? `<button class="ph" onclick="avatar(${id})" aria-label="${t('Change your photo')}">${av(id, 32)}</button>` : `<span class="ph">${av(id, 32)}</span>`}
+        ${player(id).user === session.user.id ? `<button class="ph" onclick="avatar(${id})" aria-label="${t('Change your photo')}">${av(id, 44)}</button>` : `<span class="ph">${av(id, 44)}</span>`}
         <button class="nm" onclick="rename(${id})" aria-label="${t('Rename {name}', { name: name(id) })}">${icon(id)} ${name(id)} ✎${player(id).user ? '' : `<span class="tag">${t('no account')}</span>`}</button>
         <button onclick="move(${i},-1)" aria-label="${t('Move up')}" ${i === 0 ? 'disabled' : ''}>▲</button>
         <button onclick="move(${i},1)" aria-label="${t('Move down')}" ${i === o.length - 1 ? 'disabled' : ''}>▼</button>
