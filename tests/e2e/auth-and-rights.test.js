@@ -3,9 +3,9 @@ run('sign-in, rights, photos and the play schedule', async h => {
   const { mk, signup, st, rpc, S, assert, fs, sleep, pages, win } = h;
   const A = await mk(), B = await mk();
   await A.waitForSelector('text=Log in to see the scores',{timeout:4000}).catch(async e=>{console.log(await A.textContent('body'), A.errs); throw e});
-  await signup(A, 'Anna', 'a@x.com', '1'); await A.waitForSelector('text=New day');
+  await signup(A, 'Anna', 'a@x.com', '1'); await A.waitForSelector('text=Next match day');
   assert((await A.textContent('.top')).includes('admin'));
-  await signup(B, 'Bob', 'b@x.com', '2'); await B.waitForSelector('text=New day');
+  await signup(B, 'Bob', 'b@x.com', '2'); await B.waitForSelector('text=Next match day');
   assert(!(await B.textContent('.top')).includes('admin'));
   assert((await A.locator('[aria-label^="Remove"]').count()) === 5 && (await B.locator('[aria-label^="Remove"]').count()) === 0, 'remove only for admin');
   // each account is its own player: avatar buttons only on your own row; guests are added by admins only
@@ -67,10 +67,10 @@ run('sign-in, rights, photos and the play schedule', async h => {
   assert(A.alerts.includes('Password changed.'));
   await A.click('text=Log out'); await A.fill('[name=login]', 'anna'); await A.fill('[name=password]', 'brandnew1'); await A.click('button[type=submit]'); await A.waitForSelector('text=Day closed');
   // reset day (admin) clears matches + photo for everyone
-  await A.click('text=Reopen day'); await A.click('text=Reset day'); await B.waitForSelector('text=No photos yet'); await B.click('nav >> text=Play'); await B.waitForSelector('text=New day');
+  await A.click('text=Reopen day'); await A.click('text=Reset day'); await B.waitForSelector('text=No photos yet'); await B.click('nav >> text=Play'); await B.waitForSelector('text=Next match day');
   assert(st.matches.length === 0 && Object.keys(st.files).length === 0, 'reset cleaned matches and photo');
   // admin tools: guests are marked, accounts can be removed, scores can be reset
-  await A.click('nav >> text=Play'); await A.waitForSelector('text=New day');
+  await A.click('nav >> text=Play'); await A.waitForSelector('text=Next match day');
   assert((await A.locator('.row .tag').count()) === 3, 'three players have no account (Costi, Zjepko, Ciprian)');
   await A.click('text=Members'); await A.waitForSelector('text=Players');
   assert((await A.locator('.card .tag').count()) === 3, 'guests marked in the Members list too');
@@ -85,13 +85,13 @@ run('sign-in, rights, photos and the play schedule', async h => {
   await A.waitForSelector('text=No matches yet');
   assert(st.matches.length === 0 && st.players.length === 5 && st.profiles.length === 1, 'scores reset, players and accounts kept');
   // delete a photo (card button) and delete single days (admin)
-  await A.click('nav >> text=Play'); await A.waitForSelector('text=New day');
+  await A.click('nav >> text=Play'); await A.waitForSelector('text=Next match day');
   await A.click('text=Start day'); await win(A, 1); await A.click('text=Close day'); await A.waitForSelector('text=Day closed');
   await A.click('text=Take group photo'); await A.setInputFiles('#shot', S + 'red.png'); await A.waitForSelector('text=Photo saved');
   await A.click('nav >> text=Photos'); await A.waitForSelector('.grid img');
   await A.click('.grid .x'); await A.waitForSelector('text=No photos yet');
   assert(Object.keys(st.files).length === 0 && st.days.every(d => !d.photo_path), 'photo deleted from storage and day');
-  await A.click('nav >> text=Play'); await A.click('text=Start new day'); await A.click('text=Start day'); await win(A, 2);
+  await A.click('nav >> text=Play'); await A.click('text=Start next match day'); await A.click('text=Start day'); await win(A, 2);
   await A.click('nav >> text=Board'); await A.click('.seg >> text=Day'); await A.waitForSelector('select option', { state: 'attached' });
   assert((await A.locator('select option').count()) === 2, 'two days with matches');
   await A.selectOption('select', { index: 0 }); await A.click('text=Delete this day');
@@ -100,10 +100,10 @@ run('sign-in, rights, photos and the play schedule', async h => {
   await A.click('text=Delete this day');                                      // the current day: a fresh one replaces it
   await A.waitForSelector('text=No matches yet');
   assert(st.matches.length === 0 && st.days.length === 1 && !st.days[0].started, 'current day deleted and replaced by an open one');
-  await A.click('nav >> text=Play'); await A.waitForSelector('text=New day');
+  await A.click('nav >> text=Play'); await A.waitForSelector('text=Next match day');
   assert((await B.locator('text=Delete this day').count()) === 0);
   // play schedule: members can start a day only on Thursday from 17:30 (Berlin); admins any time
-  const C = await mk(); await signup(C, 'Cleo', 'c@x.com', '3'); await C.waitForSelector('text=New day');
+  const C = await mk(); await signup(C, 'Cleo', 'c@x.com', '3'); await C.waitForSelector('text=Next match day');
   const at = async iso => { st.now = Date.parse(iso); await C.evaluate(t => { window.__t = t; render(); }, st.now); await A.evaluate(t => { window.__t = t; render(); }, st.now); };
   await at('2026-10-14T15:00:00Z');                                     // Wednesday 17:00 Berlin
   assert(await C.locator('button:has-text("Start day")').isDisabled(), 'member locked on Wednesday');

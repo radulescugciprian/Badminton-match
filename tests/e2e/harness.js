@@ -34,7 +34,7 @@ async function run(name, body) {
     }, { seen: seenHelp, t0: now });
     pages.push(p); await p.goto(base + '/index.html'); return p;
   };
-  h.signup = async (p, name, email, player = '', wait = 'text=New day') => {
+  h.signup = async (p, name, email, player = '', wait = 'text=Next match day') => {
     await p.click('text=Create an account'); await p.fill('[name=username]', name); await p.selectOption('[name=player]', player);
     await p.fill('[name=email]', email); await p.fill('[name=password]', 'secret1'); await p.click('button[type=submit]'); await p.waitForSelector(wait);
   };

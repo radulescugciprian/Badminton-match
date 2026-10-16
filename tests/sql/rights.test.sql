@@ -132,6 +132,24 @@ select check_that((select count(*) from admin_log where action = 'remove_account
 select as_user((select m1 from ids));
 select must_fail($$select delete_account((select adm from ids))$$, 'admins only');
 
+-- ================= the play calendar =================
+select as_user((select adm from ids));
+update schedule set tz = 'Europe/Berlin', dow = 4, play_time = '18:30', opens_minutes = 60;   -- the standard schedule again
+insert into play_dates values ('2026-10-21', 'extra');                    -- an extra Wednesday
+insert into play_dates values ('2026-10-22', 'cancelled');                -- the normal Thursday is off
+select check_that(can_start_now('2026-10-21 15:30Z') and not can_start_now('2026-10-21 15:29Z'), 'extra day: members can start from 17:30 Berlin');
+select check_that(not can_start_now('2026-10-22 16:00Z'), 'cancelled play day: members cannot start');
+select check_that(can_start_now('2026-10-29 16:30Z'), 'the following Thursday is normal again');
+select check_that((select count(*) from admin_log where action = 'mark_play_date') = 2, 'marking logged');
+select as_user((select m1 from ids));
+select must_fail($$insert into play_dates values ('2026-10-23', 'extra')$$, 'row-level security');
+select check_that(rows_changed($$delete from play_dates$$) = 0, 'members cannot clear marks');
+select check_that((select count(*) from play_dates) = 2, 'members can read the calendar');
+select as_user((select adm from ids));
+delete from play_dates where day = '2026-10-22';
+select check_that((select count(*) from admin_log where action = 'clear_play_date') = 1, 'clearing logged');
+select must_fail($$insert into play_dates values ('2026-10-24', 'party')$$, 'check constraint');
+
 -- ================= logged out (anon) =================
 reset role; set role anon;
 select check_that((select count(*) from players) = 0 and (select count(*) from profiles) = 0 and (select count(*) from matches) = 0, 'nothing readable when logged out');

@@ -14,7 +14,7 @@ The app stores everything in a free [Supabase](https://supabase.com) project so 
    Admins can then promote others under *Members*.
 
 ## Usernames and password reset
-- Run the migrations in `supabase/migrations/` **in order** (`..._init.sql`, then `..._username.sql`, then `..._player_accounts.sql`, then `..._admin_tools.sql`, then `..._play_schedule.sql`, then `..._fun_features.sql`, then `..._settings.sql`, then `..._hardening.sql`).
+- Run the migrations in `supabase/migrations/` **in order** (`..._init.sql`, then `..._username.sql`, then `..._player_accounts.sql`, then `..._admin_tools.sql`, then `..._play_schedule.sql`, then `..._fun_features.sql`, then `..._settings.sql`, then `..._hardening.sql`, then `..._play_dates.sql`).
 
 - "Forgot password?" emails a reset link. Add the app address under *Authentication → URL Configuration → Redirect URLs* or the link will not return to the app. Supabase's built-in email sender is limited to a few emails per hour; add your own SMTP under *Authentication → Emails* if that is not enough.
 
@@ -60,6 +60,9 @@ Admins change the schedule in the app: **Members → Play schedule** (day, time,
 
 ## Staying logged in
 The app keeps you signed in on the phone and renews the sign-in by itself, so you only log in again after choosing *Log out*. The login box also remembers your username (never the password). If you do get logged out, a note says so. Common reasons: Brave set to clear site data when closed, a private tab, or iPhone Safari deleting the data of a website unused for a week (adding the app to the Home Screen avoids that).
+
+## Calendar of play days
+The sign-up card on the Play screen is compact until the play day (date, count and the two answer buttons; **Details** shows the names). The 📅 button opens a month calendar: weekly play days are highlighted, days that were played have a dot. Admins tap a date to add an **extra** play day or to **cancel** a normal one (tap again to undo); the sign-up card and the "members can start a day" window follow it. Changes are written to the activity log. Needs `20261023120000_play_dates.sql`.
 
 ## Who can do what
 | | Member | Admin |

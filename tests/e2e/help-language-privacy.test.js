@@ -9,7 +9,7 @@ run('help, plain errors, languages, privacy and the schedule editor', async h =>
   assert((await A.locator('#help table.rot tr').count()) === 6, 'table of the 5 matches');
   await A.screenshot({ path: require('os').tmpdir() + '/help.png' });
   await A.click('#gotit'); assert((await A.locator('#help').count()) === 0);
-  await A.reload(); await A.waitForSelector('text=New day'); await A.waitForTimeout(300);
+  await A.reload(); await A.waitForSelector('text=Next match day'); await A.waitForTimeout(300);
   assert((await A.locator('#help').count()) === 0, 'not shown again');
   await A.click('[aria-label="How it works"]'); await A.waitForSelector('#help'); await A.click('#gotit');
   
@@ -17,20 +17,20 @@ run('help, plain errors, languages, privacy and the schedule editor', async h =>
   await A.click('text=Log out'); await A.click('text=Forgot password?'); st.rateLimit = true;
   await A.fill('[name=login]', 'a@x.com'); await A.click('button[type=submit]'); await A.waitForSelector('text=Too many emails were sent just now');
   st.rateLimit = false;
-  await A.click('text=Back to log in'); await A.fill('[name=login]', 'anna'); await A.fill('[name=password]', 'secret1'); await A.click('button[type=submit]'); await A.waitForSelector('text=New day');
+  await A.click('text=Back to log in'); await A.fill('[name=login]', 'anna'); await A.fill('[name=password]', 'secret1'); await A.click('button[type=submit]'); await A.waitForSelector('text=Next match day');
   
   // ---- language: follows the account
   await A.click('text=Profile'); await A.selectOption('.field select', 'ro');
   await A.waitForSelector('text=Profilul tău');
   assert((await A.textContent('nav')).includes('Joc') && (await A.textContent('nav')).includes('Clasament'), 'navigation translated');
   assert(st.profiles[0].lang === 'ro', 'saved on the account');
-  await A.click('nav >> text=Joc'); await A.waitForSelector('text=Zi nouă');
+  await A.click('nav >> text=Joc'); await A.waitForSelector('text=Următoarea zi de meci');
   assert((await A.textContent('#app')).includes('Răspunde înainte de') || true);
-  for (const [code, word] of [['hr', 'Novi dan'], ['sv', 'Ny dag']]) { await A.click('text=Profil'); await A.selectOption('.field select', code); await A.click('nav >> text=' + { hr: 'Igra', sv: 'Spela' }[code]); await A.waitForSelector('text=' + word); }
+  for (const [code, word] of [['hr', 'Sljedeći dan igranja'], ['sv', 'Nästa matchdag']]) { await A.click('text=Profil'); await A.selectOption('.field select', code); await A.click('nav >> text=' + { hr: 'Igra', sv: 'Spela' }[code]); await A.waitForSelector('text=' + word); }
   await A.click('text=Profil'); await A.selectOption('.field select', 'en'); await A.waitForSelector('text=Your profile');
   await A.click('text=Log out'); await A.waitForSelector('text=Log in to see the scores');   // login page language is a local choice
   await A.selectOption('select.lang', 'ro'); await A.waitForSelector('text=Conectare'); await A.selectOption('select.lang', 'en');
-  await A.fill('[name=login]', 'anna'); await A.fill('[name=password]', 'secret1'); await A.click('button[type=submit]'); await A.waitForSelector('text=New day');
+  await A.fill('[name=login]', 'anna'); await A.fill('[name=password]', 'secret1'); await A.click('button[type=submit]'); await A.waitForSelector('text=Next match day');
   
   // ---- play some matches (admin can start any time), then privacy
   const B = await mk(), C = await mk();

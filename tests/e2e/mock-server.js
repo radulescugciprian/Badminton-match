@@ -1,18 +1,20 @@
 // Fake Supabase server (in memory) mirroring the rules in supabase/migrations that the screens depend on.
-const st = { players: ['Vali','Dani','Costi','Zjepko','Ciprian'].map((name,i)=>({id:i+1,name,avatar:null,active:true,user_id:null})), days: [], matches: [], profiles: [], rsvps: [], reactions: [], log: [], attempts: {}, schedule: [{ id: true, tz: 'Europe/Berlin', dow: 4, play_time: '18:30:00', opens_minutes: 60 }], now: null, users: {}, files: {}, seq: { p: 5, d: 0, m: 0 } };
+const st = { players: ['Vali','Dani','Costi','Zjepko','Ciprian'].map((name,i)=>({id:i+1,name,avatar:null,active:true,user_id:null})), days: [], matches: [], profiles: [], rsvps: [], reactions: [], play_dates: [], log: [], attempts: {}, schedule: [{ id: true, tz: 'Europe/Berlin', dow: 4, play_time: '18:30:00', opens_minutes: 60 }], now: null, users: {}, files: {}, seq: { p: 5, d: 0, m: 0 } };
 const pages = [];
 const emit = () => pages.forEach(p => p.evaluate(() => window.__emit && window.__emit()).catch(() => {}));
 const isAdmin = u => (st.profiles.find(p => p.id === u) || {}).is_admin;
 const err = (message, code) => ({ error: { message, code } });
 const logAct = (u, action, detail) => st.log.push({ id: st.log.length + 1, at: new Date().toISOString(), actor: u, actor_name: (st.profiles.find(p => p.id === u) || {}).username || null, action, detail });
 function canStart() {
+  const when = new Date(st.now || Date.now()), pf = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(when);
+  const iso = `${pf.find(p => p.type === 'year').value}-${pf.find(p => p.type === 'month').value}-${pf.find(p => p.type === 'day').value}`, mark = (st.play_dates.find(p => p.day === iso) || {}).kind;
   const f = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Berlin', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(st.now || Date.now()));
   const g = x => f.find(p => p.type === x).value;
-  return g('weekday') === 'Thu' && +g('hour') * 60 + +g('minute') >= 17 * 60 + 30;
+  return +g('hour') * 60 + +g('minute') >= 17 * 60 + 30 && (mark === 'extra' || (g('weekday') === 'Thu' && mark !== 'cancelled'));
 }
 function rpc(u, r) {
   if (!u && r.op !== 'rpc') return err('not logged in'); // the username lookup is public (anon)
-  const T = { players: st.players, days: st.days, matches: st.matches, profiles: st.profiles, schedule: st.schedule, rsvps: st.rsvps, reactions: st.reactions, admin_log: st.log }[r.table];
+  const T = { players: st.players, days: st.days, matches: st.matches, profiles: st.profiles, schedule: st.schedule, rsvps: st.rsvps, reactions: st.reactions, admin_log: st.log, play_dates: st.play_dates }[r.table];
   const match = row => r.f.every(([op, c, v]) => op === 'eq' ? row[c] === v : row[c] > v);
   switch (r.op) {
     case 'rpc': {
@@ -53,6 +55,11 @@ function rpc(u, r) {
       return { data: rows };
     }
     case 'upsert': {
+      if (r.table === 'play_dates') {
+        if (!isAdmin(u)) return err('new row violates row-level security policy for table "play_dates"');
+        const old = st.play_dates.find(x => x.day === r.payload.day); old ? Object.assign(old, r.payload) : st.play_dates.push({ ...r.payload });
+        logAct(u, 'mark_play_date', { date: r.payload.day, kind: r.payload.kind }); emit(); return { data: [] };
+      }
       const pl = st.players.find(p => p.id === r.payload.player_id);
       if (!pl || (pl.user_id !== u && !isAdmin(u))) return err('new row violates row-level security policy for table "rsvps"');
       const old = st.rsvps.find(x => x.day_date === r.payload.day_date && x.player_id === r.payload.player_id);
@@ -107,6 +114,7 @@ function rpc(u, r) {
           if (row.n !== last || st.days.find(d => d.id === row.day_id).closed) continue;
         }
         if (r.table === 'rsvps' && !isAdmin(u) && st.players.find(p => p.id === row.player_id).user_id !== u) continue; // members only clear their own
+        if (r.table === 'play_dates') { if (!isAdmin(u)) continue; logAct(u, 'clear_play_date', { date: row.day }); }
         if (r.table === 'days') logAct(u, 'delete_day', { date: row.date, matches: st.matches.filter(x => x.day_id === row.id).length });
         if (r.table === 'matches' && st.days.some(d => d.id === row.day_id)) logAct(u, 'delete_match', { date: st.days.find(d => d.id === row.day_id).date, n: row.n });
         T.splice(T.indexOf(row), 1);

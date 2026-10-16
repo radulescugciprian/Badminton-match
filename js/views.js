@@ -43,21 +43,42 @@ function rsvpCard() {
   const ans = id => answerOf(id, date), icon = id => ({ in: '✅', out: '❌' }[ans(id)] || '⏳');
   const by = sched ? hhmm(playMins() - sched.opens_minutes) : '';
   const n = act_.filter(p => ans(p.id) === 'in').length;
-  return `<div class="card" style="margin-bottom:16px"><b>${niceDate(date)}</b> · ${t('{n} in', { n })}
-    ${mine ? `<div class="seg" style="margin:12px 0 0"><button class="${ans(mine.id) === 'in' ? 'on' : ''}" onclick="setRsvp(${mine.id}, ${ans(mine.id) === 'in' ? 'null' : "'in'"})">✅ ${t("I'm in")}</button>
+  const open = rsvpIsOpen(date);
+  return `<div class="card rsvp"><div class="rhead"><div><b>${niceDate(date)}</b> <span class="mut">· ${t('{n} in', { n })}</span></div>
+      <span><button class="link" onclick="go('calendar')" aria-label="${t('Calendar')}">📅</button><button class="link" onclick="toggleRsvp()" aria-expanded="${open}">${open ? '▴' : '▾'} ${t('Details')}</button></span></div>
+    ${mine ? `<div class="seg"><button class="${ans(mine.id) === 'in' ? 'on' : ''}" onclick="setRsvp(${mine.id}, ${ans(mine.id) === 'in' ? 'null' : "'in'"})">✅ ${t("I'm in")}</button>
       <button class="${ans(mine.id) === 'out' ? 'on' : ''}" onclick="setRsvp(${mine.id}, ${ans(mine.id) === 'out' ? 'null' : "'out'"})">❌ ${t("I'm out")}</button></div>` : ''}
-    <div class="chips">${act_.map(p => admin ? `<button class="chip ${ans(p.id) || ''}" onclick="cycleRsvp(${p.id})" aria-label="${t('Answer for {name}', { name: esc(p.name) })}">${av(p.id, 22)} ${esc(p.name)} ${icon(p.id)}</button>`
+    ${open ? `<div class="chips">${act_.map(p => admin ? `<button class="chip ${ans(p.id) || ''}" onclick="cycleRsvp(${p.id})" aria-label="${t('Answer for {name}', { name: esc(p.name) })}">${av(p.id, 22)} ${esc(p.name)} ${icon(p.id)}</button>`
       : `<span class="chip ${ans(p.id) || ''}">${av(p.id, 22)} ${esc(p.name)} ${icon(p.id)}</span>`).join('')}</div>
     <p class="mut" style="margin:6px 0 0">${by ? t('Answer before {time}.', { time: by }) + ' ' : ''}${t('The list below fills itself: players who are in first.')}${admin ? ' ' + t('Admins can tap a name to answer for them.') : ''}</p>
     ${admin && rsvps.some(x => x.day_date === date) ? `<button class="link danger" onclick="resetRsvps()">↺ ${t('Reset answers')}</button>` : ''}
-    <button class="link" onclick="remindMe()">🔔 ${t('Remind me every {day}', { day: dayName(sched ? sched.dow : 4) })}</button></div>`;
+    <button class="link" onclick="remindMe()">🔔 ${t('Remind me every {day}', { day: dayName(sched ? sched.dow : 4) })}</button>` : ''}</div>`;
+}
+
+// month calendar: weekly play days are highlighted; admins tap a date to add an extra day or cancel a normal one
+function calendarView() {
+  const now = tzParts(), [Y, M] = (calMonth || now.date.slice(0, 7)).split('-').map(Number), admin = me.is_admin;
+  const first = new Date(Date.UTC(Y, M - 1, 1)), lead = (first.getUTCDay() + 6) % 7, count = new Date(Date.UTC(Y, M, 0)).getUTCDate();
+  const title = first.toLocaleDateString(LOCALE[lang], { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const played = new Set(db.days.filter(d => d.started).map(d => d.date));
+  const head = [1, 2, 3, 4, 5, 6, 0].map(d => `<div class="wd">${esc(dayName(d).slice(0, 2))}</div>`).join('');
+  const cells = Array.from({ length: lead }, () => '<div></div>').concat(Array.from({ length: count }, (_, i) => {
+    const iso = `${Y}-${String(M).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`, k = markOf(iso);
+    const cls = ['d', isPlayDate(iso) ? 'play' : '', k === 'extra' ? 'extra' : '', k === 'cancelled' ? 'off' : '', iso === now.date ? 'today' : '', played.has(iso) ? 'dot' : ''].join(' ');
+    return admin && iso >= now.date ? `<button class="${cls}" onclick="markDate('${iso}')" aria-label="${esc(niceDate(iso, { weekday: 'long', day: 'numeric', month: 'long' }))}">${i + 1}</button>` : `<div class="${cls}">${i + 1}</div>`;
+  })).join('');
+  return `<div class="top"><button class="link" onclick="go('play')">← ${t('Back')}</button></div><h1>📅 ${t('Calendar')}</h1>
+    <div class="calnav"><button onclick="calShift(-1)" aria-label="${t('Previous month')}">‹</button><b>${esc(title)}</b><button onclick="calShift(1)" aria-label="${t('Next month')}">›</button></div>
+    <div class="cal">${head}${cells}</div>
+    <p class="mut legend"><span class="key play"></span>${t('Play day')} <span class="key extra"></span>${t('Extra play day')} <span class="key off"></span>${t('Cancelled')} <span class="key dot"></span>${t('Played')}</p>
+    <p class="mut">${admin ? t('Tap a date to add an extra play day or cancel a normal one.') : t('Only admins can change the play days.')}</p>`;
 }
 
 function setup(d) {
   const m = d.mode, cyc = m === 4 ? C4 : C5, o = d.order, [a, b, r] = cyc[0], admin = me.is_admin;
   const date = nextPlayDate(), ins = o.filter(id => answerOf(id, date) === 'in').length, auto = ins >= 4, icon = id => ({ in: '✅', out: '❌' }[answerOf(id, date)] || '⏳');
   const open = admin || startOpen();
-  return `<h1>${t('New day')}</h1>${rsvpCard()}<p class="mut">${t('Choose 4 or 5 players and their order. The first {m} in the list play; the rest sit out.', { m })}${auto ? ' ' + t('The 4 / 5 choice follows the sign-ups.') : ''}${rsvps.some(x => x.day_date === date) && ins < 4 ? ' ' + t('Only {n} confirmed so far, you need at least 4.', { n: ins }) : ''}</p>
+  return `<h1>${t('Next match day')}</h1>${rsvpCard()}<p class="mut">${t('Choose 4 or 5 players and their order. The first {m} in the list play; the rest sit out.', { m })}${auto ? ' ' + t('The 4 / 5 choice follows the sign-ups.') : ''}${rsvps.some(x => x.day_date === date) && ins < 4 ? ' ' + t('Only {n} confirmed so far, you need at least 4.', { n: ins }) : ''}</p>
       <input type="date" value="${d.date}" onchange="setDate(this.value)" aria-label="${t('Date')}">
       <div class="seg" style="margin:12px 0"><button class="${m === 4 ? 'on' : ''}" onclick="setMode(4)" ${auto ? 'disabled' : ''}>${t('4 players')}</button>
         <button class="${m === 5 ? 'on' : ''}" onclick="setMode(5)" ${auto || o.length < 5 ? 'disabled' : ''}>${t('5 players')}</button></div>
@@ -94,7 +115,7 @@ function play() {
       <button class="primary" onclick="photo(${d.id})">📷 ${d.photo ? t('Retake group photo') : t('Take group photo')}</button>
       ${d.photo ? `<p class="mut" style="text-align:center;margin:8px 0 0">✓ ${t('Photo saved in Photos')}</p>` : ''}
       <button class="add" style="margin-top:12px" onclick="shareCard(${d.id})">📤 ${t('Share result card')}</button>
-      <button class="add" onclick="newDayBtn()">${t('Start new day')}</button>
+      <button class="add" onclick="newDayBtn()">${t('Start next match day')}</button>
       ${admin ? `<div class="actions"><button class="link" onclick="reopenDay()">${t('Reopen day')}</button></div>` : ''}`;
   }
   const [t1, t2, rest] = cyc[n % cyc.length];
@@ -112,7 +133,7 @@ function play() {
     <div class="actions">
       <button class="link" onclick="undo()" ${n ? '' : 'disabled'}>↶ ${t('Undo last')}</button>
       ${admin ? `<button class="link" onclick="closeDay()" ${n ? '' : 'disabled'}>🏁 ${t('Close day')}</button>` : ''}
-      <button class="link" onclick="newDayBtn()">${t('New day')}</button>
+      <button class="link" onclick="newDayBtn()">${t('Next match day')}</button>
       ${admin ? `<button class="link danger" onclick="resetDay()">${t('Reset day')}</button>` : ''}
     </div>`;
 }
@@ -212,6 +233,7 @@ const LOG = {
   delete_day: d => t('deleted the day {date} with {matches}', { date: d.date, matches: tp('{n} matches', d.matches) }),
   delete_match: d => t('removed match {n} of {date}', { n: d.n, date: d.date }),
   close_day: d => t('closed the day {date}', d), reopen_day: d => t('reopened the day {date}', d), reset_day: d => t('reset the day {date}', d),
+  mark_play_date: d => d.kind === 'extra' ? t('added an extra play day on {date}', d) : t('cancelled the play day {date}', d), clear_play_date: d => t('cleared the mark on {date}', d),
   delete_photo: d => t('deleted the photo of {date}', d), remove_player: d => t('removed the player {name}', d),
   make_admin: d => t('made {name} an admin', { name: d.username }), remove_admin: d => t('removed admin rights from {name}', { name: d.username }),
   remove_account: d => t('removed the account of {name}', { name: d.username }), edit_schedule: () => t('changed the play schedule'),
@@ -265,7 +287,7 @@ function render() {
   if (!loaded) { app.innerHTML = `<p class="mut">${t('Loading…')}</p>`; return; }
   const top = `<div class="top"><span>👤 ${esc(me.username || '')}${me.is_admin ? ' · ' + t('admin') : ''}</span>
     <span><button class="link" onclick="showHelp()" aria-label="${t('How it works')}">?</button><button class="link" onclick="go('members')">${t('Members')}</button><button class="link" onclick="go('profile')">${t('Profile')}</button><button class="link" onclick="logout()">${t('Log out')}</button></span></div>`;
-  app.innerHTML = top + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : `<h1>${t('Photos')}</h1><div id="gal"></div>`);
+  app.innerHTML = top + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : `<h1>${t('Photos')}</h1><div id="gal"></div>`);
   drawReactions();
   if (view === 'photos') gallery().catch(e => { gal.innerHTML = `<p class="msg">${esc(friendly(e))}</p>`; });
 }

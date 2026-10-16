@@ -8,6 +8,7 @@ run('sign-up list, ratings, badges, result card and reactions', async h => {
   // ---- sign-up fills the player list
   assert((await A.textContent('.card')).includes('15 Oct'), 'sign-up is for Thursday 15 Oct');
   await B.click("text=I'm out"); await A.click("text=I'm in"); await C.click("text=I'm in");
+  await A.click('text=Details'); await A.waitForSelector('.chips');
   await A.click('[aria-label="Answer for Zjepko"]'); await A.click('[aria-label="Answer for Ciprian"]');   // admin answers for guests
   await A.waitForFunction(() => document.querySelectorAll('.row').length === 5 && document.querySelector('.row:last-child .nm').textContent.includes('Dani'));
   await until(() => st.days[st.days.length - 1].mode === 4, 'the list and the 4-player mode to follow the answers');
@@ -67,7 +68,7 @@ run('sign-up list, ratings, badges, result card and reactions', async h => {
   await A.click('.seg >> text=Day'); await A.waitForSelector('text=Smashers');                              // match list shows the team name
   await A.screenshot({ path: require('os').tmpdir() + '/board2.png', fullPage: true });
   // ---- admin resets the answers for the coming play date
-  await A.click('nav >> text=Play'); await A.click('text=Start new day'); await A.waitForSelector('text=Reset answers');
+  await A.click('nav >> text=Play'); await A.click('text=Start next match day'); await A.waitForSelector('text=Reset answers');
   assert((await B.locator('text=Reset answers').count()) === 0, 'members have no reset button');
   assert(st.rsvps.length > 0);
   await A.click('text=Reset answers');

@@ -113,6 +113,26 @@
   table.rot{width:100%;border-collapse:collapse;margin:8px 0;font-size:14px}
   table.rot th,table.rot td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left}
 
+  /* compact sign-up card + calendar */
+  .rsvp{margin-bottom:16px;padding:12px 14px}
+  .rsvp .rhead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .rsvp .rhead .link{padding:4px 8px}
+  .rsvp .seg{margin:8px 0 0}
+  .rsvp .seg button{padding:8px}
+  .calnav{display:flex;justify-content:space-between;align-items:center;margin:8px 0 12px}
+  .calnav button{padding:6px 16px;font-size:20px}
+  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .cal .wd{text-align:center;color:var(--mut);font-size:12px;padding-bottom:2px}
+  .cal .d{aspect-ratio:1;border-radius:10px;display:grid;place-items:center;position:relative;border:1px solid var(--line);background:var(--card);font-size:15px;padding:0;color:var(--text)}
+  .cal .d.play{border-color:var(--acc);background:rgba(190,242,100,.16)}
+  .cal .d.extra{border-color:#60a5fa;background:rgba(96,165,250,.22)}
+  .cal .d.off{opacity:.45;text-decoration:line-through;border-style:dashed}
+  .cal .d.today{outline:2px solid var(--text)}
+  .cal .d.dot::after,.key.dot::after{content:'';width:6px;height:6px;border-radius:50%;background:var(--acc);position:absolute;bottom:4px}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:12px}
+  .key{display:inline-block;width:14px;height:14px;border-radius:4px;border:1px solid var(--line);vertical-align:-2px;margin-right:4px;position:relative}
+  .key.play{border-color:var(--acc);background:rgba(190,242,100,.16)} .key.extra{border-color:#60a5fa;background:rgba(96,165,250,.22)} .key.off{border-style:dashed;opacity:.6}
+
   /* nav */
   nav{position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:var(--nav);backdrop-filter:blur(10px);border-top:1px solid var(--line)}
   nav button{flex:1;background:none;color:var(--mut);padding:12px 2px;font-weight:600;font-size:14px}

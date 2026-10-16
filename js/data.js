@@ -16,6 +16,7 @@ const today = () => new Date().toLocaleDateString('sv-SE'); // local YYYY-MM-DD
 let db = { players: [], days: [] }, members = [], me = {}, session = null, loaded = false, authReady = false;
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
+let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
 let rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, dateTouched = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
 let view = 'play', tab = 'day', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0, manualLogout = false, lostSession = false;
 // the sign-in is kept on the phone (localStorage) and renewed automatically, so people stay logged in until they log out
@@ -47,7 +48,7 @@ const canSee = pid => me.is_admin || player(pid).user === session.user.id || sha
 async function refresh() {
   if (!session) return;
   const seq = changeSeq;
-  const [p, d, m, sc, rs, rx, sd] = await Promise.all([
+  const [p, d, m, sc, rs, rx, sd, pd] = await Promise.all([
     sb.from('players').select('*').order('id'),
     sb.from('days').select('*, matches(*)').order('id'),
     sb.from('profiles').select('*').order('name'),
@@ -55,9 +56,10 @@ async function refresh() {
     sb.from('rsvps').select('*'),
     sb.from('reactions').select('*'),
     sb.rpc('standings'),
+    sb.from('play_dates').select('*'),
   ]);
   if (pending > 0 || seq !== changeSeq) return; // taps happened while this was loading: its answer is out of date, the next re-fetch will show the truth
-  std = sd.error ? null : sd.data;
+  std = sd.error ? null : sd.data; playDates = pd.error ? [] : pd.data;
   sched = !sc.error && sc.data[0] ? sc.data[0] : null;
   rsvps = rs.error ? [] : rs.data; reactions = rx.error ? [] : rx.data; // empty until the migration has been applied
   db.players = ok(p).map(x => ({ id: x.id, name: x.name, avatar: x.avatar, removed: !x.active, user: x.user_id }));
@@ -257,12 +259,33 @@ const recordWin = team => {
 
 // ---- Thursday sign-up
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-function nextPlayDate() { // the play date people are answering for (this week's play day, or next week's once tonight's day has started)
-  const f = new Intl.DateTimeFormat('en-CA', { timeZone: sched ? sched.tz : undefined, year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short' }).formatToParts(new Date());
-  const g = x => f.find(y => y.type === x).value, ahead = sched ? (sched.dow - DAYS.indexOf(g('weekday')) + 7) % 7 : 0;
-  const iso = n => new Date(Date.UTC(+g('year'), +g('month') - 1, +g('day') + ahead + n)).toISOString().slice(0, 10);
-  return db.days.some(d => d.started && d.date === iso(0)) ? iso(7) : iso(0);
+// ---- play days: the weekly play day, plus extra days and cancelled days marked in the calendar
+const addDays = (iso, n) => new Date(Date.parse(iso + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+const dowOf = iso => new Date(iso + 'T12:00:00Z').getUTCDay();
+function tzParts() { // today's date, weekday and minutes since midnight, in the group's time zone
+  const f = new Intl.DateTimeFormat('en-CA', { timeZone: sched ? sched.tz : undefined, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
+  const g = x => f.find(y => y.type === x).value, date = `${g('year')}-${g('month')}-${g('day')}`;
+  return { date, dow: dowOf(date), mins: +g('hour') * 60 + +g('minute') };
 }
+const markOf = iso => (playDates.find(p => p.day === iso) || {}).kind;
+const isPlayDate = iso => markOf(iso) === 'extra' || (markOf(iso) !== 'cancelled' && !!sched && dowOf(iso) === sched.dow);
+function nextPlayDate() { // the play date people are answering for: the next play day that has not been played yet
+  const today = tzParts().date;
+  if (!sched) return today;
+  const played = new Set(db.days.filter(d => d.started).map(d => d.date));
+  for (let i = 0; i < 120; i++) { const iso = addDays(today, i); if (isPlayDate(iso) && !played.has(iso)) return iso; }
+  return today;
+}
+// admins: tap a date. A normal play day becomes cancelled (tap again to restore); any other day becomes an extra play day (tap again to clear)
+const markDate = iso => {
+  if (!me.is_admin || !sched || iso < tzParts().date) return;
+  const kind = markOf(iso), normal = dowOf(iso) === sched.dow, want = normal ? 'cancelled' : 'extra', clear = kind === want;
+  return act(async () => clear ? ok(await sb.from('play_dates').delete().eq('day', iso)) : ok(await sb.from('play_dates').upsert({ day: iso, kind: want })),
+    () => { playDates = playDates.filter(p => p.day !== iso); if (!clear) playDates.push({ day: iso, kind: want }); });
+};
+const calShift = n => { const [y, m] = (calMonth || tzParts().date.slice(0, 7)).split('-').map(Number); calMonth = new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 7); render(); };
+const rsvpIsOpen = date => rsvpOpen && rsvpOpen.date === date ? rsvpOpen.open : date === tzParts().date;   // compact until the play day, unless toggled by hand for this date
+const toggleRsvp = () => { const date = nextPlayDate(); rsvpOpen = { date, open: !rsvpIsOpen(date) }; render(); };
 const answerOf = (id, date) => (rsvps.find(r => r.day_date === date && r.player_id === id) || {}).status;
 const setRsvp = (id, status) => { const date = nextPlayDate();
   return act(async () => {
@@ -365,9 +388,8 @@ const allTime = () => std && pending === 0 ? std.filter(r => player(r.player_id)
 // regular members may start a day on the play day from `opens_minutes` before play time (server enforces the same rule)
 function startOpen() {
   if (!sched) return true;
-  const f = new Intl.DateTimeFormat('en-US', { timeZone: sched.tz, weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
-  const g = x => f.find(y => y.type === x).value, [h, m] = sched.play_time.split(':');
-  return DAYS.indexOf(g('weekday')) === sched.dow && +g('hour') * 60 + +g('minute') >= +h * 60 + +m - sched.opens_minutes;
+  const n = tzParts();
+  return isPlayDate(n.date) && n.mins >= playMins() - sched.opens_minutes;
 }
 const hhmm = mins => String(Math.floor(mins / 60) % 24).padStart(2, '0') + ':' + String(mins % 60).padStart(2, '0');
 const playMins = () => +sched.play_time.split(':')[0] * 60 + +sched.play_time.split(':')[1];
