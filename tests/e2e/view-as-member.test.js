@@ -18,7 +18,7 @@ run('admin views the app as a member', async h => {
   assert.equal(await A.locator('[aria-label="Admin tools"]').count(), 0, 'no admin button in the preview');
   assert.equal(await A.locator('text=Add guest player').count(), 1, 'members can add guests');
   assert(await A.locator('button:has-text("Start playing")').isDisabled(), 'locked outside the play window, like for a member');
-  assert.equal(await A.locator('.top img.adm').count(), 0, 'the top bar shows no admin tag');
+  assert.equal(await A.locator('.top [aria-label="Admin tools"]').count(), 0, 'the top bar shows no admin tag');
   assert.equal(await A.locator('[aria-label="View as member"]').count(), 0);
   await A.click('text=Members'); await A.waitForSelector('text=Accounts');
   assert.equal(await A.locator('text=Make admin').count() + await A.locator('text=Activity log').count() + await A.locator('[aria-label^="Remove account"]').count(), 0, 'Members page without admin tools');
