@@ -3,6 +3,8 @@
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   /* top-down badminton court (doubles lines, singles sidelines, service lines, net) behind everything */
   body::before{content:'';position:fixed;inset:0;z-index:-1;background:var(--court)}
+  /* Play tab: photo of the court, darkened so cards and text stay readable */
+  body[data-view=play]::before{background:linear-gradient(rgba(7,12,24,.45),rgba(7,12,24,.82)),var(--pbg,url(bg-play.jpg)) center/cover}
   body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,-apple-system,sans-serif;min-height:100dvh;
        padding:16px 16px calc(88px + env(safe-area-inset-bottom))}
   main{max-width:480px;margin:auto}

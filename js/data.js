@@ -17,7 +17,7 @@ let db = { players: [], days: [] }, members = [], me = {}, session = null, loade
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
-let rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
+let bgLoaded = false, rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
 let view = 'play', tab = 'day', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0, manualLogout = false, lostSession = false, asMember = false;   // asMember: an admin previewing the app as a normal member
 // the sign-in is kept on the phone (localStorage) and renewed automatically, so people stay logged in until they log out
 const sb = window.supabase && CONFIG.url && !CONFIG.url.includes('YOUR-')
@@ -87,6 +87,7 @@ async function refresh() {
     if (order.join() !== day.order.join() || mode !== day.mode) { await patchDay(day.id, { player_order: order, mode })(); return refresh(); }
   }
   loaded = true; render();
+  if (!bgLoaded) { bgLoaded = true; loadBg(); }
   if (!helpShown && !helpSeen()) { helpShown = true; showHelp(); } // first run: explain the rotation once
 }
 // Every write goes through act(). `optimistic` changes the screen immediately; the server calls then run one after the other,
@@ -248,6 +249,19 @@ shot.onchange = async () => {
     await patchDay(id, { photo_path: path })();
   });
 };
+// Play-tab background: one shared file in the photos bucket (admins write it, everyone reads it); missing = the built-in default
+const BG = 'bg/play.jpg';
+const loadBg = async () => {
+  const u = (await sb.storage.from('photos').createSignedUrl(BG, 86400)).data;
+  document.documentElement.style.setProperty('--pbg', u ? `url("${u.signedUrl}")` : 'url(bg-play.jpg)');
+};
+const pickBg = () => { bgpick.value = ''; bgpick.click(); };
+bgpick.onchange = async () => {
+  const f = bgpick.files[0]; if (!f) return;
+  const blob = await shrink(f, 1280, .8);
+  act(async () => { ok(await sb.storage.from('photos').upload(BG, blob, { upsert: true, contentType: 'image/jpeg' })); await loadBg(); });
+};
+const resetBg = () => act(async () => { ok(await sb.storage.from('photos').remove([BG])); await loadBg(); });
 const nameTeam = n => { const v = prompt(t('Name for team {n}', { n }), tn[n]); if (v !== null) { tn[n] = v.trim().slice(0, 24); render(); } };
 const recordWin = team => {
   if (performance.now() - lastWin < 700) return; lastWin = performance.now(); // a double tap must not record two matches

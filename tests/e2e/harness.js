@@ -4,7 +4,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), assert
 const { chromium } = require('playwright');
 const server = require('./mock-server.js');
 const ROOT = path.join(__dirname, '..', '..'), FIXTURES = path.join(__dirname, 'fixtures') + path.sep;
-const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
+const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.webmanifest': 'application/manifest+json' };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function run(name, body) {
@@ -26,7 +26,7 @@ async function run(name, body) {
     await p.exposeFunction('__auth', (op, a) => server.auth(op, a));
     await p.route('**/supabase.js', r => r.fulfill({ contentType: 'text/javascript', body: fs.readFileSync(path.join(__dirname, 'mock-client.js')) }));
     await p.route('**/config.js', r => r.fulfill({ contentType: 'text/javascript', body: "window.CONFIG={url:'https://x.supabase.co',key:'k'}" }));
-    await p.route('http://localhost:8766/**', r => r.fulfill({ contentType: 'image/png', body: Buffer.from(st.files[r.request().url().replace('http://localhost:8766/', '')]) }));
+    await p.route('http://localhost:8766/**', r => { const f = st.files[r.request().url().replace('http://localhost:8766/', '')]; return f ? r.fulfill({ contentType: 'image/png', body: Buffer.from(f) }) : r.fulfill({ status: 404 }); });
     await p.addInitScript(({ seen, t0 }) => {
       if (seen) localStorage.setItem('seenHelp', '1');
       const R = Date; window.__t = t0;                                   // lets a test move the app's clock: window.__t = timestamp

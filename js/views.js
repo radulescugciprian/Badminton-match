@@ -225,6 +225,8 @@ function membersView() {
     <h2 style="font-size:18px;margin:0 0 8px">${t('Players')}</h2>
     <div class="card" style="padding:4px 16px">${db.players.filter(p => !p.removed).map(p => `<div class="member"><span>${av(p.id, 28)} ${esc(p.name)}</span>
       ${p.user ? `<span class="mut" style="margin:0">${esc((members.find(m => m.id === p.user) || {}).username || '')}</span>` : `<span class="tag">${t('no account')}</span>`}</div>`).join('')}</div>
+    ${admin ? `<div class="card"><b>${t('Play background')}</b><p class="mut" style="margin:4px 0 8px">${t('Shown behind the Play tab for everyone.')}</p>
+      <button onclick="pickBg()">🖼 ${t('Change background')}</button> <button class="link" onclick="resetBg()">${t('Use default background')}</button></div>` : ''}
     ${scheduleForm()}${logCard()}`;
 }
 
@@ -279,6 +281,7 @@ const NAV = { play: () => '🏸 ' + t('Play'), board: () => '🏆 ' + t('Board')
 
 function render() {
   document.body.classList.toggle('out', !session);
+  document.body.dataset.view = session ? view : '';
   document.documentElement.lang = lang;
   document.querySelectorAll('nav button').forEach(b => { b.textContent = NAV[b.dataset.v](); b.setAttribute('aria-current', b.dataset.v === view ? 'page' : ''); });
   if (!sb) { app.innerHTML = `<h1>${t('Almost there')}</h1><p class="mut">${t('Add your Supabase URL and key to config.js (see SETUP.md).')}</p>`; return; }
