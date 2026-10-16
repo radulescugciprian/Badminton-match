@@ -165,6 +165,38 @@ const setShare = on => act(async () => ok(await sb.from('profiles').update({ sha
 
 // ---- first-run help
 const helpSeen = () => { try { return localStorage.getItem('seenHelp') === '1'; } catch { return true; } };
+// top-down badminton court (13.40 x 6.10 m; singles use the inner side lines): server (orange) serves diagonally to the receiver (blue)
+function courtSvg(doubles, label) {
+  const l = doubles ? 0 : 4.6, r = doubles ? 61 : 56.4, ln = 'stroke="#fff" stroke-width=".8" fill="none"';
+  return `<svg viewBox="-6 -4 73 142" role="img" aria-label="${esc(label)}" style="width:150px;display:block;margin:8px auto;border-radius:10px;background:#1b5e44">
+    <defs><marker id="ar${+doubles}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="#fff"/></marker></defs>
+    ${doubles ? '' : '<rect x="0" y="0" width="4.6" height="134" fill="#000" opacity=".35"/><rect x="56.4" y="0" width="4.6" height="134" fill="#000" opacity=".35"/>'}
+    <rect x="30.5" y="86.8" width="${r - 30.5}" height="${(doubles ? 126.4 : 134) - 86.8}" fill="#f97316" opacity=".6"/>
+    <rect x="${l}" y="${doubles ? 7.6 : 0}" width="${30.5 - l}" height="${47.2 - (doubles ? 7.6 : 0)}" fill="#3b82f6" opacity=".6"/>
+    <rect x="0" y="0" width="61" height="134" ${ln}/><line x1="4.6" x2="4.6" y1="0" y2="134" ${ln}/><line x1="56.4" x2="56.4" y1="0" y2="134" ${ln}/>
+    <line x1="0" x2="61" y1="47.2" y2="47.2" ${ln}/><line x1="0" x2="61" y1="86.8" y2="86.8" ${ln}/>
+    <line x1="30.5" x2="30.5" y1="0" y2="47.2" ${ln}/><line x1="30.5" x2="30.5" y1="86.8" y2="134" ${ln}/>
+    <line x1="0" x2="61" y1="7.6" y2="7.6" ${ln} ${doubles ? '' : 'opacity=".35"'}/><line x1="0" x2="61" y1="126.4" y2="126.4" ${ln} ${doubles ? '' : 'opacity=".35"'}/>
+    <line x1="-4" x2="65" y1="67" y2="67" stroke="#e5e7eb" stroke-width="1.8" stroke-dasharray="2 1.2"/>
+    <path d="M${(30.5 + r) / 2} 110 L${(l + 30.5) / 2} 28" stroke="#fff" stroke-width="1.4" stroke-dasharray="3 2" marker-end="url(#ar${+doubles})" fill="none"/></svg>`;
+}
+const rulesHtml = () => `<h2 class="sec">${t('Badminton rules')}</h2>
+  <details class="fold"><summary>${t('The basics')}</summary>
+    <ul class="rules"><li>${t('A match is the best of 3 games. A game goes to 21 points and every rally scores a point.')}</li>
+      <li>${t('At 20-20 play on until one side leads by 2. At 29-29 the next point wins; 30 is the maximum.')}</li>
+      <li>${t('The side that wins a rally serves next. Players change ends after each game, and in a third game when the first side reaches 11.')}</li>
+      <li>${t('The serve is hit underhand, from below the waist, and lands in the diagonally opposite service court. Whoever serves stands in the right service court when their side\'s score is even, and in the left one when it is odd.')}</li>
+      <li>${t('Faults: the shuttle lands outside the lines, goes under the net or touches the roof; a double hit; touching the net; reaching over the net. A shuttle on a line is in.')}</li>
+      <li>${t('In this app one match is one result: tap the winning team.')}</li></ul></details>
+  <details class="fold"><summary>${t('Singles (1 against 1)')}</summary>${courtSvg(false, t('Singles court diagram'))}
+    <p class="mut">${t('Orange: the server. Blue: the receiver. The dashed arrow is the serve.')}</p>
+    <ul class="rules"><li>${t('The court is narrower: the inner side lines are the edge (5.18 m wide) and the whole length (13.40 m) is in play.')}</li>
+      <li>${t('The serve may go all the way to the back line, but not past it.')}</li></ul></details>
+  <details class="fold"><summary>${t('Doubles (2 against 2)')}</summary>${courtSvg(true, t('Doubles court diagram'))}
+    <p class="mut">${t('Orange: the server. Blue: the receiver. The dashed arrow is the serve.')}</p>
+    <ul class="rules"><li>${t('Rallies use the full width (6.10 m), but the serve must land in the shorter service court, which ends at the second line from the back (0.76 m inside the back line).')}</li>
+      <li>${t('When your side wins a rally while serving, the same player serves again from the other court and the two partners swap sides.')}</li>
+      <li>${t('During a rally either partner may hit the shuttle. Only the serve and the return of serve are fixed by the diagonal.')}</li></ul></details>`;
 function showHelp() {
   const rows = C5.map(([a, b, r], i) => `<tr><td>${i + 1}</td><td>${a.join(' + ')} ${t('vs')} ${b.join(' + ')}</td><td>${r}</td></tr>`).join('');
   const el = document.createElement('div'); el.id = 'help'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
@@ -179,6 +211,7 @@ function showHelp() {
     <p class="mut">${t('The numbers are places in the player list (1 = top).')}</p>
     <p>${t('With 4 players there are 3 matches and nobody rests.')}</p>
     <h2 class="sec">${t('Rating')}</h2><p>${t('Everyone starts at 1000 points. Beating stronger players earns more.')}</p>
+    ${rulesHtml()}
     <button class="primary" id="gotit">${t('Got it')}</button></div>`;
   document.body.append(el);
   el.querySelector('#gotit').onclick = () => { try { localStorage.setItem('seenHelp', '1'); } catch {} el.remove(); };

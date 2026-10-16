@@ -170,3 +170,4 @@
   .next .vs b{font-size:var(--fs-md);padding:8px 6px;border-radius:10px;border:2px solid var(--c);line-height:1.25} .next .vs span{color:var(--mut);font-size:var(--fs-sm);font-weight:700}
   .next .rs{margin-top:8px;font-size:var(--fs-sm);color:var(--mut)} .next .rs b{color:var(--text)}
   .rank.tap{cursor:pointer} .rank.tap:active{background:var(--line)}
+  ul.rules{margin:0 0 8px;padding-left:20px} ul.rules li{margin-bottom:8px}
