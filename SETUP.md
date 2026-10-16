@@ -58,6 +58,9 @@ Admins change the schedule in the app: **Members → Play schedule** (day, time,
 - The General leaderboard is counted by the database (`standings()`); ratings and stats still read the full match history.
 - **Tests** (`npm test`, and `bash tests/sql/run.sh` for the database rules) run on every push and pull request; the site is only published when they pass. Locally: `npm install`, then `npx playwright install chromium`.
 
+## Staying logged in
+The app keeps you signed in on the phone and renews the sign-in by itself, so you only log in again after choosing *Log out*. The login box also remembers your username (never the password). If you do get logged out, a note says so. Common reasons: Brave set to clear site data when closed, a private tab, or iPhone Safari deleting the data of a website unused for a week (adding the app to the Home Screen avoids that).
+
 ## Who can do what
 | | Member | Admin |
 |---|---|---|

@@ -17,8 +17,10 @@ let db = { players: [], days: [] }, members = [], me = {}, session = null, loade
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, dateTouched = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
-let view = 'play', tab = 'day', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0;
-const sb = window.supabase && CONFIG.url && !CONFIG.url.includes('YOUR-') ? supabase.createClient(CONFIG.url, CONFIG.key) : null;
+let view = 'play', tab = 'day', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0, manualLogout = false, lostSession = false;
+// the sign-in is kept on the phone (localStorage) and renewed automatically, so people stay logged in until they log out
+const sb = window.supabase && CONFIG.url && !CONFIG.url.includes('YOUR-')
+  ? supabase.createClient(CONFIG.url, CONFIG.key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }) : null;
 
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const cur = () => db.days[db.days.length - 1];
@@ -63,7 +65,8 @@ async function refresh() {
     photo: x.photo_path, matches: x.matches.sort((a, b) => a.n - b.n) }));
   if (!session) return; // logged out while loading
   members = ok(m); me = members.find(x => x.id === session.user.id);
-  if (!me) { me = {}; await sb.auth.signOut(); return; } // an admin removed this account
+  if (!me && !members.length) return; // an empty answer is a hiccup, not a removed account: never log anyone out because of it
+  if (!me) { me = {}; manualLogout = true; await sb.auth.signOut(); return; } // an admin removed this account
   if (me.lang && me.lang !== lang) setLangLocal(me.lang); // the language follows the account
   if (me.is_admin) { const lg = await sb.from('admin_log').select('*').order('id', { ascending: false }).limit(40); adminLog = lg.error ? [] : lg.data; }
 
@@ -117,6 +120,7 @@ async function login(f) {
   if (!email) return showMsg(t('Wrong username/email or password.')); // same answer for an unknown user and a wrong password
   const { error } = await sb.auth.signInWithPassword({ email, password });
   if (error) showMsg(friendly(error));
+  else try { localStorage.setItem('lastLogin', who); } catch {}   // remembered to pre-fill the box next time (never the password)
 }
 async function signup(f) {
   const u = f.get('username').trim();
@@ -137,7 +141,8 @@ async function newPassword(e) {
   if (error) return showMsg(friendly(error));
   alert(t('Password changed.')); go('play');
 }
-const logout = () => sb.auth.signOut();
+const logout = () => { manualLogout = true; return sb.auth.signOut(); };
+const lastLogin = () => { try { return localStorage.getItem('lastLogin') || ''; } catch { return ''; } };
 const setAuthMode = async m => {
   authMode = m;
   if (m === 'up') unclaimed = (await sb.rpc('unclaimed_players')).data || []; // players nobody has claimed yet

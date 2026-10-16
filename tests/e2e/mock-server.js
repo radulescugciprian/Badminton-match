@@ -47,6 +47,7 @@ function rpc(u, r) {
       let rows = T.map(x => ({ ...x })).filter(match);
       if (r.table === 'days') rows.forEach(d => { d.matches = st.matches.filter(m => m.day_id === d.id).map(m => ({ ...m })); });
       if (r.table === 'admin_log' && !isAdmin(u)) rows = [];
+      if (r.table === 'profiles' && st.emptyProfiles) rows = [];   // simulates a hiccup: the list of members comes back empty
       if (r.order) rows.sort((a, b) => (a[r.order] > b[r.order] ? 1 : -1) * (r.desc ? -1 : 1));
       if (r.limit) rows = rows.slice(0, r.limit);
       return { data: rows };

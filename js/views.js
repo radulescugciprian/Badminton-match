@@ -4,13 +4,13 @@ const langPicker = () => `<select class="lang" onchange="setLang(this.value)" ar
 
 function login_() {
   const m = authMode, up = m === 'up';
-  return `<h1 style="font-size:32px;margin-top:40px">🏸 Badminton</h1><p class="mut">${up ? t('Create your account') : m === 'reset' ? t('Reset your password') : t('Log in to see the scores')}</p>
+  return `<h1 style="font-size:32px;margin-top:40px">🏸 Badminton</h1>${lostSession && m === 'in' ? `<p class="mut" role="status">${t('You were signed out. Please log in again.')}</p>` : ''}<p class="mut">${up ? t('Create your account') : m === 'reset' ? t('Reset your password') : t('Log in to see the scores')}</p>
     <form onsubmit="authForm(event)">
       ${up ? `<input type="text" name="username" placeholder="${t('Username (3-20 letters, numbers, . _)')}" required pattern="[A-Za-z0-9_.]{3,20}" title="${t('3-20 letters, numbers, dot or underscore')}" autocapitalize="none" autocomplete="username">` : ''}
       ${up ? `<select name="player" aria-label="${t('Which player are you?')}"><option value="">${t("I'm a new player")}</option>${unclaimed.map(p => `<option value="${p.id}">${t("I'm {name}", { name: esc(p.name) })}</option>`).join('')}</select>` : ''}
       ${up ? `<input type="email" name="email" placeholder="${t('Email')}" required autocomplete="email">`
            : m === 'reset' ? `<input type="email" name="login" placeholder="${t('Email')}" required autocomplete="email">`
-           : `<input type="text" name="login" placeholder="${t('Username or email')}" required autocapitalize="none" autocomplete="username">`}
+           : `<input type="text" name="login" placeholder="${t('Username or email')}" value="${esc(lastLogin())}" required autocapitalize="none" autocomplete="username">`}
       ${m === 'reset' ? '' : `<input type="password" name="password" placeholder="${t('Password (6+ characters)')}" required minlength="6" autocomplete="${up ? 'new-password' : 'current-password'}">`}
       <p class="msg" role="alert"></p>
       <button class="primary" type="submit">${up ? t('Create account') : m === 'reset' ? t('Send reset link') : t('Log in')}</button>
