@@ -39,7 +39,7 @@ function profileView() {
 }
 
 function rsvpCard() {
-  const date = nextPlayDate(), mine = db.players.find(p => p.user === session.user.id), act_ = db.players.filter(p => !p.removed), admin = me.is_admin;
+  const date = nextPlayDate(), mine = db.players.find(p => p.user === session.user.id), act_ = db.players.filter(p => !p.removed), admin = isAdmin();
   const ans = id => answerOf(id, date), icon = id => ({ in: '✅', out: '❌' }[ans(id)] || '⏳');
   const by = sched ? hhmm(playMins() - sched.opens_minutes) : '';
   const n = act_.filter(p => ans(p.id) === 'in').length;
@@ -57,7 +57,7 @@ function rsvpCard() {
 
 // month calendar: weekly play days are highlighted; admins tap a date to add an extra day or cancel a normal one
 function calendarView() {
-  const now = tzParts(), [Y, M] = (calMonth || now.date.slice(0, 7)).split('-').map(Number), admin = me.is_admin;
+  const now = tzParts(), [Y, M] = (calMonth || now.date.slice(0, 7)).split('-').map(Number), admin = isAdmin();
   const first = new Date(Date.UTC(Y, M - 1, 1)), lead = (first.getUTCDay() + 6) % 7, count = new Date(Date.UTC(Y, M, 0)).getUTCDate();
   const title = first.toLocaleDateString(LOCALE[lang], { month: 'long', year: 'numeric', timeZone: 'UTC' });
   const played = new Set(db.days.filter(d => d.started).map(d => d.date));
@@ -75,7 +75,7 @@ function calendarView() {
 }
 
 function setup(d) {
-  const m = d.mode, cyc = m === 4 ? C4 : C5, o = d.order, [a, b, r] = cyc[0], admin = me.is_admin;
+  const m = d.mode, cyc = m === 4 ? C4 : C5, o = d.order, [a, b, r] = cyc[0], admin = isAdmin();
   const date = nextPlayDate(), ins = o.filter(id => answerOf(id, date) === 'in').length, auto = ins >= 4, icon = id => ({ in: '✅', out: '❌' }[answerOf(id, date)] || '⏳');
   const open = admin || startOpen();
   return `<h1>${t('Next match day')}</h1>${rsvpCard()}<p class="mut">${t('Choose 4 or 5 players and their order. The first {m} in the list play; the rest sit out.', { m })}${auto ? ' ' + t('The 4 / 5 choice follows the sign-ups.') : ''}${rsvps.some(x => x.day_date === date) && ins < 4 ? ' ' + t('Only {n} confirmed so far, you need at least 4.', { n: ins }) : ''}</p>
@@ -105,7 +105,7 @@ function closedExtras(d) {
 }
 
 function play() {
-  const d = cur(), n = d.matches.length, cyc = d.mode === 4 ? C4 : C5, o = d.order, admin = me.is_admin;
+  const d = cur(), n = d.matches.length, cyc = d.mode === 4 ? C4 : C5, o = d.order, admin = isAdmin();
   if (!d.started) return setup(d);
   if (d.closed) {
     return `<h1>${t('Day closed')} 🏁</h1><p class="mut">${esc(d.date)} · ${tp('{n} matches', n)}</p>
@@ -145,7 +145,7 @@ function board() {
   const picker = tab === 'day' && days.length
     ? `<select onchange="selId=+this.value;render()" aria-label="${t('Day')}">${days.map(d =>
         `<option value="${d.id}" ${d === sel ? 'selected' : ''}>${esc(d.date)} · ${tp('{n} matches', d.matches.length)}</option>`).join('')}</select>`
-      + (me.is_admin && sel ? `<div class="actions" style="margin:4px 0 0"><button class="link danger" onclick="deleteDay(${sel.id})">🗑 ${t("Delete this day's leaderboard")}</button></div>` : '') : '';
+      + (isAdmin() && sel ? `<div class="actions" style="margin:4px 0 0"><button class="link danger" onclick="deleteDay(${sel.id})">🗑 ${t("Delete this day's leaderboard")}</button></div>` : '') : '';
   const podium = !ms.length ? [] : [[0, '🥇', '#facc15', 120], [1, '🥈', '#cbd5e1', 90], [2, '🥉', '#d97706', 64]].map(([i, medal, c, h]) =>
     `<div class="pod"><div class="medal">${medal}</div>${av(rows[i].id)}<div class="pn">${esc(rows[i].name)}</div>
      <div class="pw">${tp('{n} wins', rows[i].w)} · ${Math.round(pct(rows[i]) * 100)}%</div>
@@ -163,7 +163,7 @@ function board() {
       ${tab === 'day' && sel ? `<h2 class="sec">${t('Matches')}</h2><div class="card" style="padding:4px 16px">${sel.matches.map(m => `<div class="mrow"><span class="r">${m.n}</span>
         <span style="flex:1">${side(m, 1)} <span class="mut">${t('vs')}</span> ${side(m, 2)}</span><span class="mut">${m.created_at ? new Date(m.created_at).toLocaleTimeString(LOCALE[lang], { hour: '2-digit', minute: '2-digit' }) : ''}</span></div>`).join('')}</div>` : ''}`
       : `<div class="empty">${t('No matches yet.')}<br>${t('Play one and the podium shows up here.')}</div>`}
-    ${tab === 'all' && me.is_admin ? `<div class="actions"><button class="link danger" onclick="eraseAll()">${t('Reset all scores')}</button></div>` : ''}`;
+    ${tab === 'all' && isAdmin() ? `<div class="actions"><button class="link danger" onclick="eraseAll()">${t('Reset all scores')}</button></div>` : ''}`;
 }
 
 function ratingList() {
@@ -205,7 +205,7 @@ function statsView() {
 }
 
 function scheduleForm() {
-  if (!me.is_admin || !sched) return '';
+  if (!isAdmin() || !sched) return '';
   const zones = ['Europe/Berlin', 'Europe/Bucharest', 'Europe/Zagreb', 'Europe/Stockholm', 'Europe/London', 'Europe/Paris', 'Europe/Rome', 'Europe/Madrid'];
   return `<h2 class="sec">${t('Play schedule')}</h2><form class="card" onsubmit="saveSchedule(event)">
     <label class="field">${t('Play day')}<select name="dow">${[1, 2, 3, 4, 5, 6, 0].map(d => `<option value="${d}" ${d === sched.dow ? 'selected' : ''}>${dayName(d)}</option>`).join('')}</select></label>
@@ -216,7 +216,7 @@ function scheduleForm() {
 }
 
 function membersView() {
-  const admin = me.is_admin, own = id => db.players.find(p => p.user === id);
+  const admin = isAdmin(), own = id => db.players.find(p => p.user === id);
   return `<h1>${t('Members')}</h1><p class="mut">${t('Accounts can log in. Admins can close or reset days, remove players, delete photos and remove accounts.')}</p>
     <h2 style="font-size:18px;margin:0 0 8px">${t('Accounts ({n})', { n: members.length })}</h2>
     <div class="card" style="padding:4px 16px;margin-bottom:20px">${members.map(m => `<div class="member"><span>${own(m.id) ? av(own(m.id).id, 28) + ' ' : ''}${esc(m.username)}${m.is_admin ? ` · <b>${t('admin')}</b>` : ''}</span>
@@ -239,7 +239,7 @@ const LOG = {
   remove_account: d => t('removed the account of {name}', { name: d.username }), edit_schedule: () => t('changed the play schedule'),
 };
 function logCard() {
-  if (!me.is_admin) return '';
+  if (!isAdmin()) return '';
   const when = r => new Date(r.at).toLocaleString(LOCALE[lang], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   return `<h2 class="sec">${t('Activity log')}</h2><div class="card" style="padding:4px 16px">${adminLog.map(r => `<div class="mrow" style="display:block"><span class="mut">${when(r)}</span><br>
     <b>${esc(r.actor_name || t('system'))}</b> ${esc((LOG[r.action] || (() => r.action))(r.detail))}</div>`).join('') || `<p class="mut">${t('No activity yet.')}</p>`}</div>`;
@@ -253,7 +253,7 @@ async function gallery() {
   if (view !== 'photos') return;
   gal.innerHTML = days.length ? `<div class="grid">${days.map(d => `<div class="cell"><button onclick="openPhoto(${d.id})">
       <img src="${urls[d.photo]}" alt=""><span>${esc(d.date)} · ${tp('{n} matches', d.matches.length)}<br>🏆 ${esc((stats(d.matches)[0] || { name: '-' }).name)}${KINDS.map(([k, e]) => { const n = reactions.filter(r => r.day_id === d.id && r.kind === k).length; return n ? ` ${e}${n}` : ''; }).join('')}</span></button>
-      ${me.is_admin ? `<button class="x" onclick="removePhoto(${d.id})" aria-label="${t('Delete photo of {date}', { date: esc(d.date) })}">✕</button>` : ''}</div>`).join('')}</div>`
+      ${isAdmin() ? `<button class="x" onclick="removePhoto(${d.id})" aria-label="${t('Delete photo of {date}', { date: esc(d.date) })}">✕</button>` : ''}</div>`).join('')}</div>`
     : `<div class="empty">${t('No photos yet.')}<br>${t('Close the day and take the group photo.')}</div>`;
 }
 async function openPhoto(id) {
@@ -264,7 +264,7 @@ async function openPhoto(id) {
     <button id="cd">📤 ${t('Result card')}</button>
     <a href="${u}" download="${nm}">⬇ ${t('Save')}</a>
     ${navigator.canShare && navigator.canShare({ files: [f] }) ? `<button id="sh">${t('Share')}</button>` : ''}
-    ${me.is_admin ? `<button id="rm" class="danger">${t('Delete')}</button>` : ''}<button id="cl">${t('Close')}</button></div>`;
+    ${isAdmin() ? `<button id="rm" class="danger">${t('Delete')}</button>` : ''}<button id="cl">${t('Close')}</button></div>`;
   document.body.append(el);
   lbDay = id; drawReactions();
   el.querySelector('#cl').onclick = () => { el.remove(); URL.revokeObjectURL(u); lbDay = null; };
@@ -285,9 +285,10 @@ function render() {
   if (!authReady) { app.innerHTML = `<p class="mut">${t('Loading…')}</p>`; return; }
   if (!session) { app.innerHTML = login_(); return; }
   if (!loaded) { app.innerHTML = `<p class="mut">${t('Loading…')}</p>`; return; }
-  const top = `<div class="top"><span>👤 ${esc(me.username || '')}${me.is_admin ? ' · ' + t('admin') : ''}</span>
-    <span><button class="link" onclick="showHelp()" aria-label="${t('How it works')}">?</button><button class="link" onclick="go('members')">${t('Members')}</button><button class="link" onclick="go('profile')">${t('Profile')}</button><button class="link" onclick="logout()">${t('Log out')}</button></span></div>`;
-  app.innerHTML = top + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : `<h1>${t('Photos')}</h1><div id="gal"></div>`);
+  const top = `<div class="top"><span>👤 ${esc(me.username || '')}${isAdmin() ? ' · ' + t('admin') : ''}</span>
+    <span>${me.is_admin && !asMember ? `<button class="link" onclick="toggleView()" aria-label="${t('View as member')}" title="${t('View as member')}">👁</button>` : ''}<button class="link" onclick="showHelp()" aria-label="${t('How it works')}">?</button><button class="link" onclick="go('members')">${t('Members')}</button><button class="link" onclick="go('profile')">${t('Profile')}</button><button class="link" onclick="logout()">${t('Log out')}</button></span></div>`;
+  const strip = me.is_admin && asMember ? `<div class="strip"><span>👁 ${t('You are viewing the app as a member. Admin tools are hidden.')}</span><button onclick="toggleView()">${t('Back to admin')}</button></div>` : '';
+  app.innerHTML = top + strip + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : `<h1>${t('Photos')}</h1><div id="gal"></div>`);
   drawReactions();
   if (view === 'photos') gallery().catch(e => { gal.innerHTML = `<p class="msg">${esc(friendly(e))}</p>`; });
 }

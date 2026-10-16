@@ -18,7 +18,7 @@ let sched = null; // play schedule (null until loaded / before its migration): n
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
 let rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, dateTouched = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
-let view = 'play', tab = 'day', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0, manualLogout = false, lostSession = false;
+let view = 'play', tab = 'day', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0, manualLogout = false, lostSession = false, asMember = false;   // asMember: an admin previewing the app as a normal member
 // the sign-in is kept on the phone (localStorage) and renewed automatically, so people stay logged in until they log out
 const sb = window.supabase && CONFIG.url && !CONFIG.url.includes('YOUR-')
   ? supabase.createClient(CONFIG.url, CONFIG.key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }) : null;
@@ -39,10 +39,14 @@ const ok = r => { if (r.error) throw r.error; return r.data; };
 const dayName = dow => new Date(Date.UTC(2024, 0, 7 + dow)).toLocaleDateString(LOCALE[lang], { weekday: 'long', timeZone: 'UTC' }); // 7 Jan 2024 was a Sunday
 const niceDate = (iso, o = { weekday: 'long', day: 'numeric', month: 'short' }) => new Date(iso + 'T12:00:00Z').toLocaleDateString(LOCALE[lang], { ...o, timeZone: 'UTC' });
 
+// an admin can look at the app the way a member sees it (a preview only: the server still knows who they are)
+const isAdmin = () => !!me.is_admin && !asMember;
+const toggleView = () => { asMember = !asMember; if (asMember && view === 'members') view = 'play'; render(); };
+
 // ---- who may see whose rating and stats: players decide for themselves, admins see everything. Guests (no account) are shared.
 const profileOf = pid => { const u = player(pid).user; return u && members.find(m => m.id === u); };
 const sharing = pid => { const pr = profileOf(pid); return !pr || pr.share_stats !== false; };
-const canSee = pid => me.is_admin || player(pid).user === session.user.id || sharing(pid);
+const canSee = pid => isAdmin() || player(pid).user === session.user.id || sharing(pid);
 
 // ---- loading + live updates
 async function refresh() {
@@ -278,7 +282,7 @@ function nextPlayDate() { // the play date people are answering for: the next pl
 }
 // admins: tap a date. A normal play day becomes cancelled (tap again to restore); any other day becomes an extra play day (tap again to clear)
 const markDate = iso => {
-  if (!me.is_admin || !sched || iso < tzParts().date) return;
+  if (!isAdmin() || !sched || iso < tzParts().date) return;
   const kind = markOf(iso), normal = dowOf(iso) === sched.dow, want = normal ? 'cancelled' : 'extra', clear = kind === want;
   return act(async () => clear ? ok(await sb.from('play_dates').delete().eq('day', iso)) : ok(await sb.from('play_dates').upsert({ day: iso, kind: want })),
     () => { playDates = playDates.filter(p => p.day !== iso); if (!clear) playDates.push({ day: iso, kind: want }); });

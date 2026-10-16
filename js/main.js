@@ -10,7 +10,7 @@ sb && sb.auth.onAuthStateChange((ev, s) => {
     channel = sb.channel('all').on('postgres_changes', { event: '*', schema: 'public' }, later).subscribe();
   } else {
     if (channel) sb.removeChannel(channel);
-    loaded = false; me = {}; db = { players: [], days: [] }; view = 'play'; render();
+    loaded = false; me = {}; db = { players: [], days: [] }; view = 'play'; asMember = false; render();
   }
 });
 document.addEventListener('visibilitychange', () => { if (!document.hidden && session) later(); }); // phones drop sockets in the background
