@@ -3,7 +3,8 @@
 The app stores everything in a free [Supabase](https://supabase.com) project so every phone sees the same players, scores and photos.
 
 1. **Create a project.** Sign in at supabase.com → *New project*. Pick any name and region and save the database password somewhere.
-2. **Create the tables.** Open *SQL Editor* → *New query*, paste all of `supabase/migrations/20261015120000_init.sql`, press *Run*. It should say "Success".
+2. **Create the tables.** (If the Supabase GitHub integration has *Deploy to production* on, pushes to `main` apply everything in `supabase/migrations/` automatically and you can skip this step. Migrations are safe to re-run.)
+   Otherwise: Open *SQL Editor* → *New query*, paste all of `supabase/migrations/20261015120000_init.sql`, press *Run*. It should say "Success".
 3. **Let people sign up straight away.** *Authentication* → *Sign In / Providers* → *Email* → turn **off** "Confirm email" → *Save*.
    (Leave it on if you want people to confirm their email first.)
 4. **Copy the two keys.** *Project Settings* → *API*: copy the **Project URL** and the **anon public** key into `config.js`.
