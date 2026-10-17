@@ -251,7 +251,7 @@ function scheduleForm() {
   const zones = ['Europe/Berlin', 'Europe/Bucharest', 'Europe/Zagreb', 'Europe/Stockholm', 'Europe/London', 'Europe/Paris', 'Europe/Rome', 'Europe/Madrid'];
   return `<h2 class="sec">${t('Play schedule')}</h2><form class="card" onsubmit="saveSchedule(event)">
     <label class="field">${t('Play day')}<select name="dow">${[1, 2, 3, 4, 5, 6, 0].map(d => `<option value="${d}" ${d === sched.dow ? 'selected' : ''}>${dayName(d)}</option>`).join('')}</select></label>
-    <label class="field">${t('Play time')}<input type="time" name="time" value="${sched.play_time.slice(0, 5)}" required></label>
+    <label class="field">${t('Play time')}${timeSel('time', +sched.play_time.slice(0, 2) * 60 + +sched.play_time.slice(3, 5))}</label>
     <label class="field">${t('Members can press Start playing this many minutes before play time')}<input type="number" name="mins" min="0" max="720" value="${sched.opens_minutes}" required></label>
     <label class="field">${t('Answers (in / out) close this many minutes before play time')}<input type="number" name="until" min="0" max="1440" value="${sched.rsvp_until_minutes}" required></label>
     <label class="field">${t('The sign-up section is hidden this many minutes before play time')}<input type="number" name="hide" min="0" max="1440" value="${sched.rsvp_hide_minutes}" required></label>

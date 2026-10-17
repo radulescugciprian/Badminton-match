@@ -123,7 +123,7 @@
   .card.check{display:flex;gap:12px;align-items:center;margin-bottom:16px}
   .check input{width:22px;height:22px;flex:none}
   select.lang{width:auto;padding:6px 10px}
-  #xform{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.75);display:grid;place-items:center;padding:16px} #xform .card{width:100%;max-width:420px;background:var(--bg)} #xform input[type=time]{margin-top:6px} #xform .link{display:block;margin:8px auto 0}
+  #xform{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.75);display:grid;place-items:center;padding:16px} #xform .card{width:100%;max-width:420px;background:var(--bg)} #xform .link{display:block;margin:8px auto 0}
   #help{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.85);overflow:auto;padding:16px}
   #help .card{max-width:480px;margin:0 auto;background:var(--bg);box-shadow:0 0 0 1px var(--line)}
   ol.steps{list-style:decimal;display:block;padding-left:22px;margin:0 0 8px} .steps li{margin-bottom:10px}
@@ -188,3 +188,4 @@
   #tour .tnav{display:flex;align-items:center;gap:8px} #tour .tnav .mut{flex:1;margin:0;text-shadow:none}
   #tour .tnav .primary{width:auto;padding:10px 18px;font-size:var(--fs-md)} #tour .tnav button:not(.primary):not(.link){padding:10px 14px}
   .link.wa{display:block;margin:8px auto 0;color:#25d366;font-weight:600} .flash{animation:flash 1.2s ease 2} @keyframes flash{50%{box-shadow:0 0 0 4px var(--acc)}}
+  .tsel{display:flex;align-items:center;gap:6px;margin-top:6px} .tsel select{margin:0;flex:1}

@@ -420,6 +420,11 @@ const memberExtra = iso => {
   }
   if (dowOf(iso) !== sched.dow) extraForm(iso);
 };
+// hour and minute dropdowns (5-minute steps); read back with formTime(formData, name) as "HH:MM"
+const pad2 = n => String(n).padStart(2, '0');
+const timeSel = (name, mins) => `<span class="tsel"><select name="${name}h" aria-label="${t('Hour')}">${Array.from({ length: 24 }, (_, h) => `<option value="${h}" ${h === Math.floor(mins / 60) ? 'selected' : ''}>${pad2(h)}</option>`).join('')}</select>
+    <b>:</b><select name="${name}m" aria-label="${t('Minutes')}">${Array.from({ length: 12 }, (_, k) => k * 5).map(m => `<option value="${m}" ${m === mins % 60 - mins % 5 ? 'selected' : ''}>${pad2(m)}</option>`).join('')}</select></span>`;
+const formTime = (f, name) => `${pad2(+f.get(name + 'h'))}:${pad2(+f.get(name + 'm'))}`;
 // the form for an extra game: its date, start time and the deadline for answers; also used to change or remove one you added
 // (shortcut: times are read in the phone's time zone, which is the group's)
 function extraForm(iso, old) {
@@ -427,11 +432,15 @@ function extraForm(iso, old) {
   const by = old && old.answer_by ? new Date(old.answer_by) : null, pad = n => String(n).padStart(2, '0');
   const byDay = by ? `${by.getFullYear()}-${pad(by.getMonth() + 1)}-${pad(by.getDate())}` : iso, byTime = by ? `${pad(by.getHours())}:${pad(by.getMinutes())}` : hhmm(Math.max(0, pm - sched.rsvp_until_minutes));
   const el = document.createElement('div'); el.id = 'xform'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
+  // plain dropdowns instead of the browser's date/time pickers, which some phones (Brave) never open
+  const today = tzParts().date, days = Array.from({ length: 120 }, (_, k) => addDays(today, k));
+  const daySel = (name, v, ok_ = () => true) => `<select name="${name}">${days.filter(d => d === v || ok_(d)).map(d => `<option value="${d}" ${d === v ? 'selected' : ''}>${esc(niceDate(d))}</option>`).join('')}</select>`;
+  const [bh, bm] = byTime.split(':').map(Number);
   el.innerHTML = `<form class="card"><h2 style="margin:0 0 12px">🏸 ${t('Extra game')}</h2>
-    <label class="field">${t('Date')}<input type="date" name="day" value="${iso}" min="${tzParts().date}" required></label>
-    <label class="field">${t('Start time')}<input type="time" name="time" value="${hhmm(pm)}" required></label>
-    <label class="field">${t('Answers needed by')}<input type="date" name="bd" value="${byDay}" min="${tzParts().date}" required></label>
-    <label class="field" aria-label="${t('Answers needed by')}"><input type="time" name="bt" value="${byTime}" required></label>
+    <label class="field">${t('Date')}${daySel('day', iso, d => isAdmin() || !sched || dowOf(d) !== sched.dow)}</label>
+    <div class="field">${t('Start time')}${timeSel('t', pm)}</div>
+    <label class="field">${t('Answers needed by')}${daySel('bd', byDay)}</label>
+    <div class="field">${timeSel('b', bh * 60 + bm)}</div>
     <p class="msg" role="alert"></p><button class="primary" type="submit">${old ? t('Save') : t('Add extra game')}</button>
     ${old ? `<button class="link danger" type="button" id="xdel">${t('Remove extra game')}</button>` : ''}<button class="link" type="button" id="xcancel">${t('Cancel')}</button></form>`;
   document.body.append(el);
@@ -439,7 +448,7 @@ function extraForm(iso, old) {
   if (old) el.querySelector('#xdel').onclick = () => { el.remove(); act(async () => ok(await sb.from('play_dates').delete().eq('day', iso)), () => { playDates = playDates.filter(x => x.day !== iso); }); };
   el.querySelector('form').onsubmit = e => {
     e.preventDefault();
-    const f = new FormData(e.target), day = f.get('day'), time = f.get('time'), when = new Date(`${f.get('bd')}T${f.get('bt')}`), msg = el.querySelector('.msg');
+    const f = new FormData(e.target), day = f.get('day'), time = formTime(f, 't'), when = new Date(`${f.get('bd')}T${formTime(f, 'b')}`), msg = el.querySelector('.msg');
     if (day !== iso && playDates.some(x => x.day === day)) return msg.textContent = t('That date is already marked in the calendar.');
     if (!isAdmin() && dowOf(day) === sched.dow) return msg.textContent = t('That is already a normal play day.');
     if (when >= new Date(`${day}T${time}`)) return msg.textContent = t('The answer deadline must be before the game.');
@@ -562,7 +571,7 @@ function saveSchedule(e) { // admins only; the database also refuses unknown tim
   if (+f.get('hide') > +f.get('until')) return showMsg(t('The sign-up section cannot be hidden before the answers close.'));
   try { new Intl.DateTimeFormat('en', { timeZone: tz }); } catch { return showMsg(t('Unknown time zone.')); }
   act(async () => {
-    ok(await sb.from('schedule').update({ tz, dow: +f.get('dow'), play_time: f.get('time'), opens_minutes: +f.get('mins'), rsvp_until_minutes: +f.get('until'), rsvp_hide_minutes: +f.get('hide') }).eq('id', true));
+    ok(await sb.from('schedule').update({ tz, dow: +f.get('dow'), play_time: formTime(f, 'time'), opens_minutes: +f.get('mins'), rsvp_until_minutes: +f.get('until'), rsvp_hide_minutes: +f.get('hide') }).eq('id', true));
     alert(t('Schedule saved.'));
   });
 }

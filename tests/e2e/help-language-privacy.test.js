@@ -72,7 +72,7 @@ run('help, plain errors, languages, privacy and the schedule editor', async h =>
   await B.click('text=Members'); await B.waitForSelector('text=Accounts'); assert((await B.locator('form >> text=Save schedule').count()) === 0, 'members have no schedule form');
   await A.fill('[name=tz]', 'Mars/Olympus'); await A.click('text=Save schedule'); await A.waitForSelector('text=Unknown time zone');
   assert(st.schedule[0].tz === 'Europe/Berlin', 'invalid zone refused');
-  await A.selectOption('[name=dow]', '5'); await A.fill('[name=time]', '19:00'); await A.fill('[name=mins]', '30'); await A.fill('[name=tz]', 'Europe/Zagreb');
+  await A.selectOption('[name=dow]', '5'); await A.selectOption('[name=timeh]', '19'); await A.selectOption('[name=timem]', '0'); await A.fill('[name=mins]', '30'); await A.fill('[name=tz]', 'Europe/Zagreb');
   await A.click('text=Save schedule'); await A.waitForFunction(() => document.querySelector('[name=dow]').value === '5');
   assert(st.schedule[0].dow === 5 && st.schedule[0].play_time === '19:00' && st.schedule[0].opens_minutes === 30 && st.schedule[0].tz === 'Europe/Zagreb', 'saved: ' + JSON.stringify(st.schedule[0]));
   assert(A.alerts.includes('Schedule saved.'));
