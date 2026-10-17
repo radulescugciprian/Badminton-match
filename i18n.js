@@ -28,6 +28,7 @@ function friendly(e) {
   if (has(/answers are closed/i)) return t('Answers are closed. Ask an admin.');
   if (has(/play window/i)) return t('A day can only be started during the play window. Ask an admin.');
   if (has(/admins only|row-level security|permission denied/i)) return t("You don't have permission to do that. Ask an admin.");
+  if (has(/change this name/i)) return t('Only an admin or the player can change this name.');
   if (has(/own avatar/i)) return t('Only the player can change their own photo.');
   if (has(/your own account/i)) return t('You cannot remove your own account.');
   if (has(/jwt expired|refresh.?token|session.?(expired|not found)/i)) return t('Your session has expired. Please log in again.');
@@ -118,6 +119,7 @@ const TR = {
     'Reset answers': 'Resetează răspunsurile',
     'Remind me every {day}': 'Amintește-mi în fiecare {day}',
     'Next match day': 'Următoarea zi de meci',
+    'Only an admin or the player can change this name.': 'Doar un admin sau jucătorul își poate schimba numele.',
     'Names of the new players without an account, separated by commas': 'Numele noilor jucători fără cont, separate prin virgulă',
     'Add players without an account': 'Adaugă jucători fără cont',
     'Later': 'Mai târziu',
@@ -445,6 +447,7 @@ const TR = {
     'Reset answers': 'Poništi odgovore',
     'Remind me every {day}': 'Podsjeti me svaki {day}',
     'Next match day': 'Sljedeći dan igranja',
+    'Only an admin or the player can change this name.': 'Samo admin ili sam igrač može promijeniti ovo ime.',
     'Names of the new players without an account, separated by commas': 'Imena novih igrača bez računa, odvojena zarezima',
     'Add players without an account': 'Dodaj igrače bez računa',
     'Later': 'Kasnije',
@@ -772,6 +775,7 @@ const TR = {
     'Reset answers': 'Nollställ svar',
     'Remind me every {day}': 'Påminn mig varje {day}',
     'Next match day': 'Nästa matchdag',
+    'Only an admin or the player can change this name.': 'Bara en admin eller spelaren själv kan ändra namnet.',
     'Names of the new players without an account, separated by commas': 'Namnen på de nya spelarna utan konto, åtskilda med kommatecken',
     'Add players without an account': 'Lägg till spelare utan konto',
     'Later': 'Senare',

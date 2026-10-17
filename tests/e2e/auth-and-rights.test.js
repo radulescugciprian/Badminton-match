@@ -12,6 +12,9 @@ run('sign-in, rights, photos and the play schedule', async h => {
   await A.click('nav >> text=Play');
   // each account is its own player: avatar buttons only on your own row; guests are added by admins only
   assert((await A.locator('button.ph').count()) === 1 && (await B.locator('button.ph').count()) === 1, 'only own avatar editable');
+  assert.equal(await B.locator('[aria-label^="Rename"]').count(), 1, 'members rename only their own player');
+  assert((await A.locator('[aria-label^="Rename"]').count()) >= 5, 'admins rename anyone');
+  assert(h.rpc('u2', { table: 'players', op: 'update', payload: { name: 'Hacked' }, f: [['eq', 'id', 3]] }).error, 'the server refuses renaming someone else');
   assert((await B.locator('text=Add guest player').count()) === 1, 'members can add guests too');
   assert(st.players.length === 5, 'claiming existing players creates no duplicates');
   await B.click('.top .me'); await B.click('text=Change photo'); await B.setInputFiles('#pick', S + 'red.png');

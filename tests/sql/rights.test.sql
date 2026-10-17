@@ -37,6 +37,7 @@ select check_that((select avatar from players where id = 2) = 'data:ok', 'own av
 select must_fail($$update players set avatar = 'x' where id = 3$$, 'own avatar');
 select must_fail($$update players set avatar = 'x' where id = 4$$, 'own avatar');
 update players set name = 'Dani2' where id = 2;
+select must_fail($$update players set name = 'X' where id = 3$$, 'change this name');   -- someone else's player
 select must_fail($$update players set user_id = null where id = 2$$, 're-linked');
 select must_fail($$insert into players (name, user_id) values ('Hacker', '00000000-0000-0000-0000-00000000000c')$$, 'row-level security');
 insert into players (name) values ('Guest by member');
