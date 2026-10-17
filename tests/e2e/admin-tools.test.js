@@ -43,5 +43,12 @@ run('admin tools', async h => {
   await h.until(() => st.schedule[0].bg_dim === 40, 'dimming saved');
   assert.equal(await A.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--dim').trim()), '0.4');
   await B.reload(); await B.waitForSelector('text=Next match day').catch(() => {});
+  // receipts on the Photos tab: a member adds one, everyone sees it, the member deletes it again
+  await B.click('nav >> text=Photos'); await B.click('.seg >> text=Receipts'); await B.waitForSelector('text=Add a receipt');
+  B.promptAnswer = '12.50'; await B.setInputFiles('#rcpt', h.S + 'red.png');
+  await h.until(() => st.receipts.length === 1 && st.receipts[0].amount === 12.5 && st.files[st.receipts[0].photo_path], 'receipt saved with its photo');
+  await A.click('nav >> text=Photos'); await A.click('.seg >> text=Receipts'); await A.waitForSelector('#gal .member');
+  await B.waitForSelector('#gal .member'); await B.click('[aria-label="Delete this receipt?"]');
+  await h.until(() => st.receipts.length === 0, 'receipt deleted by the member who added it');
   assert(h.assert && A.errs.length + B.errs.length === 0, 'no page errors');
 });

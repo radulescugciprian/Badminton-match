@@ -165,7 +165,16 @@ update schedule set play_time = '00:30', opens_minutes = 60, rsvp_until_minutes 
 select check_that(can_start_now('2026-10-28 22:35Z') and not can_start_now('2026-10-28 22:25Z'), 'opening the evening before a 00:30 game');
 select check_that(rsvp_open('2026-10-29', '2026-10-28 21:20Z') and not rsvp_open('2026-10-29', '2026-10-28 21:40Z'), 'answers close at 22:30 the evening before');
 update schedule set play_time = '18:30', opens_minutes = 60;
-select check_that(db_version() >= 20261028, 'db_version reports the newest migration');
+select check_that(db_version() >= 20261029, 'db_version reports the newest migration');
+-- receipts: members add their own, read all, delete only their own (admins any)
+select as_user((select m1 from ids));
+insert into receipts (note, amount, photo_path) values ('extra court', 24, 'receipts/a.jpg');
+select must_fail($$insert into receipts (note, created_by) values ('x', (select adm from ids))$$, 'row-level security');
+select as_user((select m2 from ids));
+select check_that((select count(*) from receipts) = 1, 'members read receipts');
+select check_that(rows_changed($$delete from receipts$$) = 0, 'members cannot delete someone else''s receipt');
+select as_user((select adm from ids));
+select check_that(rows_changed($$delete from receipts$$) = 1, 'admins delete any receipt');
 delete from play_dates where day = '2026-10-22';
 select check_that((select count(*) from admin_log where action = 'clear_play_date') = 1, 'clearing logged');
 select must_fail($$insert into play_dates values ('2026-10-24', 'party')$$, 'check constraint');

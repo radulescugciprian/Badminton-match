@@ -1,5 +1,5 @@
 // Fake Supabase server (in memory) mirroring the rules in supabase/migrations that the screens depend on.
-const st = { players: ['Vali','Dani','Costi','Zjepko','Ciprian'].map((name,i)=>({id:i+1,name,avatar:null,active:true,user_id:null})), days: [], matches: [], profiles: [], rsvps: [], reactions: [], play_dates: [], log: [], attempts: {}, schedule: [{ id: true, tz: 'Europe/Berlin', dow: 4, play_time: '18:30:00', opens_minutes: 60, rsvp_until_minutes: 120, rsvp_hide_minutes: 90 }], now: null, users: {}, files: {}, seq: { p: 5, d: 0, m: 0 } };
+const st = { players: ['Vali','Dani','Costi','Zjepko','Ciprian'].map((name,i)=>({id:i+1,name,avatar:null,active:true,user_id:null})), days: [], matches: [], profiles: [], receipts: [], rsvps: [], reactions: [], play_dates: [], log: [], attempts: {}, schedule: [{ id: true, tz: 'Europe/Berlin', dow: 4, play_time: '18:30:00', opens_minutes: 60, rsvp_until_minutes: 120, rsvp_hide_minutes: 90 }], now: null, users: {}, files: {}, seq: { p: 5, d: 0, m: 0 } };
 const pages = [];
 const emit = () => pages.forEach(p => p.evaluate(() => window.__emit && window.__emit()).catch(() => {}));
 const isAdmin = u => (st.profiles.find(p => p.id === u) || {}).is_admin;
@@ -19,11 +19,11 @@ function canStart() {
 }
 function rpc(u, r) {
   if (!u && r.op !== 'rpc') return err('not logged in'); // the username lookup is public (anon)
-  const T = { players: st.players, days: st.days, matches: st.matches, profiles: st.profiles, schedule: st.schedule, rsvps: st.rsvps, reactions: st.reactions, admin_log: st.log, play_dates: st.play_dates }[r.table];
+  const T = { players: st.players, days: st.days, matches: st.matches, profiles: st.profiles, schedule: st.schedule, receipts: st.receipts, rsvps: st.rsvps, reactions: st.reactions, admin_log: st.log, play_dates: st.play_dates }[r.table];
   const match = row => r.f.every(([op, c, v]) => op === 'eq' ? row[c] === v : row[c] > v);
   switch (r.op) {
     case 'rpc': {
-      if (r.name === 'db_version') return { data: st.dbVersion ?? 20261028 };
+      if (r.name === 'db_version') return { data: st.dbVersion ?? 20261029 };
       if (r.name === 'delete_account') {
         if (!isAdmin(u)) return err('Admins only'); if (r.args.uid === u) return err('You cannot remove your own account');
         const pr = st.profiles.find(p => p.id === r.args.uid); if (!pr) return err('No such account');
@@ -77,6 +77,7 @@ function rpc(u, r) {
       if (st.failInsert && r.table === 'matches') return err('simulated server failure');
       const row = { ...r.payload };
       if (r.table === 'reactions') { row.user_id = u; if (st.reactions.some(x => x.day_id === row.day_id && x.user_id === u && x.kind === row.kind)) return err('duplicate key', '23505'); st.reactions.push(row); emit(); return { data: [row] }; }
+      if (r.table === 'receipts') { if (r.payload.created_by !== u) return err('new row violates row-level security policy for table "receipts"'); row.id = (st.receipts.length ? Math.max(...st.receipts.map(x => x.id)) : 0) + 1; row.created_at = new Date(st.now || Date.now()).toISOString(); }
       if (r.table === 'players') { if (!isAdmin(u) && r.payload.user_id) return err('new row violates row-level security policy'); row.id = ++st.seq.p; row.active = true; row.avatar = null; row.user_id = null; row.created_by = u; row.created_at = new Date(st.now || Date.now()).toISOString(); }
       if (r.table === 'days') { row.id = ++st.seq.d; Object.assign(row, { started: isAdmin(u) && !!r.payload.started, closed: false, photo_path: (isAdmin(u) && r.payload.photo_path) || null }); }
       if (r.table === 'matches') {
@@ -117,6 +118,7 @@ function rpc(u, r) {
       const hit = T.filter(match);
       for (const row of hit) {
         if (r.table === 'days' && !isAdmin(u)) continue;
+        if (r.table === 'receipts' && !isAdmin(u) && row.created_by !== u) continue;
         if (r.table === 'matches' && !isAdmin(u)) {
           const last = Math.max(...st.matches.filter(m => m.day_id === row.day_id).map(m => m.n));
           if (row.n !== last || st.days.find(d => d.id === row.day_id).closed) continue;

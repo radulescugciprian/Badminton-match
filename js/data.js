@@ -17,8 +17,8 @@ let db = { players: [], days: [] }, members = [], me = {}, session = null, loade
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
-const DB_VERSION = 20261028; // bump together with db_version() in the newest migration
-let dbBehind = false, benchOpen = false, bgLoaded = false, rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
+const DB_VERSION = 20261029; // bump together with db_version() in the newest migration
+let receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, bgLoaded = false, rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
 let view = 'play', tab = 'day', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0, manualLogout = false, lostSession = false, asMember = false;   // asMember: an admin previewing the app as a normal member
 // the sign-in is kept on the phone (localStorage) and renewed automatically, so people stay logged in until they log out
 const sb = window.supabase && CONFIG.url && !CONFIG.url.includes('YOUR-')
@@ -53,7 +53,7 @@ const canSee = pid => isAdmin() || player(pid).user === session.user.id || shari
 async function refresh() {
   if (!session) return;
   const seq = changeSeq;
-  const [p, d, m, sc, rs, rx, sd, pd] = await Promise.all([
+  const [p, d, m, sc, rs, rx, sd, pd, rc] = await Promise.all([
     sb.from('players').select('*').order('id'),
     sb.from('days').select('*, matches(*)').order('id'),
     sb.from('profiles').select('*').order('name'),
@@ -62,9 +62,10 @@ async function refresh() {
     sb.from('reactions').select('*'),
     sb.rpc('standings'),
     sb.from('play_dates').select('*'),
+    sb.from('receipts').select('*').order('id', { ascending: false }),
   ]);
   if (pending > 0 || seq !== changeSeq) return; // taps happened while this was loading: its answer is out of date, the next re-fetch will show the truth
-  std = sd.error ? null : sd.data; playDates = pd.error ? [] : pd.data;
+  std = sd.error ? null : sd.data; receipts = rc.error ? [] : rc.data; playDates = pd.error ? [] : pd.data;
   sched = !sc.error && sc.data[0] ? sc.data[0] : null;
   rsvps = rs.error ? [] : rs.data; reactions = rx.error ? [] : rx.data; // empty until the migration has been applied
   db.players = ok(p).map(x => ({ id: x.id, name: x.name, avatar: x.avatar, removed: !x.active, user: x.user_id, by: x.created_by, at: x.created_at }));
@@ -303,6 +304,25 @@ const openStats = id => { statsId = id; go('stats'); };
 const dim = () => (sched && sched.bg_dim) || 0;
 const previewDim = v => { document.documentElement.style.setProperty('--dim', v / 100); dimv.textContent = v + '%'; };
 const saveDim = v => act(async () => ok(await sb.from('schedule').update({ bg_dim: +v }).eq('id', true)), () => { if (sched) sched.bg_dim = +v; });
+// receipts: a photo of the bill, what it was for and (optionally) how much; whoever added it or an admin can delete it
+const addReceipt = () => { rcpt.value = ''; rcpt.click(); };
+rcpt.onchange = async () => {
+  const f = rcpt.files[0]; if (!f) return;
+  const note = prompt(t('What was it for? (e.g. extra court on 12 Nov, shuttles)'));
+  if (note === null) return;
+  const amt = (prompt(t('Amount (optional)')) || '').replace(',', '.').trim(), amount = amt && isFinite(amt) ? Math.abs(+amt) : null;
+  const blob = await shrink(f, 1600, .8), path = `receipts/${Date.now()}-${session.user.id.slice(0, 8)}.jpg`;
+  act(async () => {
+    ok(await sb.storage.from('photos').upload(path, blob, { contentType: 'image/jpeg' }));
+    ok(await sb.from('receipts').insert({ note: note.trim().slice(0, 80), amount, photo_path: path, created_by: session.user.id }));
+  });
+};
+const removeReceipt = id => { const r = receipts.find(x => x.id === id);
+  if (r && confirm(t('Delete this receipt?'))) act(async () => {
+    ok(await sb.from('receipts').delete().eq('id', id));
+    await sb.storage.from('photos').remove([r.photo_path]); // shortcut: only admins may delete files, so a member's receipt photo stays in storage; fine for a few receipts a year
+  });
+};
 const pickBg = () => { bgpick.value = ''; bgpick.click(); };
 bgpick.onchange = async () => {
   const f = bgpick.files[0]; if (!f) return;

@@ -294,6 +294,7 @@ function logCard() {
 
 let urls = {};
 async function gallery() {
+  if (photosTab === 'receipts') return receiptList();
   const days = db.days.filter(d => d.photo).reverse();
   urls = {};
   if (days.length) for (const x of ok(await sb.storage.from('photos').createSignedUrls(days.map(d => d.photo), 3600))) urls[x.path] = x.signedUrl;
@@ -302,6 +303,18 @@ async function gallery() {
       <img src="${urls[d.photo]}" alt=""><span>${esc(d.date)} · ${tp('{n} matches', d.matches.length)}<br>🏆 ${esc((stats(d.matches)[0] || { name: '-' }).name)}${KINDS.map(([k, e]) => { const n = reactions.filter(r => r.day_id === d.id && r.kind === k).length; return n ? ` ${e}${n}` : ''; }).join('')}</span></button>
       ${isAdmin() ? `<button class="x" onclick="removePhoto(${d.id})" aria-label="${t('Delete photo of {date}', { date: esc(d.date) })}">✕</button>` : ''}</div>`).join('')}</div>`
     : `<div class="empty">${t('No photos yet.')}<br>${t('Close the day and take the group photo.')}</div>`;
+}
+async function receiptList() {
+  const sig = {}, paths = receipts.map(r => r.photo_path).filter(Boolean);
+  if (paths.length) for (const x of ok(await sb.storage.from('photos').createSignedUrls(paths, 3600))) sig[x.path] = x.signedUrl;
+  if (view !== 'photos') return;
+  const who = r => esc((members.find(m => m.id === r.created_by) || {}).username || '?');
+  gal.innerHTML = `<button class="add" onclick="addReceipt()">🧾 ${t('Add a receipt')}</button>` + (receipts.length ? `<div class="card" style="padding:4px 16px">${receipts.map(r => `<div class="member">
+      <a href="${sig[r.photo_path] || '#'}" target="_blank" rel="noopener" style="display:flex;gap:12px;align-items:center;color:inherit;text-decoration:none;flex:1;min-width:0">
+        ${sig[r.photo_path] ? `<img src="${sig[r.photo_path]}" alt="${t('Receipt')}" style="width:52px;height:52px;object-fit:cover;border-radius:8px">` : '🧾'}
+        <span style="min-width:0"><b>${esc(r.note || t('Receipt'))}</b>${r.amount != null ? ` · ${(+r.amount).toFixed(2)}` : ''}<br><span class="mut" style="margin:0">${who(r)} · ${esc(niceDate(r.created_at.slice(0, 10), { day: 'numeric', month: 'short', year: 'numeric' }))}</span></span></a>
+      ${r.created_by === session.user.id || isAdmin() ? `<button class="link danger" onclick="removeReceipt(${r.id})" aria-label="${t('Delete this receipt?')}">✕</button>` : ''}</div>`).join('')}</div>`
+    : `<div class="empty">${t('No receipts yet.')}<br>${t('Add one when you pay for an extra court or shuttles.')}</div>`);
 }
 async function openPhoto(id) {
   const d = db.days.find(x => x.id === id), blob = await (await fetch(urls[d.photo])).blob(), u = URL.createObjectURL(blob);
@@ -341,7 +354,7 @@ function render() {
     <span class="bar">${me.is_admin && !asMember ? `<button class="link ico" onclick="toggleView()" aria-label="${t('View as member')}" title="${t('View as member')}">👁</button>` : ''}<button class="link ico" onclick="showHelp()" aria-label="${t('How it works')}" title="${t('How it works')}"><img src="tm-help.png" alt=""></button><button class="link" onclick="go('members')"><img src="tm-members.png" alt="">${t('Members')}</button>${isAdmin() ? `<button class="link" onclick="go('admin')" aria-label="${t('Admin tools')}" title="${t('Admin tools')}"><img src="tm-adminkey.png" alt="">${t('admin')}</button>` : ''}<button class="link" onclick="logout()"><img src="tm-logout.png" alt="">${t('Log out')}</button></span></div>`;
   const behind = isAdmin() && dbBehind ? `<div class="strip"><span>⚠️ ${t('The database is missing updates, so some buttons may fail. Apply the newest migrations in Supabase (see SETUP.md).')}</span></div>` : '';
   const strip = behind + (me.is_admin && asMember ? `<div class="strip"><span>👁 ${t('You are viewing the app as a member. Admin tools are hidden.')}</span><button onclick="toggleView()">${t('Back to admin')}</button></div>` : '');
-  app.innerHTML = top + strip + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'admin' && isAdmin() ? adminView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : view === 'backfill' && bf ? backfillView() : `<h1>${t('Photos')}</h1><div id="gal"></div>`);
+  app.innerHTML = top + strip + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'admin' && isAdmin() ? adminView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : view === 'backfill' && bf ? backfillView() : `<h1>${t('Photos')}</h1><div class="seg" style="margin-bottom:12px"><button class="${photosTab === 'photos' ? 'on' : ''}" onclick="photosTab='photos';render()">📷 ${t('Photos')}</button><button class="${photosTab === 'receipts' ? 'on' : ''}" onclick="photosTab='receipts';render()">🧾 ${t('Receipts')}</button></div><div id="gal"></div>`);
   drawReactions();
   if (view === 'photos') gallery().catch(e => { gal.innerHTML = `<p class="msg">${esc(friendly(e))}</p>`; });
 }
