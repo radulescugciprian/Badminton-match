@@ -17,7 +17,7 @@ let db = { players: [], days: [] }, members = [], me = {}, session = null, loade
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
-const DB_VERSION = 20261101; // bump together with db_version() in the newest migration
+const DB_VERSION = 20261102; // bump together with db_version() in the newest migration
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
 let slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, bgLoaded = false, rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
@@ -370,7 +370,7 @@ function tzParts() { // today's date, weekday and minutes since midnight, in the
   return { date, dow: dowOf(date), mins: +g('hour') * 60 + +g('minute') };
 }
 const markOf = iso => (playDates.find(p => p.day === iso) || {}).kind;
-const isPlayDate = iso => markOf(iso) === 'extra' || (markOf(iso) !== 'cancelled' && !!sched && dowOf(iso) === sched.dow);
+const isPlayDate = iso => markOf(iso) === 'extra' ? !extraOf(iso).called_off : (markOf(iso) !== 'cancelled' && !!sched && dowOf(iso) === sched.dow);
 function upcomingPlayDates(n) { // the next n play days that have not been played yet, starting with nextPlayDate()
   const out = [nextPlayDate()];
   for (let i = 1; out.length < n && i < 120; i++) { const d = addDays(out[0], i); if (isPlayDate(d)) out.push(d); }
@@ -424,6 +424,15 @@ function onSlides(el) {
   document.querySelectorAll('.dots i').forEach((x, k) => x.classList.toggle('on', k === slideIdx));
   clearTimeout(slideT); slideT = setTimeout(() => { if (slideIdx !== shownSlide) render(); }, 160);
 }
+// calling off an extra game keeps the booking (it stays in the calendar, marked cancelled); whoever added it may do so
+// while fewer than 4 are in, admins at any time. Either can bring it back.
+const insOn = d => rsvps.filter(r => r.day_date === d && r.status === 'in').length;
+const canCallOff = d => { const p = extraOf(d); return !!p && (isAdmin() || (p.created_by === session.user.id && (p.called_off || insOn(d) < 4))); };
+const callOff = (day, off) => {
+  if (off && !confirm(t('Cancel the extra game on {date}? The booking stays in the calendar, marked as cancelled.', { date: niceDate(day) }))) return;
+  act(async () => ok(await sb.from('play_dates').update({ called_off: off }).eq('day', day)), () => { const p = extraOf(day); if (p) p.called_off = off; });
+  if (off && confirm(t('Tell the WhatsApp group?'))) waShare(t('🚫 The extra game on {date} at {time} is cancelled.', { date: niceDate(day), time: hhmm(playMinsOn(day)) }) + ' ' + appLink());
+};
 const shareSignup = (date = nextPlayDate()) => {
   const ins = db.players.filter(p => !p.removed && answerOf(p.id, date) === 'in').map(p => p.name);
   waShare(t('🏸 {day} {time}: {n} in so far{names}. Please answer by {deadline}:', { day: niceDate(date), time: sched ? hhmm(playMinsOn(date)) : '',
@@ -464,9 +473,11 @@ function extraForm(iso, old) {
     <label class="field">${t('Answers needed by')}${daySel('bd', byDay)}</label>
     <div class="field">${timeSel('b', bh * 60 + bm)}</div>
     <p class="msg" role="alert"></p><button class="primary" type="submit">${old ? t('Save') : t('Add extra game')}</button>
+    ${old && canCallOff(iso) ? `<button class="link" type="button" id="xoff">${old.called_off ? '↺ ' + t('Bring the game back') : '🚫 ' + t('Cancel the game (keep the booking)')}</button>` : ''}
     ${old ? `<button class="link danger" type="button" id="xdel">${t('Remove extra game')}</button>` : ''}<button class="link" type="button" id="xcancel">${t('Cancel')}</button></form>`;
   document.body.append(el);
   el.querySelector('#xcancel').onclick = () => el.remove();
+  if (old && el.querySelector('#xoff')) el.querySelector('#xoff').onclick = () => { el.remove(); callOff(iso, !old.called_off); };
   if (old) el.querySelector('#xdel').onclick = () => { el.remove(); act(async () => ok(await sb.from('play_dates').delete().eq('day', iso)), () => { playDates = playDates.filter(x => x.day !== iso); }); };
   el.querySelector('form').onsubmit = e => {
     e.preventDefault();
@@ -488,7 +499,7 @@ function extraForm(iso, old) {
 function invites() {
   const mine = session && db.players.find(p => p.user === session.user.id), today = tzParts().date, next = nextPlayDate();
   if (!mine) return [];
-  return playDates.filter(p => p.kind === 'extra' && p.day >= today && p.day !== next && p.created_by !== session.user.id && !answerOf(mine.id, p.day) && rsvpPhase(p.day) === 'open')
+  return playDates.filter(p => p.kind === 'extra' && !p.called_off && p.day >= today && p.day !== next && p.created_by !== session.user.id && !answerOf(mine.id, p.day) && rsvpPhase(p.day) === 'open')
     .sort((x, y) => x.day < y.day ? -1 : 1);
 }
 const calShift = n => { const [y, m] = (calMonth || tzParts().date.slice(0, 7)).split('-').map(Number); calMonth = new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 7); render(); };

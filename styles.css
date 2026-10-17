@@ -202,3 +202,4 @@
   .dayzone{border-radius:18px;padding:8px;margin:0 -8px 12px;transition:background .3s}
   .dayzone.regular{background:rgba(34,197,94,.10);box-shadow:inset 0 0 0 1px rgba(34,197,94,.30)} .dayzone.extra{background:rgba(59,130,246,.14);box-shadow:inset 0 0 0 1px rgba(59,130,246,.45)}
   .rsvp.regular{background:linear-gradient(rgba(34,197,94,.16),rgba(34,197,94,.06)),var(--card)} .rsvp.extra{background:linear-gradient(rgba(59,130,246,.24),rgba(59,130,246,.08)),var(--card);border-color:rgba(59,130,246,.5)}
+  .invite.off{border-color:var(--danger);opacity:.9} .cal .d.xoff{background:repeating-linear-gradient(45deg,rgba(59,130,246,.25) 0 4px,transparent 4px 9px);text-decoration:line-through}

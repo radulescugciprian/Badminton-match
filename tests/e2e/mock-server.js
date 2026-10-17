@@ -25,7 +25,7 @@ function rpc(u, r) {
   const match = row => r.f.every(([op, c, v]) => op === 'eq' ? row[c] === v : row[c] > v);
   switch (r.op) {
     case 'rpc': {
-      if (r.name === 'db_version') return { data: st.dbVersion ?? 20261101 };
+      if (r.name === 'db_version') return { data: st.dbVersion ?? 20261102 };
       if (r.name === 'delete_account') {
         if (!isAdmin(u)) return err('Admins only'); if (r.args.uid === u) return err('You cannot remove your own account');
         const pr = st.profiles.find(p => p.id === r.args.uid); if (!pr) return err('No such account');
@@ -95,6 +95,8 @@ function rpc(u, r) {
       for (const row of T.filter(match)) {
         if (r.table === 'days' && ((r.payload.closed !== undefined && r.payload.closed !== row.closed) || (row.started && r.payload.started === false) || (row.photo_path && r.payload.photo_path === null)) && !isAdmin(u)) return err('Admins only');
         if (r.table === 'days' && !row.started && r.payload.started === true && !isAdmin(u) && !canStart()) return err('A day can only be started during the play window. Ask an admin.');
+        if (r.table === 'play_dates' && !isAdmin(u) && row.created_by !== u) continue;
+        if (r.table === 'play_dates' && r.payload.called_off !== undefined && r.payload.called_off !== row.called_off) logAct(u, r.payload.called_off ? 'call_off_extra' : 'restore_extra', { date: row.day });
         if (r.table === 'players' && r.payload.name !== undefined && r.payload.name !== row.name && !isAdmin(u) && row.user_id !== u) return err('Only an admin or the player can change this name');
         if (r.table === 'players' && r.payload.active === false && !isAdmin(u) && !(row.created_by === u && !row.user_id)) return err('Admins only'); // shortcut: the same-day limit is only checked by the database
         if (r.table === 'players' && r.payload.avatar !== undefined && row.user_id !== u) return err('Only the player can change their own avatar');

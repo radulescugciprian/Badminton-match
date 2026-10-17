@@ -81,7 +81,13 @@ run('compact sign-up card and play calendar', async h => {
   await B.click('.cal button[aria-label*="31 October"]'); await B.selectOption('#xform [name=day]', '2026-11-01'); await B.selectOption('#xform [name=th]', '10'); await B.selectOption('#xform [name=tm]', '0');
   await B.selectOption('#xform [name=bd]', '2026-10-31'); await B.selectOption('#xform [name=bh]', '20'); await B.selectOption('#xform [name=bm]', '0'); await B.click('#xform button[type=submit]');
   await until(() => !st.play_dates.some(x => x.day === '2026-10-31') && st.play_dates.some(x => x.day === '2026-11-01' && x.play_time === '10:00'), 'moved to Sunday 10:00');
-  await B.click('.cal button[aria-label*="›"], .calnav button >> nth=1'); await B.click('.cal button[aria-label*="1 November"]'); await B.click('text=Remove extra game');
+  // calling it off keeps the booking (marked cancelled, everyone is told); it can be brought back
+  await B.click('.calnav button >> nth=1'); await B.click('.cal button[aria-label*="1 November"]'); await B.click('#xoff');
+  await until(() => (st.play_dates.find(x => x.day === '2026-11-01') || {}).called_off === true, 'called off, booking kept');
+  await A.evaluate(() => go('play')); await A.waitForSelector('.invite.off'); assert(st.log.some(x => x.action === 'call_off_extra'), 'logged');
+  await B.waitForSelector('.cal .d.xoff'); await B.click('.cal button[aria-label*="1 November"]'); await B.click('#xoff');
+  await until(() => (st.play_dates.find(x => x.day === '2026-11-01') || {}).called_off === false, 'brought back');
+  await B.click('.cal button[aria-label*="1 November"]'); await B.click('text=Remove extra game');
   await until(() => !st.play_dates.some(x => x.day === '2026-11-01'), 'the member removes their own extra game');
   assert(A.errs.length + B.errs.length === 0, [A.errs, B.errs].join());
 });

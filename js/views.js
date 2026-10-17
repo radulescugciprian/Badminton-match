@@ -52,6 +52,7 @@ function rsvpCard(date = nextPlayDate(), first = true) {
   const open = rsvpIsOpen(date);
   return `<div class="card rsvp ${dayTint(date)}" data-day="${date}"><div class="rhead"><div><div class="mut" style="margin:0;font-size:var(--fs-sm)">${first ? t('Next match day') : extraOf(date) ? t('Extra game') : t('Later')}</div><b>${niceDate(date)}${extraOf(date) && extraOf(date).play_time ? ' · ' + hhmm(playMinsOn(date)) : ''}</b> <span class="mut">· ${t('{n} in', { n })}</span></div>
       <span><button class="link" onclick="shareSignup('${date}')" aria-label="${t('Share on WhatsApp')}" title="${t('Share on WhatsApp')}">💬</button><button class="link" onclick="go('calendar')" aria-label="${t('Calendar')}">📅</button><button class="link" onclick="toggleRsvp('${date}')" aria-expanded="${open}">${open ? '▴' : '▾'} ${t('Details')}</button></span></div>
+    ${extraOf(date) && canCallOff(date) ? `<button class="link" onclick="callOff('${date}', true)">🚫 ${t('Cancel this game')}</button>` : ''}
     ${mine && locked ? `<p class="mut" style="margin:8px 0 0">🔒 ${t('Answers closed at {time}.', { time: by })}</p>` : ''}
     ${mine && !locked ? `<div class="seg"><button class="${ans(mine.id) === 'in' ? 'on' : ''}" onclick="setRsvp(${mine.id}, ${ans(mine.id) === 'in' ? 'null' : "'in'"}, '${date}')">✅ ${t("I'm in")}</button>
       <button class="${ans(mine.id) === 'out' ? 'on' : ''}" onclick="setRsvp(${mine.id}, ${ans(mine.id) === 'out' ? 'null' : "'out'"}, '${date}')">❌ ${t("I'm out")}</button></div>` : ''}
@@ -81,6 +82,11 @@ function rsvpSlides() {
 }
 
 // month calendar: weekly play days are highlighted; admins tap a date to add an extra day or cancel a normal one
+function calledOffCards() {
+  return playDates.filter(p => p.kind === 'extra' && p.called_off && p.day >= tzParts().date).sort((x, y) => x.day < y.day ? -1 : 1)
+    .map(p => `<div class="card invite off">🚫 ${t('The extra game on {date} at {time} is cancelled.', { date: esc(niceDate(p.day)), time: esc(hhmm(playMinsOn(p.day))) })}
+      ${canCallOff(p.day) ? `<button class="link" onclick="callOff('${p.day}', false)">↺ ${t('Bring the game back')}</button>` : ''}</div>`).join('');
+}
 function inviteCards() {
   const mine = db.players.find(p => p.user === session.user.id), by = p => esc((members.find(m => m.id === p.created_by) || {}).username || '?');
   return invites().map(p => `<div class="card invite" data-day="${p.day}"><div>🏸 <b>${t('Extra game')}</b> · ${esc(niceDate(p.day))} ${sched ? esc(hhmm(playMinsOn(p.day))) : ''}
@@ -97,7 +103,7 @@ function calendarView() {
   const head = [1, 2, 3, 4, 5, 6, 0].map(d => `<div class="wd">${esc(dayName(d).slice(0, 2))}</div>`).join('');
   const cells = Array.from({ length: lead }, () => '<div></div>').concat(Array.from({ length: count }, (_, i) => {
     const iso = `${Y}-${String(M).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`, k = markOf(iso);
-    const cls = ['d', isPlayDate(iso) ? 'play' : '', k === 'extra' ? 'extra' : '', k === 'cancelled' ? 'off' : '', iso === now.date ? 'today' : '', played.has(iso) ? 'dot' : ''].join(' ');
+    const cls = ['d', isPlayDate(iso) ? 'play' : '', k === 'extra' ? (extraOf(iso).called_off ? 'xoff' : 'extra') : '', k === 'cancelled' ? 'off' : '', iso === now.date ? 'today' : '', played.has(iso) ? 'dot' : ''].join(' ');
     if (admin && iso < now.date) return `<button class="${cls}" onclick="backfill('${iso}')" aria-label="${esc(niceDate(iso, { weekday: 'long', day: 'numeric', month: 'long' }))}">${i + 1}</button>`;
     const canTap = admin || (k === 'extra' && (playDates.find(p => p.day === iso) || {}).created_by === session.user.id) || (!k && sched && dowOf(iso) !== sched.dow);
     return canTap && iso >= now.date ? `<button class="${cls}" onclick="markDate('${iso}')" aria-label="${esc(niceDate(iso, { weekday: 'long', day: 'numeric', month: 'long' }))}">${i + 1}</button>` : `<div class="${cls}">${i + 1}</div>`;
@@ -138,7 +144,7 @@ function setup(d) {
   const idle = db.players.filter(p => !p.removed && !o.includes(p.id));
   // who plays with whom is shown from 15 minutes before play time (and on the match screen once started)
   // the sign-ups fill the list and decide 4 or 5 players; the date is today's. Only when nobody has answered can an admin pick 4 or 5 by hand.
-  return `${inviteCards()}<div class="dayzone ${dayTint(sel)}">${rsvpSlides()}${sel !== date ? laterList(sel) : `${rsvps.some(x => x.day_date === date) && ins < 4 ? `<p class="mut">${t('Only {n} confirmed so far, you need at least 4.', { n: ins })}</p>` : ''}
+  return `${calledOffCards()}${inviteCards()}<div class="dayzone ${dayTint(sel)}">${rsvpSlides()}${sel !== date ? laterList(sel) : `${rsvps.some(x => x.day_date === date) && ins < 4 ? `<p class="mut">${t('Only {n} confirmed so far, you need at least 4.', { n: ins })}</p>` : ''}
       ${auto ? '' : `<div class="seg" style="margin:0 0 12px"><button class="${m === 4 ? 'on' : ''}" onclick="setMode(4)">${t('4 players')}</button>
         <button class="${m === 5 ? 'on' : ''}" onclick="setMode(5)" ${o.length < 5 ? 'disabled' : ''}>${t('5 players')}</button></div>`}
       <ol>${o.slice(0, m).map((id, i) => rowOf(id, i)).join('')}</ol>
@@ -313,7 +319,7 @@ const LOG = {
   delete_day: d => t('deleted the day {date} with {matches}', { date: d.date, matches: tp('{n} matches', d.matches) }),
   delete_match: d => t('removed match {n} of {date}', { n: d.n, date: d.date }),
   close_day: d => t('closed the day {date}', d), reopen_day: d => t('reopened the day {date}', d), reset_day: d => t('reset the day {date}', d),
-  mark_play_date: d => d.kind === 'extra' ? t('added an extra play day on {date}', d) : t('cancelled the play day {date}', d), clear_play_date: d => t('cleared the mark on {date}', d),
+  mark_play_date: d => d.kind === 'extra' ? t('added an extra play day on {date}', d) : t('cancelled the play day {date}', d), clear_play_date: d => t('cleared the mark on {date}', d), call_off_extra: d => t('cancelled the extra game on {date}', d), restore_extra: d => t('brought back the extra game on {date}', d),
   delete_photo: d => t('deleted the photo of {date}', d), remove_player: d => t('removed the player {name}', d),
   make_admin: d => t('made {name} an admin', { name: d.username }), remove_admin: d => t('removed admin rights from {name}', { name: d.username }),
   remove_account: d => t('removed the account of {name}', { name: d.username }), edit_schedule: () => t('changed the play schedule'),
