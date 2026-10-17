@@ -17,7 +17,7 @@ run('sign-up list, ratings, badges, result card and reactions', async h => {
   await B.click("text=I'm out"); await A.click("text=I'm in"); await C.click("text=I'm in");
   await A.click('text=Details'); await A.waitForSelector('.chips');
   await A.click('[aria-label="Answer for Zjepko"]'); await A.click('[aria-label="Answer for Ciprian"]');   // admin answers for guests
-  await A.waitForFunction(() => document.querySelectorAll('.row').length === 5 && document.querySelector('.row:last-child .nm').textContent.includes('Dani'));
+  await A.waitForFunction(() => document.querySelectorAll('.row').length === 5 && [...document.querySelectorAll('.row')].pop().textContent.includes('Dani'));
   await until(() => st.days[st.days.length - 1].mode === 4, 'the list and the 4-player mode to follow the answers');
   const d0 = st.days[st.days.length - 1];
   assert(d0.player_order.join() === '1,3,4,5,2', 'players who are in first, Dani (out) last: ' + d0.player_order);

@@ -129,8 +129,8 @@ function backfillView() {
 }
 
 function setup(d) {
-  const m = d.mode, cyc = m === 4 ? C4 : C5, o = d.order, [a, b, r] = cyc[0], admin = isAdmin();
-  const date = nextPlayDate(), ins = o.filter(id => answerOf(id, date) === 'in').length, auto = ins >= 4, icon = id => ({ in: '✅', out: '❌' }[answerOf(id, date)] || '⏳');
+  const m = d.mode, o = d.order, first = nextTeams(d), admin = isAdmin();
+  const date = nextPlayDate(), ins = o.filter(id => answerOf(id, date) === 'in').length, auto = ins >= 3, icon = id => ({ in: '✅', out: '❌' }[answerOf(id, date)] || '⏳');
   const open = admin || startOpen();
   // the swipe cards pick the day; the list below belongs to that day (the editable line-up only exists for the next match day)
   const sd = slideDates(), sel = slideIdx && sd[Math.min(slideIdx, sd.length - 1)] || date;
@@ -144,13 +144,13 @@ function setup(d) {
   const idle = db.players.filter(p => !p.removed && !o.includes(p.id));
   // who plays with whom is shown from 15 minutes before play time (and on the match screen once started)
   // the sign-ups fill the list and decide 4 or 5 players; the date is today's. Only when nobody has answered can an admin pick 4 or 5 by hand.
-  return `${calledOffCards()}${inviteCards()}<div class="dayzone ${dayTint(sel)}">${rsvpSlides()}${sel !== date ? laterList(sel) : `${rsvps.some(x => x.day_date === date) && ins < 4 ? `<p class="mut">${t('Only {n} confirmed so far, you need at least 4.', { n: ins })}</p>` : ''}
-      ${auto ? '' : `<div class="seg" style="margin:0 0 12px"><button class="${m === 4 ? 'on' : ''}" onclick="setMode(4)">${t('4 players')}</button>
+  return `${calledOffCards()}${inviteCards()}<div class="dayzone ${dayTint(sel)}">${rsvpSlides()}${sel !== date ? laterList(sel) : `${rsvps.some(x => x.day_date === date) && ins < 3 ? `<p class="mut">${t('Only {n} confirmed so far, you need at least 3.', { n: ins })}</p>` : ''}
+      ${auto ? '' : `<div class="seg" style="margin:0 0 12px"><button class="${m === 3 ? 'on' : ''}" onclick="setMode(3)" ${o.length < 3 ? 'disabled' : ''}>${t('3 players')}</button><button class="${m === 4 ? 'on' : ''}" onclick="setMode(4)">${t('4 players')}</button>
         <button class="${m === 5 ? 'on' : ''}" onclick="setMode(5)" ${o.length < 5 ? 'disabled' : ''}>${t('5 players')}</button></div>`}
       <ol>${o.slice(0, m).map((id, i) => rowOf(id, i)).join('')}</ol>
       ${!sched || minsUntilPlay(date) <= 15 ? `<div class="next"><small>${t('Match {n}', { n: 1 })}</small>
-        <div class="vs"><b style="--c:var(--t1)">${pair(slots(o, a))}</b><span>${t('vs')}</span><b style="--c:var(--t2)">${pair(slots(o, b))}</b></div>
-        ${r ? `<div class="rs">${t('Resting:')} <b>${name(o[r - 1])}</b></div>` : ''}<button class="link wa" onclick="shareLineup()">💬 ${t('Share the line-up on WhatsApp')}</button></div>` : ''}
+        <div class="vs"><b style="--c:var(--t1)">${pair(first.t1)}</b><span>${t('vs')}</span><b style="--c:var(--t2)">${pair(first.t2)}</b></div>
+        ${first.rest ? `<div class="rs">${t('Resting:')} <b>${name(first.rest)}</b></div>` : ''}<button class="link wa" onclick="shareLineup()">💬 ${t('Share the line-up on WhatsApp')}</button></div>` : ''}
       <button class="add" onclick="addPlayer()">${t('+ Add guest player (no account)')}</button>
       ${idle.length ? `<details class="fold"><summary>${t('Guests who have not played lately')} (${idle.length})</summary><div class="chips">${idle.map(p => `<button class="chip" onclick="bringBack(${p.id})">${av(p.id, 22)} ${esc(p.name)} +</button>`).join('')}</div></details>` : ''}
       ${o.length > m ? `<details class="fold" ${benchOpen ? 'open' : ''} ontoggle="benchOpen=this.open"><summary>${t('Sitting out')} (${o.length - m})</summary><ol>${o.slice(m).map((id, k) => rowOf(id, m + k)).join('')}</ol></details>` : ''}
@@ -170,7 +170,7 @@ function closedExtras(d) {
 }
 
 function play() {
-  const d = cur(), n = d.matches.length, cyc = d.mode === 4 ? C4 : C5, o = d.order, admin = isAdmin();
+  const d = cur(), n = d.matches.length, admin = isAdmin();
   if (!d.started) return setup(d);
   if (d.closed) {
     return `<h1>${t('Day closed')} 🏁</h1><p class="mut">${esc(d.date)} · ${tp('{n} matches', n)}</p>
@@ -183,14 +183,14 @@ function play() {
       <button class="add" onclick="newDayBtn()">${t('Start next match day')}</button>
       ${admin ? `<div class="actions"><button class="link" onclick="reopenDay()">${t('Reopen day')}</button></div>` : ''}`;
   }
-  const [t1, t2, rest] = cyc[n % cyc.length];
-  return `<p class="mut" style="margin:0">${esc(d.date)} · ${t('{n} played', { n })}</p>
+  const { t1, t2, rest } = nextTeams(d);
+  return `<p class="mut" style="margin:0">${esc(d.date)} · ${t('{n} played', { n })}${d.mode === 3 ? ' · ' + t('Winner stays on, at most 3 games in a row.') : ''}</p>
     <p class="num">${t('Match {n}', { n: n + 1 })}</p>
     <div class="teams">
-      <div class="team" style="--c:var(--t1)"><small>${esc(tn[1] || t('Team 1'))}</small>${slots(o, t1).map(who).join('')}<button class="tname" onclick="nameTeam(1)">✎ ${t('name')}</button></div>
-      <div class="team" style="--c:var(--t2)"><small>${esc(tn[2] || t('Team 2'))}</small>${slots(o, t2).map(who).join('')}<button class="tname" onclick="nameTeam(2)">✎ ${t('name')}</button></div>
+      <div class="team" style="--c:var(--t1)"><small>${esc(tn[1] || t('Team 1'))}</small>${t1.map(who).join('')}<button class="tname" onclick="nameTeam(1)">✎ ${t('name')}</button></div>
+      <div class="team" style="--c:var(--t2)"><small>${esc(tn[2] || t('Team 2'))}</small>${t2.map(who).join('')}<button class="tname" onclick="nameTeam(2)">✎ ${t('name')}</button></div>
     </div>
-    ${rest ? `<div class="rest">${t('Resting:')} <b>${name(o[rest - 1])}</b></div>` : ''}
+    ${rest ? `<div class="rest">${t('Resting:')} <b>${name(rest)}</b></div>` : ''}
     <div class="win">
       <button style="--c:var(--t1)" onclick="recordWin(1)">${t('Team 1 Wins')}</button>
       <button style="--c:var(--t2)" onclick="recordWin(2)">${t('Team 2 Wins')}</button>

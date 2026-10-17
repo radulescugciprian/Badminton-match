@@ -25,7 +25,7 @@ function rpc(u, r) {
   const match = row => r.f.every(([op, c, v]) => op === 'eq' ? row[c] === v : op === 'gte' ? row[c] >= v : row[c] > v);
   switch (r.op) {
     case 'rpc': {
-      if (r.name === 'db_version') return { data: st.dbVersion ?? 20261103 };
+      if (r.name === 'db_version') return { data: st.dbVersion ?? 20261104 };
       if (r.name === 'track') {
         if (!u) return { data: null };
         const f = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(st.now || Date.now())), g = x => f.find(p => p.type === x).value;

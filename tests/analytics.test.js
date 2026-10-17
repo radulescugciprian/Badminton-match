@@ -60,4 +60,16 @@ assert.equal(bestPair(days, 2, ids => !ids.includes(1)), null, 'privacy filter h
 assert.equal(ratingChart([1000]), '');
 assert(ratingChart([1000, 1032, 1010]).includes('1032'));
 
+// 3 players: winner stays, but sits out after 3 games in a row
+{
+  const { winnerStays } = require('../analytics.js');
+  const ms = [], play = win => { const m = winnerStays([1, 2, 3], ms); ms.push({ ...m, win }); return m; };
+  assert.deepEqual(play(1), { t1: [1], t2: [2], rest: 3 });          // 1 beats 2
+  assert.deepEqual(play(1), { t1: [1], t2: [3], rest: 2 });          // winner 1 stays, 3 comes in; 1 wins again
+  assert.deepEqual(play(1), { t1: [1], t2: [2], rest: 3 });          // 1 plays a third game in a row and wins
+  assert.deepEqual(winnerStays([1, 2, 3], ms), { t1: [2], t2: [3], rest: 1 }, 'after 3 games in a row the winner sits out');
+  ms.push({ t1: [2], t2: [3], rest: 1, win: 2 });                    // 3 beats 2
+  assert.deepEqual(winnerStays([1, 2, 3], ms), { t1: [3], t2: [1], rest: 2 }, '1 comes back in against the winner');
+}
+
 console.log('analytics tests passed');

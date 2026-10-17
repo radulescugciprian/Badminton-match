@@ -17,7 +17,7 @@ let db = { players: [], days: [] }, members = [], me = {}, session = null, loade
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
-const DB_VERSION = 20261103; // bump together with db_version() in the newest migration
+const DB_VERSION = 20261104; // bump together with db_version() in the newest migration
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
 let usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, bgLoaded = false, rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
@@ -89,7 +89,7 @@ async function refresh() {
   const date = nextPlayDate(), answer = id => (rsvps.find(r => r.day_date === date && r.player_id === id) || {}).status;
   if (!day.started && rsvps.some(r => r.day_date === date)) {
     const rank = id => answer(id) === 'in' ? 0 : answer(id) === 'out' ? 2 : 1, order = [...day.order].sort((a, b) => rank(a) - rank(b));
-    const ins = order.filter(id => rank(id) === 0).length, mode = ins >= 4 ? Math.min(5, ins) : day.mode; // 4 or 5 in = 4 or 5 play
+    const ins = order.filter(id => rank(id) === 0).length, mode = ins >= 3 ? Math.min(5, ins) : day.mode; // 3, 4 or 5 in = 3, 4 or 5 play
     if (order.join() !== day.order.join() || mode !== day.mode) { await patchDay(day.id, { player_order: order, mode })(); return refresh(); }
   }
   loaded = true; render();
@@ -220,6 +220,7 @@ function showHelp() {
     <table class="rot"><tr><th>${t('Match')}</th><th>${t('Teams')}</th><th>${t('Rests')}</th></tr>${rows}</table>
     <p class="mut">${t('The numbers are places in the player list (1 = top).')}</p>
     <p>${t('With 4 players there are 3 matches and nobody rests.')}</p>
+    <p>${t('With 3 players you play singles: the winner stays on court, but after 3 games in a row the winner sits out one game.')}</p>
     <h2 class="sec">${t('Rating')}</h2><p>${t('Everyone starts at 1000 points. Beating stronger players earns more.')}</p>
     ${rulesHtml()}
     <p class="mut">🔒 ${t('Admins can see how often each person opens each screen (only counts, nothing you type).')}</p>
@@ -353,12 +354,18 @@ bgpick.onchange = async () => {
 };
 const resetBg = () => act(async () => { ok(await sb.storage.from('photos').remove([BG])); await loadBg(); });
 const nameTeam = n => { const v = prompt(t('Name for team {n}', { n }), tn[n]); if (v !== null) { tn[n] = v.trim().slice(0, 24); render(); } };
+// the next match of a day: the fixed rotation for 4 or 5 players, "winner stays" for 3 (player ids, not slots)
+function nextTeams(d) {
+  if (d.mode === 3) return winnerStays(d.order, d.matches);
+  const cyc = d.mode === 4 ? C4 : C5, [a, b, r] = cyc[d.matches.length % cyc.length];
+  return { t1: slots(d.order, a), t2: slots(d.order, b), rest: r ? d.order[r - 1] : null };
+}
 const recordWin = team => {
   if (performance.now() - lastWin < 700) return; lastWin = performance.now(); // a double tap must not record two matches
   primeAudio();
-  const d = cur(), cyc = d.mode === 4 ? C4 : C5, [t1, t2, rest] = cyc[d.matches.length % cyc.length];
+  const d = cur(), { t1, t2, rest } = nextTeams(d);
   const names = { ...(tn[1] && { team1_name: tn[1] }), ...(tn[2] && { team2_name: tn[2] }) }; // only sent when set
-  const row = { day_id: d.id, n: d.matches.length + 1, t1: slots(d.order, t1), t2: slots(d.order, t2), rest: rest ? d.order[rest - 1] : null, win: team, ...names };
+  const row = { day_id: d.id, n: d.matches.length + 1, t1, t2, rest: rest || null, win: team, ...names };
   return act(async () => ok(await sb.from('matches').insert(row)), () => {
     d.matches.push({ ...row, id: null, created_at: new Date().toISOString() }); tn = { 1: '', 2: '' }; celebrate();
   });
@@ -449,6 +456,7 @@ const shareSignup = (date = nextPlayDate()) => {
 const shareExtra = day => waShare(t('🏸 {name} added an extra game on {date} at {time}. Who is in? Answer by {deadline}:', { name: (members.find(m => m.id === (extraOf(day) || {}).created_by) || me || {}).username || '', date: niceDate(day), time: sched ? hhmm(playMinsOn(day)) : '', deadline: deadlineText(day) }) + ' ' + appLink('answer=' + day));
 const shareLineup = () => {
   const d = cur(), o = d.order, cyc = d.mode === 4 ? C4 : C5;
+  if (d.mode === 3) { const m = nextTeams(d); return waShare('🏸 ' + t('Today\'s matches') + '\n1. ' + `${plain(m.t1)} ${t('vs')} ${plain(m.t2)} (${t('{name} rests', { name: player(m.rest).name })})` + '\n' + t('Winner stays on, at most 3 games in a row.') + '\n' + appLink()); }
   waShare('🏸 ' + t('Today\'s matches') + '\n' + cyc.map(([a, b, r], i) => `${i + 1}. ${plain(slots(o, a))} ${t('vs')} ${plain(slots(o, b))}${r ? ` (${t('{name} rests', { name: player(o[r - 1]).name })})` : ''}`).join('\n') + '\n' + appLink());
 };
 const memberExtra = iso => {

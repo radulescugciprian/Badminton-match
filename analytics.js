@@ -87,7 +87,17 @@ function bestPair(days, min = 3, allow = () => true) {
     const key = [...ids].sort((x, y) => x - y).join('-'), x = pairs.get(key) || { ids: [...ids], w: 0, g: 0 };
     x.g++; x.w += won ? 1 : 0; pairs.set(key, x);
   }
-  return [...pairs.values()].filter(x => x.g >= min && allow(x.ids)).sort((x, y) => y.w / y.g - x.w / x.g || y.g - x.g)[0] || null;
+  return [...pairs.values()].filter(x => x.ids.length === 2 && x.g >= min && allow(x.ids)).sort((x, y) => y.w / y.g - x.w / x.g || y.g - x.g)[0] || null;
+}
+
+// 3 players play singles: the winner stays on, but after 3 games in a row they sit out one game.
+// order: the 3 player ids; matches: the day's matches so far. Returns the next match as { t1: [id], t2: [id], rest: id }.
+function winnerStays(order, matches) {
+  if (!matches.length) return { t1: [order[0]], t2: [order[1]], rest: order[2] };
+  const last = matches[matches.length - 1], winner = (last.win === 1 ? last.t1 : last.t2)[0], loser = (last.win === 1 ? last.t2 : last.t1)[0], waiting = last.rest;
+  let streak = 0;
+  for (let i = matches.length - 1; i >= 0 && [...matches[i].t1, ...matches[i].t2].includes(winner); i--) streak++;
+  return streak >= 3 ? { t1: [loser], t2: [waiting], rest: winner } : { t1: [winner], t2: [waiting], rest: loser };
 }
 
 // rating line chart as an inline SVG string
@@ -104,4 +114,4 @@ function ratingChart(vals, w = 320, h = 150, label = 'Rating over time') {
     <text x="8" y="${h - 3}" font-size="11" fill="currentColor" fill-opacity=".7">${Math.round(Math.min(...vals))}</text></svg>`;
 }
 
-if (typeof module !== 'undefined') module.exports = { analyse, playerOfNight, nightAwards, relations, bestPair, ratingChart, START_RATING };
+if (typeof module !== 'undefined') module.exports = { winnerStays, analyse, playerOfNight, nightAwards, relations, bestPair, ratingChart, START_RATING };
