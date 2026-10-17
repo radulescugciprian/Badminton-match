@@ -37,6 +37,11 @@ run('admin tools', async h => {
   await B.click('text=Add guest player'); await B.click('summary:has-text("Sitting out")'); await B.waitForSelector('[aria-label="Remove Eve"]');
   await B.click('[aria-label="Remove Eve"]'); await h.until(() => st.players.find(p => p.name === 'Eve').active === false, 'guest removed by the member who added it');
   await A.click('[aria-label="Admin tools"]');
+  // admins add several players without an account at once; they join the next match day
+  A.promptAnswer = 'Ana, Mihai'; await A.click('text=Add players without an account');
+  await h.until(() => ['Ana', 'Mihai'].every(n => st.players.some(p => p.name === n && !p.user_id)), 'two players added');
+  await h.until(() => ['Ana', 'Mihai'].every(n => st.days[st.days.length - 1].player_order.includes(st.players.find(p => p.name === n).id)), 'they join the setup');
+  A.promptAnswer = undefined;
   // photo dimming: the admin's slider is saved for everyone, members have no slider
   assert.equal(await B.locator('input[type=range]').count(), 0, 'members cannot set the dimming');
   await A.locator('input[type=range]').evaluate(el => { el.value = 40; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); });

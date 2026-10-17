@@ -281,7 +281,9 @@ function membersView() {
 function adminView() {
   const d = cur(), o = d.order, own = id => db.players.find(p => p.user === id);
   return `<h1>${t('Admin tools')}</h1><p class="mut">${t('Accounts can log in. Admins can close or reset days, remove players, delete photos and remove accounts.')}</p>
-    ${d.started ? '' : `<h2 class="sec">${t('Remove a player')}</h2><div class="card"><div class="chips">${o.map(id => `<button class="chip" onclick="removePlayer(${id})" aria-label="${t('Remove {name}', { name: name(id) })}">${av(id, 22)} ${name(id)} ✕</button>`).join('')}</div></div>`}
+    <h2 class="sec">${t('Players')}</h2><div class="card" style="padding:4px 16px">${db.players.filter(p => !p.removed).map(p => `<div class="member"><span>${av(p.id, 28)} ${esc(p.name)} ${p.user ? '' : `<span class="tag">${t('no account')}</span>`}</span>
+      ${d.started || !o.includes(p.id) ? '' : `<button class="link danger" onclick="removePlayer(${p.id})" aria-label="${t('Remove {name}', { name: esc(p.name) })}">✕</button>`}</div>`).join('')}
+      <button class="add" style="margin:8px 0" onclick="addPlayers()">+ ${t('Add players without an account')}</button></div>
     <h2 class="sec">${t('Accounts ({n})', { n: members.length })}</h2>
     <div class="card" style="padding:4px 16px">${members.map(a => `<div class="member"><span>${own(a.id) ? av(own(a.id).id, 28) + ' ' : ''}${esc(a.username)}${a.is_admin ? ` · <b>${t('admin')}</b>` : ''}</span>
       ${a.id !== me.id ? `<span><button class="link" onclick="toggleAdmin('${a.id}',${!a.is_admin})">${a.is_admin ? t('Remove admin') : t('Make admin')}</button>

@@ -261,6 +261,16 @@ const addPlayer = () => {
     await patchDay(cur().id, { player_order: [...cur().order, p.id] })();
   });
 };
+// admins: add one or more players without an account at once ("Ana, Mihai, Paul"); they join the next match day unless it has started
+const addPlayers = () => {
+  const names = [...new Set((prompt(t('Names of the new players without an account, separated by commas')) || '').split(',').map(x => x.trim().slice(0, 20)).filter(Boolean))];
+  if (!names.length) return;
+  act(async () => {
+    const ids = [];
+    for (const name of names) ids.push(ok(await sb.from('players').insert({ name }).select().single()).id);
+    if (!cur().started) await patchDay(cur().id, { player_order: [...cur().order, ...ids] })();
+  });
+};
 // Removed players are only hidden (active = false) so past matches and leaderboards keep working. Admins only.
 const removePlayer = id => {
   const d = cur();

@@ -7,8 +7,8 @@ run('sign-in, rights, photos and the play schedule', async h => {
   assert.equal(await A.locator('.top [aria-label="Admin tools"]').count(), 1);
   await signup(B, 'Bob', 'b@x.com', '2'); await B.waitForSelector('text=Next match day');
   assert.equal(await B.locator('.top [aria-label="Admin tools"]').count(), 0);
-  await A.click('[aria-label="Admin tools"]'); await A.waitForSelector('text=Remove a player');
-  assert((await A.locator('.chip[aria-label^="Remove"]').count()) === 5 && (await B.locator('[aria-label^="Remove"]').count()) === 0, 'remove only for admin');
+  await A.click('[aria-label="Admin tools"]'); await A.waitForSelector('text=Add players without an account');
+  assert((await A.locator('[aria-label^="Remove"]:not([aria-label^="Remove account"])').count()) === 5 && (await B.locator('[aria-label^="Remove"]').count()) === 0, 'remove only for admin');
   await A.click('nav >> text=Play');
   // each account is its own player: avatar buttons only on your own row; guests are added by admins only
   assert((await A.locator('button.ph').count()) === 1 && (await B.locator('button.ph').count()) === 1, 'only own avatar editable');
