@@ -397,16 +397,19 @@ const setTheme = k => { try { localStorage.setItem('theme', k); } catch {} apply
 // admins: add the results of a day that was played earlier (tap a past date in the calendar)
 let bf = null;
 const backfill = iso => { if (!isAdmin() || iso >= tzParts().date) return; bf = { date: iso, ids: [], res: [] }; go('backfill'); };
-const bfWho = id => { const i = bf.ids.indexOf(id); if (i >= 0) bf.ids.splice(i, 1); else if (bf.ids.length < 5) bf.ids.push(id); bf.res = []; render(); };
+const bfWho = id => { const i = bf.ids.indexOf(id); if (i >= 0) bf.ids.splice(i, 1); else if (bf.ids.length < 5) bf.ids.push(id); bf.res = []; bf.extra = 0; render(); };
 const bfEdit = id => { const d = db.days.find(x => x.id === id); bf = { date: d.date, ids: d.order.slice(0, d.mode), res: d.matches.map(m => m.win), editId: id }; render(); };
+// the rotation repeats after one round, so an old day can have as many matches as were played
+const bfRows = () => Math.max(bf.extra || 0, (bf.ids.length === 4 ? C4 : C5).length, bf.res.length);
+const bfMore = () => { bf.extra = bfRows() + 1; render(); };
 const bfWin = (n, w) => { bf.res[n] = bf.res[n] === w ? 0 : w; render(); };
 const bfSave = () => {
-  const ids = bf.ids, cyc = ids.length === 4 ? C4 : C5, w = bf.res.slice(0, cyc.length), n = w.findIndex(x => !x), res = n < 0 ? w : w.slice(0, n), date = bf.date;
+  const ids = bf.ids, cyc = ids.length === 4 ? C4 : C5, w = bf.res.slice(0, bfRows()), n = w.findIndex(x => !x), res = n < 0 ? w : w.slice(0, n), date = bf.date;
   if (ids.length < 4 || !res.length) return;
   act(async () => {
     const old = bf.editId && db.days.find(x => x.id === bf.editId);   // editing = save the corrected day, then delete the old one (its photo moves over)
     const d = ok(await sb.from('days').insert({ date, player_order: ids, mode: ids.length, started: true, ...(old && old.photo && { photo_path: old.photo }) }).select().single());
-    ok(await sb.from('matches').insert(res.map((win, i) => { const [t1, t2, rest] = cyc[i]; return { day_id: d.id, n: i + 1, t1: slots(ids, t1), t2: slots(ids, t2), rest: rest ? ids[rest - 1] : null, win }; })));
+    ok(await sb.from('matches').insert(res.map((win, i) => { const [t1, t2, rest] = cyc[i % cyc.length]; return { day_id: d.id, n: i + 1, t1: slots(ids, t1), t2: slots(ids, t2), rest: rest ? ids[rest - 1] : null, win }; })));
     await patchDay(d.id, { closed: true })();
     if (old) ok(await sb.from('days').delete().eq('id', old.id));
     bf = null; go('calendar');

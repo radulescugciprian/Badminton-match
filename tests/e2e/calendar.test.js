@@ -41,15 +41,18 @@ run('compact sign-up card and play calendar', async h => {
   // a past date opens the "old match day" form instead of marking the date
   await A.click('.cal button[aria-label*="12 October"]'); await A.waitForSelector('text=Add an old match day');
   for (const n of ['Vali', 'Dani', 'Costi', 'Zjepko']) await A.click(`.chips button:has-text("${n}")`);
-  await A.click('text=Team 1 Wins >> nth=0'); await A.click('text=Team 2 Wins >> nth=1'); await A.click('text=Save this day'); await A.waitForSelector('text=Calendar');
+  for (let i = 0; i < 3; i++) await A.click(`text=Team ${i % 2 + 1} Wins >> nth=${i}`);   // 4 players: one round is 3 matches
+  await A.click('text=Add another match'); await A.click('text=Team 1 Wins >> nth=3'); await A.click('text=Save this day'); await A.waitForSelector('text=Calendar');
   await until(() => st.days.some(d => d.date === '2026-10-12' && d.closed), 'the old day on the server');
   const old = st.days.find(d => d.date === '2026-10-12');
-  assert.deepEqual(st.matches.filter(m => m.day_id === old.id).map(m => m.win), [1, 2], 'two matches saved in rotation order');
+  assert.deepEqual(st.matches.filter(m => m.day_id === old.id).map(m => m.win), [1, 2, 1, 1], 'four matches saved: the rotation starts again after one round');
+  const m6 = st.matches.filter(m => m.day_id === old.id)[3], m1 = st.matches.filter(m => m.day_id === old.id)[0];
+  assert.deepEqual([m6.t1, m6.t2], [m1.t1, m1.t2], 'match 4 repeats the match 1 pairing');
   assert(!st.play_dates.some(x => x.day === '2026-10-12'), 'the past date was not marked');
   // the saved day can be corrected or deleted from the same date
   await A.click('.cal button[aria-label*="12 October"]'); await A.click('text=✎ Edit'); await A.waitForSelector('text=Edit match day');
   await A.click('text=Team 2 Wins >> nth=0'); await A.click('text=Save this day'); await A.waitForSelector('text=Calendar');
-  await until(() => st.days.filter(d => d.date === '2026-10-12').length === 1 && st.matches.filter(m => m.day_id === st.days.find(d => d.date === '2026-10-12').id).map(m => m.win).join() === '2,2', 'the corrected day replaced the old one');
+  await until(() => st.days.filter(d => d.date === '2026-10-12').length === 1 && st.matches.filter(m => m.day_id === st.days.find(d => d.date === '2026-10-12').id).map(m => m.win).join() === '2,2,1,1', 'the corrected day replaced the old one');
   await A.click('.cal button[aria-label*="12 October"]'); await A.click('text=🗑 Delete');
   await until(() => !st.days.some(d => d.date === '2026-10-12'), 'the old day deleted');
   await A.click('text=Back');

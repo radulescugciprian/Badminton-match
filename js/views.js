@@ -117,7 +117,7 @@ function calendarView() {
 
 function backfillView() {
   const ids = bf.ids, cyc = ids.length === 4 ? C4 : ids.length === 5 ? C5 : null, who_ = id => `<button class="chip ${ids.includes(id) ? 'in' : ''}" onclick="bfWho(${id})" aria-pressed="${ids.includes(id)}">${av(id, 22)} ${name(id)}${ids.includes(id) ? ' ' + (ids.indexOf(id) + 1) : ''}</button>`;
-  const rows = cyc ? cyc.map(([t1, t2], i) => `<div class="card"><div>${t('Match {n}', { n: i + 1 })}: ${pair(slots(ids, t1))} <span class="mut">${t('vs')}</span> ${pair(slots(ids, t2))}</div>
+  const rows = cyc ? Array.from({ length: bfRows() }, (_, i) => cyc[i % cyc.length]).map(([t1, t2], i) => `<div class="card"><div>${t('Match {n}', { n: i + 1 })}: ${pair(slots(ids, t1))} <span class="mut">${t('vs')}</span> ${pair(slots(ids, t2))}</div>
     <div class="seg" style="margin-top:8px"><button class="${bf.res[i] === 1 ? 'on' : ''}" onclick="bfWin(${i},1)">${t('Team 1 Wins')}</button><button class="${bf.res[i] === 2 ? 'on' : ''}" onclick="bfWin(${i},2)">${t('Team 2 Wins')}</button></div></div>`).join('') : '';
   const saved = bf.editId ? [] : db.days.filter(d => d.date === bf.date && d.closed && d.matches.length);
   return `<div class="top"><button class="link" onclick="go('calendar')">← ${t('Back')}</button></div><h1>${bf.editId ? t('Edit match day') : t('Add an old match day')}</h1><p class="mut">${niceDate(bf.date)}</p>
@@ -125,7 +125,7 @@ function backfillView() {
       <div class="actions" style="margin:8px 0 0"><button class="link" onclick="bfEdit(${d.id})">✎ ${t('Edit')}</button><button class="link danger" onclick="deleteDay(${d.id})">🗑 ${t('Delete')}</button></div></div>`).join('')}
     <p class="mut">${t('Who played? Pick 4 or 5 players, in the order they were listed.')}</p>
     <div class="chips">${db.players.filter(p => !p.removed || ids.includes(p.id)).map(p => who_(p.id)).join('')}</div>
-    ${rows}${cyc ? `<p class="mut">${t('Set the winner of each match; matches are saved up to the first one left empty.')}</p><button class="primary" onclick="bfSave()" ${bf.res[0] ? '' : 'disabled'}>${t('Save this day')}</button>` : ''}`;
+    ${rows}${cyc ? `<button class="add" onclick="bfMore()">+ ${t('Add another match')}</button><p class="mut">${t('Set the winner of each match; matches are saved up to the first one left empty.')}</p><button class="primary" onclick="bfSave()" ${bf.res[0] ? '' : 'disabled'}>${t('Save this day')}</button>` : ''}`;
 }
 
 function setup(d) {
