@@ -373,7 +373,7 @@ const markDate = iso => {
   if (!sched || iso < tzParts().date) return;
   if (!isAdmin()) return memberExtra(iso);
   const kind = markOf(iso), normal = dowOf(iso) === sched.dow, want = normal ? 'cancelled' : 'extra', clear = kind === want;
-  if (want === 'extra' && !clear) return extraForm(iso);
+  if (want === 'extra') return extraForm(iso, clear ? playDates.find(p => p.day === iso) : null);
   return act(async () => clear ? ok(await sb.from('play_dates').delete().eq('day', iso)) : ok(await sb.from('play_dates').upsert({ day: iso, kind: want })),
     () => { playDates = playDates.filter(p => p.day !== iso); if (!clear) playDates.push({ day: iso, kind: want }); });
 };
@@ -415,32 +415,43 @@ const shareLineup = () => {
 const memberExtra = iso => {
   const p = playDates.find(x => x.day === iso), me_ = session.user.id;
   if (p) {
-    if (p.kind === 'extra' && p.created_by === me_ && confirm(t('Remove the extra game on {date}?', { date: niceDate(iso) })))
-      act(async () => ok(await sb.from('play_dates').delete().eq('day', iso)), () => { playDates = playDates.filter(x => x.day !== iso); });
+    if (p.kind === 'extra' && p.created_by === me_) extraForm(iso, p);
     return;
   }
   if (dowOf(iso) !== sched.dow) extraForm(iso);
 };
-// the form for a new extra game: start time and the deadline for answers (shortcut: times are read in the phone's time zone, which is the group's)
-function extraForm(iso) {
-  const pm = playMins(), el = document.createElement('div'); el.id = 'xform'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
-  el.innerHTML = `<form class="card"><h2 style="margin:0 0 4px">🏸 ${t('Extra game')}</h2><p class="mut">${esc(niceDate(iso, { weekday: 'long', day: 'numeric', month: 'long' }))}</p>
+// the form for an extra game: its date, start time and the deadline for answers; also used to change or remove one you added
+// (shortcut: times are read in the phone's time zone, which is the group's)
+function extraForm(iso, old) {
+  const pm = old && old.play_time ? +old.play_time.slice(0, 2) * 60 + +old.play_time.slice(3, 5) : playMins();
+  const by = old && old.answer_by ? new Date(old.answer_by) : null, pad = n => String(n).padStart(2, '0');
+  const byDay = by ? `${by.getFullYear()}-${pad(by.getMonth() + 1)}-${pad(by.getDate())}` : iso, byTime = by ? `${pad(by.getHours())}:${pad(by.getMinutes())}` : hhmm(Math.max(0, pm - sched.rsvp_until_minutes));
+  const el = document.createElement('div'); el.id = 'xform'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
+  el.innerHTML = `<form class="card"><h2 style="margin:0 0 12px">🏸 ${t('Extra game')}</h2>
+    <label class="field">${t('Date')}<input type="date" name="day" value="${iso}" min="${tzParts().date}" required></label>
     <label class="field">${t('Start time')}<input type="time" name="time" value="${hhmm(pm)}" required></label>
-    <label class="field">${t('Answers needed by')}<input type="date" name="bd" value="${iso}" min="${tzParts().date}" max="${iso}" required><input type="time" name="bt" value="${hhmm(Math.max(0, pm - sched.rsvp_until_minutes))}" required></label>
-    <p class="msg" role="alert"></p><button class="primary" type="submit">${t('Add extra game')}</button><button class="link" type="button" id="xcancel">${t('Cancel')}</button></form>`;
+    <label class="field">${t('Answers needed by')}<input type="date" name="bd" value="${byDay}" min="${tzParts().date}" required></label>
+    <label class="field" aria-label="${t('Answers needed by')}"><input type="time" name="bt" value="${byTime}" required></label>
+    <p class="msg" role="alert"></p><button class="primary" type="submit">${old ? t('Save') : t('Add extra game')}</button>
+    ${old ? `<button class="link danger" type="button" id="xdel">${t('Remove extra game')}</button>` : ''}<button class="link" type="button" id="xcancel">${t('Cancel')}</button></form>`;
   document.body.append(el);
   el.querySelector('#xcancel').onclick = () => el.remove();
+  if (old) el.querySelector('#xdel').onclick = () => { el.remove(); act(async () => ok(await sb.from('play_dates').delete().eq('day', iso)), () => { playDates = playDates.filter(x => x.day !== iso); }); };
   el.querySelector('form').onsubmit = e => {
     e.preventDefault();
-    const f = new FormData(e.target), time = f.get('time'), by = new Date(`${f.get('bd')}T${f.get('bt')}`), msg = el.querySelector('.msg');
-    if (by >= new Date(`${iso}T${time}`)) return msg.textContent = t('The answer deadline must be before the game.');
-    if (by <= new Date()) return msg.textContent = t('The answer deadline is already over.');
-    const row = { day: iso, kind: 'extra', play_time: time, answer_by: by.toISOString(), created_by: session.user.id };
+    const f = new FormData(e.target), day = f.get('day'), time = f.get('time'), when = new Date(`${f.get('bd')}T${f.get('bt')}`), msg = el.querySelector('.msg');
+    if (day !== iso && playDates.some(x => x.day === day)) return msg.textContent = t('That date is already marked in the calendar.');
+    if (!isAdmin() && dowOf(day) === sched.dow) return msg.textContent = t('That is already a normal play day.');
+    if (when >= new Date(`${day}T${time}`)) return msg.textContent = t('The answer deadline must be before the game.');
+    if (when <= new Date()) return msg.textContent = t('The answer deadline is already over.');
+    const row = { day, kind: 'extra', play_time: time, answer_by: when.toISOString(), created_by: (old && old.created_by) || session.user.id };
     el.remove();
-    act(async () => ok(await (isAdmin() ? sb.from('play_dates').upsert(row) : sb.from('play_dates').insert(row))), () => { playDates = playDates.filter(p => p.day !== iso).concat(row); });
-    if (confirm(t('Tell the WhatsApp group?'))) shareExtra(iso);
+    act(async () => {   // members have no right to edit a row, so a change is "remove the old one, add the new one"
+      if (old) ok(await sb.from('play_dates').delete().eq('day', iso));
+      ok(await (isAdmin() ? sb.from('play_dates').upsert(row) : sb.from('play_dates').insert(row)));
+    }, () => { playDates = playDates.filter(x => x.day !== iso && x.day !== day).concat(row); });
+    if (confirm(t('Tell the WhatsApp group?'))) shareExtra(day);
   };
-  el.querySelector('input').focus();
 }
 // extra games someone else added that I have not answered yet (the next play day already has its own sign-up card)
 function invites() {

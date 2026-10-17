@@ -13,6 +13,8 @@ sb && sb.auth.onAuthStateChange((ev, s) => {
     loaded = false; me = {}; db = { players: [], days: [] }; view = 'play'; asMember = false; render();
   }
 });
+// some phone browsers (Brave) select the field on a tap but never open the clock / calendar: open it ourselves
+document.addEventListener('click', e => { const i = e.target.closest && e.target.closest('input[type=date], input[type=time]'); if (i && i.showPicker) try { i.showPicker(); } catch {} });
 document.addEventListener('visibilitychange', () => { if (!document.hidden && session) later(); }); // phones drop sockets in the background
 setInterval(() => { if (session && loaded && view === 'play' && !cur().started) render(); }, 30000); // so the button unlocks by itself
 

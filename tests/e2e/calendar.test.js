@@ -71,6 +71,11 @@ run('compact sign-up card and play calendar', async h => {
   await A.evaluate(() => go('play')); await A.waitForSelector('.invite'); assert((await A.textContent('.invite')).includes('Added by Bob') && (await A.textContent('.invite')).includes('19:15'), 'the invite shows who and when');
   await A.click('.invite >> text=I\'m in'); await until(() => st.rsvps.some(r => r.day_date === '2026-10-31' && r.status === 'in'), 'joined the extra game');
   await A.waitForFunction(() => !document.querySelector('.invite'));
-  await B.click('.cal button[aria-label*="31 October"]'); await until(() => !st.play_dates.some(x => x.day === '2026-10-31'), 'the member removes their own extra game');
+  // the member who added it can change its date and time, or remove it
+  await B.click('.cal button[aria-label*="31 October"]'); await B.fill('#xform [name=day]', '2026-11-01'); await B.fill('#xform [name=time]', '10:00');
+  await B.fill('#xform [name=bd]', '2026-10-31'); await B.fill('#xform [name=bt]', '20:00'); await B.click('#xform button[type=submit]');
+  await until(() => !st.play_dates.some(x => x.day === '2026-10-31') && st.play_dates.some(x => x.day === '2026-11-01' && x.play_time === '10:00'), 'moved to Sunday 10:00');
+  await B.click('.cal button[aria-label*="›"], .calnav button >> nth=1'); await B.click('.cal button[aria-label*="1 November"]'); await B.click('text=Remove extra game');
+  await until(() => !st.play_dates.some(x => x.day === '2026-11-01'), 'the member removes their own extra game');
   assert(A.errs.length + B.errs.length === 0, [A.errs, B.errs].join());
 });
