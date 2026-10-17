@@ -23,7 +23,7 @@ function rpc(u, r) {
   const match = row => r.f.every(([op, c, v]) => op === 'eq' ? row[c] === v : row[c] > v);
   switch (r.op) {
     case 'rpc': {
-      if (r.name === 'db_version') return { data: st.dbVersion ?? 20261029 };
+      if (r.name === 'db_version') return { data: st.dbVersion ?? 20261030 };
       if (r.name === 'delete_account') {
         if (!isAdmin(u)) return err('Admins only'); if (r.args.uid === u) return err('You cannot remove your own account');
         const pr = st.profiles.find(p => p.id === r.args.uid); if (!pr) return err('No such account');
@@ -77,6 +77,7 @@ function rpc(u, r) {
       if (st.failInsert && r.table === 'matches') return err('simulated server failure');
       const row = { ...r.payload };
       if (r.table === 'reactions') { row.user_id = u; if (st.reactions.some(x => x.day_id === row.day_id && x.user_id === u && x.kind === row.kind)) return err('duplicate key', '23505'); st.reactions.push(row); emit(); return { data: [row] }; }
+      if (r.table === 'play_dates') { if (!isAdmin(u) && (r.payload.kind !== 'extra' || r.payload.created_by !== u || new Date(r.payload.day + 'T12:00:00Z').getUTCDay() === st.schedule[0].dow)) return err('new row violates row-level security policy for table "play_dates"'); if (st.play_dates.some(x => x.day === r.payload.day)) return err('duplicate key', '23505'); logAct(u, 'mark_play_date', { date: r.payload.day, kind: r.payload.kind }); }
       if (r.table === 'receipts') { if (r.payload.created_by !== u) return err('new row violates row-level security policy for table "receipts"'); row.id = (st.receipts.length ? Math.max(...st.receipts.map(x => x.id)) : 0) + 1; row.created_at = new Date(st.now || Date.now()).toISOString(); }
       if (r.table === 'players') { if (!isAdmin(u) && r.payload.user_id) return err('new row violates row-level security policy'); row.id = ++st.seq.p; row.active = true; row.avatar = null; row.user_id = null; row.created_by = u; row.created_at = new Date(st.now || Date.now()).toISOString(); }
       if (r.table === 'days') { row.id = ++st.seq.d; Object.assign(row, { started: isAdmin(u) && !!r.payload.started, closed: false, photo_path: (isAdmin(u) && r.payload.photo_path) || null }); }
@@ -124,7 +125,7 @@ function rpc(u, r) {
           if (row.n !== last || st.days.find(d => d.id === row.day_id).closed) continue;
         }
         if (r.table === 'rsvps' && !isAdmin(u) && st.players.find(p => p.id === row.player_id).user_id !== u) continue; // members only clear their own
-        if (r.table === 'play_dates') { if (!isAdmin(u)) continue; logAct(u, 'clear_play_date', { date: row.day }); }
+        if (r.table === 'play_dates') { if (!isAdmin(u) && !(row.kind === 'extra' && row.created_by === u)) continue; logAct(u, 'clear_play_date', { date: row.day }); }
         if (r.table === 'days') logAct(u, 'delete_day', { date: row.date, matches: st.matches.filter(x => x.day_id === row.id).length });
         if (r.table === 'matches' && st.days.some(d => d.id === row.day_id)) logAct(u, 'delete_match', { date: st.days.find(d => d.id === row.day_id).date, n: row.n });
         T.splice(T.indexOf(row), 1);

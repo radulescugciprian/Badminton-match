@@ -24,7 +24,7 @@ run('admin views the app as a member', async h => {
   assert.equal(await A.locator('text=Make admin').count() + await A.locator('text=Activity log').count() + await A.locator('[aria-label^="Remove account"]').count(), 0, 'Members page without admin tools');
   await A.click('[aria-label=Calendar]').catch(() => {});
   await A.evaluate(() => go('calendar')); await A.waitForSelector('text=Calendar');
-  assert.equal(await A.locator('.cal button.d').count(), 0, 'nothing to tap in the calendar as a member');
+  assert.equal(await A.locator('.cal button[aria-label*="22 October"], .cal button[aria-label*="12 October"]').count(), 0, 'as a member: no play days or past dates to change');
 
   // a member's screens never talk about what admins can do (the one privacy sentence in Profile is the exception)
   const seen = [];

@@ -63,6 +63,13 @@ function rsvpCard() {
 }
 
 // month calendar: weekly play days are highlighted; admins tap a date to add an extra day or cancel a normal one
+function inviteCards() {
+  const mine = db.players.find(p => p.user === session.user.id), by = p => esc((members.find(m => m.id === p.created_by) || {}).username || '?');
+  return invites().map(p => `<div class="card invite"><div>🏸 <b>${t('Extra game')}</b> · ${esc(niceDate(p.day))} ${sched ? esc(hhmm(playMins())) : ''}
+      <div class="mut" style="margin:2px 0 8px">${t('Added by {name}. Do you want to join?', { name: by(p) })} · ${t('{n} in', { n: rsvps.filter(r => r.day_date === p.day && r.status === 'in').length })}</div></div>
+    <div class="seg"><button onclick="setRsvp(${mine.id}, 'in', '${p.day}')">✅ ${t("I'm in")}</button><button onclick="setRsvp(${mine.id}, 'out', '${p.day}')">❌ ${t("I'm out")}</button></div></div>`).join('');
+}
+
 function calendarView() {
   const now = tzParts(), [Y, M] = (calMonth || now.date.slice(0, 7)).split('-').map(Number), admin = isAdmin();
   const first = new Date(Date.UTC(Y, M - 1, 1)), lead = (first.getUTCDay() + 6) % 7, count = new Date(Date.UTC(Y, M, 0)).getUTCDate();
@@ -73,13 +80,14 @@ function calendarView() {
     const iso = `${Y}-${String(M).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`, k = markOf(iso);
     const cls = ['d', isPlayDate(iso) ? 'play' : '', k === 'extra' ? 'extra' : '', k === 'cancelled' ? 'off' : '', iso === now.date ? 'today' : '', played.has(iso) ? 'dot' : ''].join(' ');
     if (admin && iso < now.date) return `<button class="${cls}" onclick="backfill('${iso}')" aria-label="${esc(niceDate(iso, { weekday: 'long', day: 'numeric', month: 'long' }))}">${i + 1}</button>`;
-    return admin && iso >= now.date ? `<button class="${cls}" onclick="markDate('${iso}')" aria-label="${esc(niceDate(iso, { weekday: 'long', day: 'numeric', month: 'long' }))}">${i + 1}</button>` : `<div class="${cls}">${i + 1}</div>`;
+    const canTap = admin || (k === 'extra' && (playDates.find(p => p.day === iso) || {}).created_by === session.user.id) || (!k && sched && dowOf(iso) !== sched.dow);
+    return canTap && iso >= now.date ? `<button class="${cls}" onclick="markDate('${iso}')" aria-label="${esc(niceDate(iso, { weekday: 'long', day: 'numeric', month: 'long' }))}">${i + 1}</button>` : `<div class="${cls}">${i + 1}</div>`;
   })).join('');
   return `<div class="top"><button class="link" onclick="go('play')">← ${t('Back')}</button></div><h1>📅 ${t('Calendar')}</h1>
     <div class="calnav"><button onclick="calShift(-1)" aria-label="${t('Previous month')}">‹</button><b>${esc(title)}</b><button onclick="calShift(1)" aria-label="${t('Next month')}">›</button></div>
     <div class="cal">${head}${cells}</div>
     <p class="mut legend"><span class="key play"></span>${t('Play day')} <span class="key extra"></span>${t('Extra play day')} <span class="key off"></span>${t('Cancelled')} <span class="key dot"></span>${t('Played')}</p>
-    ${admin ? `<p class="mut">${t('Tap a date to add an extra play day or cancel a normal one.')} ${t('Tap an earlier date to add the results of a day that was played.')}</p>` : ''}`;
+    ${admin ? `<p class="mut">${t('Tap a date to add an extra play day or cancel a normal one.')} ${t('Tap an earlier date to add the results of a day that was played.')}</p>` : `<p class="mut">${t('Tap a free date to add an extra game; the others are asked if they join. Tap your own extra game to remove it.')}</p>`}`;
 }
 
 function backfillView() {
@@ -109,7 +117,7 @@ function setup(d) {
   const idle = db.players.filter(p => !p.removed && !o.includes(p.id));
   // who plays with whom is shown from 15 minutes before play time (and on the match screen once started)
   // the sign-ups fill the list and decide 4 or 5 players; the date is today's. Only when nobody has answered can an admin pick 4 or 5 by hand.
-  return `${rsvpCard()}${rsvps.some(x => x.day_date === date) && ins < 4 ? `<p class="mut">${t('Only {n} confirmed so far, you need at least 4.', { n: ins })}</p>` : ''}
+  return `${inviteCards()}${rsvpCard()}${rsvps.some(x => x.day_date === date) && ins < 4 ? `<p class="mut">${t('Only {n} confirmed so far, you need at least 4.', { n: ins })}</p>` : ''}
       ${auto ? '' : `<div class="seg" style="margin:0 0 12px"><button class="${m === 4 ? 'on' : ''}" onclick="setMode(4)">${t('4 players')}</button>
         <button class="${m === 5 ? 'on' : ''}" onclick="setMode(5)" ${o.length < 5 ? 'disabled' : ''}>${t('5 players')}</button></div>`}
       <ol>${o.slice(0, m).map((id, i) => rowOf(id, i)).join('')}</ol>
@@ -337,7 +345,7 @@ async function openPhoto(id) {
 
 const drawReactions = () => { const el = document.getElementById('rx'); if (el && lbDay) el.innerHTML = reactionBar(lbDay); };
 const ICON = k => `<img class="on" src="ic-${k}-on.png" alt=""><img class="off" src="ic-${k}-off.png" alt="">`;
-const NAV = { play: () => ICON('play') + '<span>' + t('Play') + '</span>', board: () => ICON('board') + '<span>' + t('Board') + '</span>', photos: () => ICON('photos') + '<span>' + t('Photos') + '</span>', stats: () => ICON('stats') + '<span>' + t('Stats') + '</span>' };
+const NAV = { play: () => ICON('play') + '<span>' + t('Play') + (session && loaded && invites().length ? ' •' : '') + '</span>', board: () => ICON('board') + '<span>' + t('Board') + '</span>', photos: () => ICON('photos') + '<span>' + t('Photos') + '</span>', stats: () => ICON('stats') + '<span>' + t('Stats') + '</span>' };
 
 function render() {
   if (view === 'admin' && !isAdmin()) view = 'play';

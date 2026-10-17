@@ -177,3 +177,4 @@
   .next small{font-size:var(--fs-sm)} .next .vs b{font-size:var(--fs-lg);padding:12px 8px} .next .vs span{font-size:var(--fs-md)} .next .rs{font-size:var(--fs-md)}
   .row .ph{padding:0;background:none} .row .nm{display:flex;flex-direction:column;align-items:flex-start;gap:2px;line-height:1.2} .row .nm .tag{margin:0}
   .row button:not(.ph):not(.nm){padding:10px 12px}
+  .invite{margin-bottom:12px;border-color:var(--acc)}

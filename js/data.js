@@ -17,7 +17,7 @@ let db = { players: [], days: [] }, members = [], me = {}, session = null, loade
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
-const DB_VERSION = 20261029; // bump together with db_version() in the newest migration
+const DB_VERSION = 20261030; // bump together with db_version() in the newest migration
 let receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, bgLoaded = false, rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
 let view = 'play', tab = 'day', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0, manualLogout = false, lostSession = false, asMember = false;   // asMember: an admin previewing the app as a normal member
 // the sign-in is kept on the phone (localStorage) and renewed automatically, so people stay logged in until they log out
@@ -363,7 +363,8 @@ function nextPlayDate() { // the play date people are answering for: the next pl
 }
 // admins: tap a date. A normal play day becomes cancelled (tap again to restore); any other day becomes an extra play day (tap again to clear)
 const markDate = iso => {
-  if (!isAdmin() || !sched || iso < tzParts().date) return;
+  if (!sched || iso < tzParts().date) return;
+  if (!isAdmin()) return memberExtra(iso);
   const kind = markOf(iso), normal = dowOf(iso) === sched.dow, want = normal ? 'cancelled' : 'extra', clear = kind === want;
   return act(async () => clear ? ok(await sb.from('play_dates').delete().eq('day', iso)) : ok(await sb.from('play_dates').upsert({ day: iso, kind: want })),
     () => { playDates = playDates.filter(p => p.day !== iso); if (!clear) playDates.push({ day: iso, kind: want }); });
@@ -388,6 +389,24 @@ const bfSave = () => {
     bf = null; go('calendar');
   });
 };
+// members: tap a free future date to add an extra game (the others get an invite on the Play tab); tap your own extra game to remove it
+const memberExtra = iso => {
+  const p = playDates.find(x => x.day === iso), me_ = session.user.id;
+  if (p) {
+    if (p.kind === 'extra' && p.created_by === me_ && confirm(t('Remove the extra game on {date}?', { date: niceDate(iso) })))
+      act(async () => ok(await sb.from('play_dates').delete().eq('day', iso)), () => { playDates = playDates.filter(x => x.day !== iso); });
+    return;
+  }
+  if (dowOf(iso) === sched.dow || !confirm(t('Add an extra game on {date}? The others will be asked if they join.', { date: niceDate(iso) }))) return;
+  act(async () => ok(await sb.from('play_dates').insert({ day: iso, kind: 'extra', created_by: me_ })), () => { playDates.push({ day: iso, kind: 'extra', created_by: me_ }); });
+};
+// extra games someone else added that I have not answered yet (the next play day already has its own sign-up card)
+function invites() {
+  const mine = session && db.players.find(p => p.user === session.user.id), today = tzParts().date, next = nextPlayDate();
+  if (!mine) return [];
+  return playDates.filter(p => p.kind === 'extra' && p.day >= today && p.day !== next && p.created_by !== session.user.id && !answerOf(mine.id, p.day) && rsvpPhase(p.day) === 'open')
+    .sort((x, y) => x.day < y.day ? -1 : 1);
+}
 const calShift = n => { const [y, m] = (calMonth || tzParts().date.slice(0, 7)).split('-').map(Number); calMonth = new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 7); render(); };
 const rsvpIsOpen = date => rsvpOpen && rsvpOpen.date === date ? rsvpOpen.open : date === tzParts().date;   // compact until the play day, unless toggled by hand for this date
 const toggleRsvp = () => { const date = nextPlayDate(); rsvpOpen = { date, open: !rsvpIsOpen(date) }; render(); };
@@ -399,7 +418,7 @@ function rsvpPhase(date) {
   return left <= sched.rsvp_hide_minutes ? 'hidden' : left <= sched.rsvp_until_minutes ? 'locked' : 'open';
 }
 const answerOf = (id, date) => (rsvps.find(r => r.day_date === date && r.player_id === id) || {}).status;
-const setRsvp = (id, status) => { const date = nextPlayDate();
+const setRsvp = (id, status, date = nextPlayDate()) => {
   return act(async () => {
     if (status) ok(await sb.from('rsvps').upsert({ day_date: date, player_id: id, status, updated_at: new Date().toISOString() }));
     else ok(await sb.from('rsvps').delete().eq('day_date', date).eq('player_id', id));
