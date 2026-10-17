@@ -178,3 +178,4 @@
   .row .ph{padding:0;background:none} .row .nm{display:flex;flex-direction:column;align-items:flex-start;gap:2px;line-height:1.2} .row .nm .tag{margin:0}
   .row button:not(.ph):not(.nm){padding:10px 12px}
   .invite{margin-bottom:12px;border-color:var(--acc)}
+  .log{padding:6px 12px;font-size:var(--fs-sm)} .log>div{padding:5px 0;border-bottom:1px solid var(--line);line-height:1.35} .log>div:last-of-type{border:0} .log .mut{margin:0 6px 0 0;font-size:var(--fs-xs)} .log .link{padding:6px 0 0;font-size:var(--fs-sm)}

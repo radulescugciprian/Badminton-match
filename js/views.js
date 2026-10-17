@@ -297,8 +297,10 @@ const LOG = {
 function logCard() {
   if (!isAdmin()) return '';
   const when = r => new Date(r.at).toLocaleString(LOCALE[lang], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-  return `<h2 class="sec">${t('Activity log')}</h2><div class="card" style="padding:4px 16px">${adminLog.map(r => `<div class="mrow" style="display:block"><span class="mut">${when(r)}</span><br>
-    <b>${esc(r.actor_name || t('system'))}</b> ${esc((LOG[r.action] || (() => r.action))(r.detail))}</div>`).join('') || `<p class="mut">${t('No activity yet.')}</p>`}</div>`;
+  const rows = logAll ? adminLog : adminLog.slice(0, 5);   // the latest 5; the rest one tap away
+  return `<h2 class="sec">${t('Activity log')}</h2><div class="card log">${rows.map(r => `<div><span class="mut">${when(r)}</span>
+    <b>${esc(r.actor_name || t('system'))}</b> ${esc((LOG[r.action] || (() => r.action))(r.detail))}</div>`).join('') || `<p class="mut">${t('No activity yet.')}</p>`}
+    ${adminLog.length > 5 ? `<button class="link" onclick="logAll=!logAll;render()">${logAll ? t('Show less') : t('Show all ({n})', { n: adminLog.length })}</button>` : ''}</div>`;
 }
 
 let urls = {};
