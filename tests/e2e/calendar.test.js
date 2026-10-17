@@ -24,7 +24,7 @@ run('compact sign-up card and play calendar', async h => {
   await A.click('[aria-label=Calendar]'); await A.waitForSelector('text=October 2026');
   assert((await A.locator('.cal button.d').count()) > 0 && (await A.locator('.cal .d.today').count()) === 1);
   assert.equal(await A.locator('.cal button.d:has-text("5")').count() >= 0, true);
-  await A.click('.cal button[aria-label*="21 October"]'); await A.waitForSelector('.cal .d.extra');
+  await A.click('.cal button[aria-label*="21 October"]'); await A.click('#xform button[type=submit]'); await A.waitForSelector('.cal .d.extra');
   await until(() => st.play_dates.some(x => x.day === '2026-10-21' && x.kind === 'extra'), 'the extra day on the server');
   await A.click('text=Back'); await A.waitForSelector('text=Wednesday 21 Oct');
   await B.click('text=Back'); await B.waitForSelector('text=Wednesday 21 Oct');                    // everyone sees it
@@ -63,9 +63,12 @@ run('compact sign-up card and play calendar', async h => {
   assert(h.rpc('u2', { table: 'play_dates', op: 'upsert', payload: { day: '2026-11-05', kind: 'cancelled' } }).error, 'members cannot cancel a play day');
   // a member adds an extra game on Saturday 31 Oct; the admin is invited on the Play tab and joins
   await B.evaluate(() => go('calendar')); await B.click('.cal button[aria-label*="31 October"]');
-  await until(() => st.play_dates.some(x => x.day === '2026-10-31' && x.kind === 'extra'), 'the extra game saved');
+  await B.fill('#xform [name=time]', '19:15'); await B.fill('#xform [name=bt]', '20:00'); await B.click('#xform button[type=submit]');
+  assert((await B.textContent('#xform .msg')).includes('before the game'), 'the deadline must be before the game');
+  await B.fill('#xform [name=bt]', '12:00'); await B.click('#xform button[type=submit]');
+  await until(() => st.play_dates.some(x => x.day === '2026-10-31' && x.kind === 'extra' && x.play_time === '19:15' && x.answer_by), 'the extra game saved with its time and deadline');
   assert.equal(await B.locator('.cal button[aria-label*="5 November"], .cal button[aria-label*="29 October"]').count(), 0, 'members cannot tap normal play days');
-  await A.evaluate(() => go('play')); await A.waitForSelector('.invite'); assert((await A.textContent('.invite')).includes('Added by Bob'));
+  await A.evaluate(() => go('play')); await A.waitForSelector('.invite'); assert((await A.textContent('.invite')).includes('Added by Bob') && (await A.textContent('.invite')).includes('19:15'), 'the invite shows who and when');
   await A.click('.invite >> text=I\'m in'); await until(() => st.rsvps.some(r => r.day_date === '2026-10-31' && r.status === 'in'), 'joined the extra game');
   await A.waitForFunction(() => !document.querySelector('.invite'));
   await B.click('.cal button[aria-label*="31 October"]'); await until(() => !st.play_dates.some(x => x.day === '2026-10-31'), 'the member removes their own extra game');

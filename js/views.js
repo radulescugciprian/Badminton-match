@@ -46,11 +46,11 @@ function profileView() {
 function rsvpCard() {
   const date = nextPlayDate(), mine = db.players.find(p => p.user === session.user.id), act_ = db.players.filter(p => !p.removed), admin = isAdmin();
   const ans = id => answerOf(id, date), icon = id => ({ in: '✅', out: '❌' }[ans(id)] || '⏳');
-  const by = sched ? hhmm(playMins() - sched.rsvp_until_minutes) : '', phase = rsvpPhase(date), locked = phase !== 'open' && !admin;
+  const by = deadlineText(date), phase = rsvpPhase(date), locked = phase !== 'open' && !admin;
   if (phase === 'hidden' && !admin) return '';
   const n = act_.filter(p => ans(p.id) === 'in').length;
   const open = rsvpIsOpen(date);
-  return `<div class="card rsvp"><div class="rhead"><div><div class="mut" style="margin:0;font-size:var(--fs-sm)">${t('Next match day')}</div><b>${niceDate(date)}</b> <span class="mut">· ${t('{n} in', { n })}</span></div>
+  return `<div class="card rsvp"><div class="rhead"><div><div class="mut" style="margin:0;font-size:var(--fs-sm)">${t('Next match day')}</div><b>${niceDate(date)}${extraOf(date) && extraOf(date).play_time ? ' · ' + hhmm(playMinsOn(date)) : ''}</b> <span class="mut">· ${t('{n} in', { n })}</span></div>
       <span><button class="link" onclick="shareSignup()" aria-label="${t('Share on WhatsApp')}" title="${t('Share on WhatsApp')}">💬</button><button class="link" onclick="go('calendar')" aria-label="${t('Calendar')}">📅</button><button class="link" onclick="toggleRsvp()" aria-expanded="${open}">${open ? '▴' : '▾'} ${t('Details')}</button></span></div>
     ${mine && locked ? `<p class="mut" style="margin:8px 0 0">🔒 ${t('Answers closed at {time}.', { time: by })}</p>` : ''}
     ${mine && !locked ? `<div class="seg"><button class="${ans(mine.id) === 'in' ? 'on' : ''}" onclick="setRsvp(${mine.id}, ${ans(mine.id) === 'in' ? 'null' : "'in'"})">✅ ${t("I'm in")}</button>
@@ -65,8 +65,8 @@ function rsvpCard() {
 // month calendar: weekly play days are highlighted; admins tap a date to add an extra day or cancel a normal one
 function inviteCards() {
   const mine = db.players.find(p => p.user === session.user.id), by = p => esc((members.find(m => m.id === p.created_by) || {}).username || '?');
-  return invites().map(p => `<div class="card invite" data-day="${p.day}"><div>🏸 <b>${t('Extra game')}</b> · ${esc(niceDate(p.day))} ${sched ? esc(hhmm(playMins())) : ''}
-      <div class="mut" style="margin:2px 0 8px">${t('Added by {name}. Do you want to join?', { name: by(p) })} · ${t('{n} in', { n: rsvps.filter(r => r.day_date === p.day && r.status === 'in').length })}</div></div>
+  return invites().map(p => `<div class="card invite" data-day="${p.day}"><div>🏸 <b>${t('Extra game')}</b> · ${esc(niceDate(p.day))} ${sched ? esc(hhmm(playMinsOn(p.day))) : ''}
+      <div class="mut" style="margin:2px 0 8px">${t('Added by {name}. Do you want to join?', { name: by(p) })} ${t('Answer before {time}.', { time: esc(deadlineText(p.day)) })} · ${t('{n} in', { n: rsvps.filter(r => r.day_date === p.day && r.status === 'in').length })}</div></div>
     <div class="seg"><button onclick="setRsvp(${mine.id}, 'in', '${p.day}')">✅ ${t("I'm in")}</button><button onclick="setRsvp(${mine.id}, 'out', '${p.day}')">❌ ${t("I'm out")}</button></div>
     <button class="link wa" onclick="shareExtra('${p.day}')">💬 ${t('Share on WhatsApp')}</button></div>`).join('');
 }

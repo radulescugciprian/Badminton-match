@@ -151,7 +151,10 @@ select as_user((select m1 from ids));
 select must_fail($$insert into play_dates values ('2099-01-01', 'extra')$$, 'row-level security');      -- a normal play day (Thursday)
 select must_fail($$insert into play_dates values ('2099-01-03', 'cancelled')$$, 'row-level security');  -- members cannot cancel
 select must_fail($$insert into play_dates values ('2020-01-04', 'extra')$$, 'row-level security');      -- the past
-insert into play_dates values ('2099-01-03', 'extra');                                                     -- a member adds an extra Saturday game
+select must_fail($$insert into play_dates (day, kind) values ('2099-01-03', 'extra')$$, 'row-level security');   -- without a time and deadline
+select must_fail($$insert into play_dates (day, kind, play_time, answer_by) values ('2099-01-03', 'extra', '10:00', '2099-01-03 12:00+01')$$, 'deadline must be before');
+insert into play_dates (day, kind, play_time, answer_by) values ('2099-01-03', 'extra', '10:00', '2099-01-02 20:00+01');   -- a member adds an extra Saturday game
+select check_that(play_time_on('2099-01-03') = '10:00' and rsvp_open('2099-01-03', '2099-01-02 18:59Z') and not rsvp_open('2099-01-03', '2099-01-02 19:01Z'), 'the extra game has its own time and deadline');
 select check_that(rows_changed($$delete from play_dates where day = '2026-10-21'$$) = 0, 'members cannot remove someone else''s extra day');
 select check_that(rows_changed($$delete from play_dates where day = '2099-01-03'$$) = 1, 'members remove their own extra game');
 select check_that(rows_changed($$delete from play_dates$$) = 0, 'members cannot clear marks');

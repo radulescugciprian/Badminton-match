@@ -29,6 +29,7 @@ async function run(name, body) {
     await p.route('http://localhost:8766/**', r => { const f = st.files[r.request().url().replace('http://localhost:8766/', '')]; return f ? r.fulfill({ contentType: 'image/png', body: Buffer.from(f) }) : r.fulfill({ status: 404 }); });
     await p.addInitScript(({ seen, t0 }) => {
       if (seen) localStorage.setItem('seenHelp', '1');
+      window.open = u => { window.__wa = u; return null; };   // WhatsApp links are only recorded
       const R = Date; window.__t = t0;                                   // lets a test move the app's clock: window.__t = timestamp
       window.Date = class extends R { constructor(...a) { a.length === 0 && window.__t ? super(window.__t) : super(...a); } static now() { return window.__t || R.now(); } };
     }, { seen: seenHelp, t0: now });

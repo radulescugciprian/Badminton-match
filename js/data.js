@@ -17,7 +17,7 @@ let db = { players: [], days: [] }, members = [], me = {}, session = null, loade
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
-const DB_VERSION = 20261030; // bump together with db_version() in the newest migration
+const DB_VERSION = 20261031; // bump together with db_version() in the newest migration
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
 let deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, bgLoaded = false, rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
@@ -373,6 +373,7 @@ const markDate = iso => {
   if (!sched || iso < tzParts().date) return;
   if (!isAdmin()) return memberExtra(iso);
   const kind = markOf(iso), normal = dowOf(iso) === sched.dow, want = normal ? 'cancelled' : 'extra', clear = kind === want;
+  if (want === 'extra' && !clear) return extraForm(iso);
   return act(async () => clear ? ok(await sb.from('play_dates').delete().eq('day', iso)) : ok(await sb.from('play_dates').upsert({ day: iso, kind: want })),
     () => { playDates = playDates.filter(p => p.day !== iso); if (!clear) playDates.push({ day: iso, kind: want }); });
 };
@@ -403,10 +404,10 @@ const plain = ids => ids.map(id => player(id).name).join(' & ');
 const waShare = text => window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
 const shareSignup = () => {
   const date = nextPlayDate(), ins = db.players.filter(p => !p.removed && answerOf(p.id, date) === 'in').map(p => p.name);
-  waShare(t('🏸 {day} {time}: {n} in so far{names}. Please answer by {deadline}:', { day: niceDate(date), time: sched ? hhmm(playMins()) : '',
-    n: ins.length, names: ins.length ? ` (${ins.join(', ')})` : '', deadline: sched ? hhmm(playMins() - sched.rsvp_until_minutes) : '' }) + ' ' + appLink('answer=' + date));
+  waShare(t('🏸 {day} {time}: {n} in so far{names}. Please answer by {deadline}:', { day: niceDate(date), time: sched ? hhmm(playMinsOn(date)) : '',
+    n: ins.length, names: ins.length ? ` (${ins.join(', ')})` : '', deadline: deadlineText(date) }) + ' ' + appLink('answer=' + date));
 };
-const shareExtra = day => waShare(t('🏸 {name} added an extra game on {date} at {time}. Who is in?', { name: (members.find(m => m.id === (playDates.find(p => p.day === day) || {}).created_by) || me || {}).username || '', date: niceDate(day), time: sched ? hhmm(playMins()) : '' }) + ' ' + appLink('answer=' + day));
+const shareExtra = day => waShare(t('🏸 {name} added an extra game on {date} at {time}. Who is in? Answer by {deadline}:', { name: (members.find(m => m.id === (extraOf(day) || {}).created_by) || me || {}).username || '', date: niceDate(day), time: sched ? hhmm(playMinsOn(day)) : '', deadline: deadlineText(day) }) + ' ' + appLink('answer=' + day));
 const shareLineup = () => {
   const d = cur(), o = d.order, cyc = d.mode === 4 ? C4 : C5;
   waShare('🏸 ' + t('Today\'s matches') + '\n' + cyc.map(([a, b, r], i) => `${i + 1}. ${plain(slots(o, a))} ${t('vs')} ${plain(slots(o, b))}${r ? ` (${t('{name} rests', { name: player(o[r - 1]).name })})` : ''}`).join('\n') + '\n' + appLink());
@@ -418,10 +419,29 @@ const memberExtra = iso => {
       act(async () => ok(await sb.from('play_dates').delete().eq('day', iso)), () => { playDates = playDates.filter(x => x.day !== iso); });
     return;
   }
-  if (dowOf(iso) === sched.dow || !confirm(t('Add an extra game on {date}? The others will be asked if they join.', { date: niceDate(iso) }))) return;
-  act(async () => ok(await sb.from('play_dates').insert({ day: iso, kind: 'extra', created_by: me_ })), () => { playDates.push({ day: iso, kind: 'extra', created_by: me_ }); });
-  if (confirm(t('Tell the WhatsApp group?'))) shareExtra(iso);
+  if (dowOf(iso) !== sched.dow) extraForm(iso);
 };
+// the form for a new extra game: start time and the deadline for answers (shortcut: times are read in the phone's time zone, which is the group's)
+function extraForm(iso) {
+  const pm = playMins(), el = document.createElement('div'); el.id = 'xform'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
+  el.innerHTML = `<form class="card"><h2 style="margin:0 0 4px">🏸 ${t('Extra game')}</h2><p class="mut">${esc(niceDate(iso, { weekday: 'long', day: 'numeric', month: 'long' }))}</p>
+    <label class="field">${t('Start time')}<input type="time" name="time" value="${hhmm(pm)}" required></label>
+    <label class="field">${t('Answers needed by')}<input type="date" name="bd" value="${iso}" min="${tzParts().date}" max="${iso}" required><input type="time" name="bt" value="${hhmm(Math.max(0, pm - sched.rsvp_until_minutes))}" required></label>
+    <p class="msg" role="alert"></p><button class="primary" type="submit">${t('Add extra game')}</button><button class="link" type="button" id="xcancel">${t('Cancel')}</button></form>`;
+  document.body.append(el);
+  el.querySelector('#xcancel').onclick = () => el.remove();
+  el.querySelector('form').onsubmit = e => {
+    e.preventDefault();
+    const f = new FormData(e.target), time = f.get('time'), by = new Date(`${f.get('bd')}T${f.get('bt')}`), msg = el.querySelector('.msg');
+    if (by >= new Date(`${iso}T${time}`)) return msg.textContent = t('The answer deadline must be before the game.');
+    if (by <= new Date()) return msg.textContent = t('The answer deadline is already over.');
+    const row = { day: iso, kind: 'extra', play_time: time, answer_by: by.toISOString(), created_by: session.user.id };
+    el.remove();
+    act(async () => ok(await (isAdmin() ? sb.from('play_dates').upsert(row) : sb.from('play_dates').insert(row))), () => { playDates = playDates.filter(p => p.day !== iso).concat(row); });
+    if (confirm(t('Tell the WhatsApp group?'))) shareExtra(iso);
+  };
+  el.querySelector('input').focus();
+}
 // extra games someone else added that I have not answered yet (the next play day already has its own sign-up card)
 function invites() {
   const mine = session && db.players.find(p => p.user === session.user.id), today = tzParts().date, next = nextPlayDate();
@@ -433,10 +453,21 @@ const calShift = n => { const [y, m] = (calMonth || tzParts().date.slice(0, 7)).
 const rsvpIsOpen = date => rsvpOpen && rsvpOpen.date === date ? rsvpOpen.open : date === tzParts().date;   // compact until the play day, unless toggled by hand for this date
 const toggleRsvp = () => { const date = nextPlayDate(); rsvpOpen = { date, open: !rsvpIsOpen(date) }; render(); };
 // sign-up window on the play day: 'open' until the answers close, 'locked' (visible, read-only) until it is hidden. Later play days stay open.
-const minsUntilPlay = date => { const n = tzParts(); return (Date.parse(date) - Date.parse(n.date)) / 6e4 + playMins() - n.mins; };
+// an extra game can have its own start time and answer deadline; other play days use the weekly schedule
+const extraOf = d => playDates.find(p => p.day === d && p.kind === 'extra');
+const playMinsOn = d => { const p = extraOf(d); return p && p.play_time ? +p.play_time.slice(0, 2) * 60 + +p.play_time.slice(3, 5) : playMins(); };
+const minsUntilPlay = date => { const n = tzParts(); return (Date.parse(date) - Date.parse(n.date)) / 6e4 + playMinsOn(date) - n.mins; };
+function deadlineText(date) {
+  if (!sched) return '';
+  const p = extraOf(date);
+  if (!p || !p.answer_by) return hhmm(playMinsOn(date) - sched.rsvp_until_minutes);
+  const d = new Date(p.answer_by), day = d.toLocaleDateString('en-CA', { timeZone: sched.tz }), time = d.toLocaleTimeString(LOCALE[lang], { timeZone: sched.tz, hour: '2-digit', minute: '2-digit' });
+  return day === date ? time : niceDate(day) + ' ' + time;
+}
 function rsvpPhase(date) {
   if (!sched) return 'open';
-  const left = minsUntilPlay(date);
+  const left = minsUntilPlay(date), p = extraOf(date);
+  if (p && p.answer_by) return Date.now() < Date.parse(p.answer_by) ? 'open' : left <= sched.rsvp_hide_minutes ? 'hidden' : 'locked';
   return left <= sched.rsvp_hide_minutes ? 'hidden' : left <= sched.rsvp_until_minutes ? 'locked' : 'open';
 }
 const answerOf = (id, date) => (rsvps.find(r => r.day_date === date && r.player_id === id) || {}).status;
@@ -552,9 +583,9 @@ function startOpen() {
   if (!sched) return true;
   const n = tzParts();
   // the opening may fall on the evening before (e.g. a 00:30 game); it stays open until the end of the play day
-  return [n.date, addDays(n.date, 1)].some(d => isPlayDate(d) && minsUntilPlay(d) <= sched.opens_minutes && minsUntilPlay(d) > playMins() - 1440);
+  return [n.date, addDays(n.date, 1)].some(d => isPlayDate(d) && minsUntilPlay(d) <= sched.opens_minutes && minsUntilPlay(d) > playMinsOn(d) - 1440);
 }
 const hhmm = mins => { mins = ((mins % 1440) + 1440) % 1440; return String(Math.floor(mins / 60)).padStart(2, '0') + ':' + String(mins % 60).padStart(2, '0'); };
 const playMins = () => +sched.play_time.split(':')[0] * 60 + +sched.play_time.split(':')[1];
-const startNote = () => t('We play on {day} at {time}. You can press Start playing from {open}.',
-  { day: dayName(sched.dow), time: hhmm(playMins()), open: hhmm(playMins() - sched.opens_minutes) });
+const startNote = () => { const d = nextPlayDate(); return t('We play on {day} at {time}. You can press Start playing from {open}.',
+  { day: dayName(dowOf(d)), time: hhmm(playMinsOn(d)), open: hhmm(playMinsOn(d) - sched.opens_minutes) }); };

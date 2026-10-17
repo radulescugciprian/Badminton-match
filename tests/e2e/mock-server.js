@@ -8,6 +8,8 @@ const logAct = (u, action, detail) => st.log.push({ id: st.log.length + 1, at: n
 function rsvpOpen(date) { // like the database: later days are open, on the play day until play time minus rsvp_until_minutes
   const f = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(st.now || Date.now())), g = x => f.find(p => p.type === x).value;
   const today = `${g('year')}-${g('month')}-${g('day')}`, s = st.schedule[0], pm = +s.play_time.slice(0, 2) * 60 + +s.play_time.slice(3, 5);
+  const x = st.play_dates.find(p => p.day === date && p.kind === 'extra');
+  if (x && x.answer_by) return (st.now || Date.now()) < Date.parse(x.answer_by);
   return date > today || (date === today && +g('hour') * 60 + +g('minute') < pm - s.rsvp_until_minutes);
 }
 function canStart() {
@@ -23,7 +25,7 @@ function rpc(u, r) {
   const match = row => r.f.every(([op, c, v]) => op === 'eq' ? row[c] === v : row[c] > v);
   switch (r.op) {
     case 'rpc': {
-      if (r.name === 'db_version') return { data: st.dbVersion ?? 20261030 };
+      if (r.name === 'db_version') return { data: st.dbVersion ?? 20261031 };
       if (r.name === 'delete_account') {
         if (!isAdmin(u)) return err('Admins only'); if (r.args.uid === u) return err('You cannot remove your own account');
         const pr = st.profiles.find(p => p.id === r.args.uid); if (!pr) return err('No such account');
@@ -77,7 +79,7 @@ function rpc(u, r) {
       if (st.failInsert && r.table === 'matches') return err('simulated server failure');
       const row = { ...r.payload };
       if (r.table === 'reactions') { row.user_id = u; if (st.reactions.some(x => x.day_id === row.day_id && x.user_id === u && x.kind === row.kind)) return err('duplicate key', '23505'); st.reactions.push(row); emit(); return { data: [row] }; }
-      if (r.table === 'play_dates') { if (!isAdmin(u) && (r.payload.kind !== 'extra' || r.payload.created_by !== u || new Date(r.payload.day + 'T12:00:00Z').getUTCDay() === st.schedule[0].dow)) return err('new row violates row-level security policy for table "play_dates"'); if (st.play_dates.some(x => x.day === r.payload.day)) return err('duplicate key', '23505'); logAct(u, 'mark_play_date', { date: r.payload.day, kind: r.payload.kind }); }
+      if (r.table === 'play_dates') { if (!isAdmin(u) && (r.payload.kind !== 'extra' || r.payload.created_by !== u || !r.payload.play_time || !r.payload.answer_by || new Date(r.payload.day + 'T12:00:00Z').getUTCDay() === st.schedule[0].dow)) return err('new row violates row-level security policy for table "play_dates"'); if (st.play_dates.some(x => x.day === r.payload.day)) return err('duplicate key', '23505'); logAct(u, 'mark_play_date', { date: r.payload.day, kind: r.payload.kind }); }
       if (r.table === 'receipts') { if (r.payload.created_by !== u) return err('new row violates row-level security policy for table "receipts"'); row.id = (st.receipts.length ? Math.max(...st.receipts.map(x => x.id)) : 0) + 1; row.created_at = new Date(st.now || Date.now()).toISOString(); }
       if (r.table === 'players') { if (!isAdmin(u) && r.payload.user_id) return err('new row violates row-level security policy'); row.id = ++st.seq.p; row.active = true; row.avatar = null; row.user_id = null; row.created_by = u; row.created_at = new Date(st.now || Date.now()).toISOString(); }
       if (r.table === 'days') { row.id = ++st.seq.d; Object.assign(row, { started: isAdmin(u) && !!r.payload.started, closed: false, photo_path: (isAdmin(u) && r.payload.photo_path) || null }); }
