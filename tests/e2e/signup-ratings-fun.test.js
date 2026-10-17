@@ -93,5 +93,8 @@ run('sign-up list, ratings, badges, result card and reactions', async h => {
   assert(rpc('u2', { table: 'rsvps', op: 'upsert', payload: { day_date: '2026-10-15', player_id: 2, status: 'in' } }).error, 'the server refuses a late answer');
   await at('2026-10-15T15:01:00Z');
   assert.equal(await B.locator('.rsvp').count(), 0, 'section hidden at 17:01'); assert.equal(await A.locator('.rsvp').count(), 1, 'admins still see it');
+  // the teams of the first match are only shown from 15 minutes before play time
+  assert.equal(await B.locator('.next').count(), 0, 'no teams at 17:01');
+  await at('2026-10-15T16:16:00Z'); assert.equal(await B.locator('.next').count(), 1, 'teams shown at 18:16');
 
 });

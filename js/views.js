@@ -107,14 +107,15 @@ function setup(d) {
         <button onclick="move(${i},1)" aria-label="${t('Move down')}" ${i === o.length - 1 ? 'disabled' : ''}>▼</button>
         ${!admin && ownFreshGuest(player(id)) ? `<button class="danger" onclick="removePlayer(${id})" aria-label="${t('Remove {name}', { name: name(id) })}">✕</button>` : ''}</li>`;
   const idle = db.players.filter(p => !p.removed && !o.includes(p.id));
+  // who plays with whom is shown from 15 minutes before play time (and on the match screen once started)
   // the sign-ups fill the list and decide 4 or 5 players; the date is today's. Only when nobody has answered can an admin pick 4 or 5 by hand.
   return `${rsvpCard()}${rsvps.some(x => x.day_date === date) && ins < 4 ? `<p class="mut">${t('Only {n} confirmed so far, you need at least 4.', { n: ins })}</p>` : ''}
       ${auto ? '' : `<div class="seg" style="margin:0 0 12px"><button class="${m === 4 ? 'on' : ''}" onclick="setMode(4)">${t('4 players')}</button>
         <button class="${m === 5 ? 'on' : ''}" onclick="setMode(5)" ${o.length < 5 ? 'disabled' : ''}>${t('5 players')}</button></div>`}
       <ol>${o.slice(0, m).map((id, i) => rowOf(id, i)).join('')}</ol>
-      <div class="next"><small>${t('Match {n}', { n: 1 })}</small>
+      ${!sched || minsUntilPlay(date) <= 15 ? `<div class="next"><small>${t('Match {n}', { n: 1 })}</small>
         <div class="vs"><b style="--c:var(--t1)">${pair(slots(o, a))}</b><span>${t('vs')}</span><b style="--c:var(--t2)">${pair(slots(o, b))}</b></div>
-        ${r ? `<div class="rs">${t('Resting:')} <b>${name(o[r - 1])}</b></div>` : ''}</div>
+        ${r ? `<div class="rs">${t('Resting:')} <b>${name(o[r - 1])}</b></div>` : ''}</div>` : ''}
       <button class="add" onclick="addPlayer()">${t('+ Add guest player (no account)')}</button>
       ${idle.length ? `<details class="fold"><summary>${t('Guests who have not played lately')} (${idle.length})</summary><div class="chips">${idle.map(p => `<button class="chip" onclick="bringBack(${p.id})">${av(p.id, 22)} ${esc(p.name)} +</button>`).join('')}</div></details>` : ''}
       ${o.length > m ? `<details class="fold" ${benchOpen ? 'open' : ''} ontoggle="benchOpen=this.open"><summary>${t('Sitting out')} (${o.length - m})</summary><ol>${o.slice(m).map((id, k) => rowOf(id, m + k)).join('')}</ol></details>` : ''}
