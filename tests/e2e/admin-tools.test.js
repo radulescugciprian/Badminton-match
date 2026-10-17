@@ -42,6 +42,12 @@ run('admin tools', async h => {
   await h.until(() => ['Ana', 'Mihai'].every(n => st.players.some(p => p.name === n && !p.user_id)), 'two players added');
   await h.until(() => ['Ana', 'Mihai'].every(n => st.days[st.days.length - 1].player_order.includes(st.players.find(p => p.name === n).id)), 'they join the setup');
   A.promptAnswer = undefined;
+  // usage: tabs opened are counted per person; only admins see the summary
+  await B.click('nav >> text=Stats'); await B.click('nav >> text=Board'); await B.click('nav >> text=Play');
+  await h.until(() => st.usage.some(r => r.what === 'stats') && st.usage.some(r => r.what === 'board'), 'tabs counted');
+  assert(h.rpc('u2', { table: 'usage', op: 'select', f: [] }).data.length === 0, 'members cannot read usage');
+  await A.reload(); await A.click('[aria-label="Admin tools"]'); await A.waitForSelector('text=Usage (last 30 days)');
+  const ut = await A.textContent('.usage'); assert(ut.includes('Most used') && ut.includes('Bob') && ut.includes('last seen'), ut.slice(0, 200));
   // photo dimming: the admin's slider is saved for everyone, members have no slider
   assert.equal(await B.locator('input[type=range]').count(), 0, 'members cannot set the dimming');
   await A.locator('input[type=range]').evaluate(el => { el.value = 40; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); });

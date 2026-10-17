@@ -203,3 +203,6 @@
   .dayzone.regular{background:rgba(34,197,94,.10);box-shadow:inset 0 0 0 1px rgba(34,197,94,.30)} .dayzone.extra{background:rgba(59,130,246,.14);box-shadow:inset 0 0 0 1px rgba(59,130,246,.45)}
   .rsvp.regular{background:linear-gradient(rgba(34,197,94,.16),rgba(34,197,94,.06)),var(--card)} .rsvp.extra{background:linear-gradient(rgba(59,130,246,.24),rgba(59,130,246,.08)),var(--card);border-color:rgba(59,130,246,.5)}
   .invite.off{border-color:var(--danger);opacity:.9} .cal .d.xoff{background:repeating-linear-gradient(45deg,rgba(59,130,246,.25) 0 4px,transparent 4px 9px);text-decoration:line-through}
+  .usage p{margin:8px 0} .usage .tiles{margin:0}
+  .ubars{display:flex;gap:6px;align-items:flex-end;height:58px} .ubar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px} .ubar i{display:block;width:100%;min-height:2px;border-radius:4px;background:var(--acc)} .ubar small{font-size:var(--fs-xs);color:var(--mut)}
+  .urow{padding:8px 0;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:2px} .urow small{color:var(--mut);font-size:var(--fs-xs)} .urow .mut{margin:0;font-size:var(--fs-xs)}

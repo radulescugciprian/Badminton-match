@@ -1,5 +1,5 @@
 // Fake Supabase server (in memory) mirroring the rules in supabase/migrations that the screens depend on.
-const st = { players: ['Vali','Dani','Costi','Zjepko','Ciprian'].map((name,i)=>({id:i+1,name,avatar:null,active:true,user_id:null})), days: [], matches: [], profiles: [], receipts: [], rsvps: [], reactions: [], play_dates: [], log: [], attempts: {}, schedule: [{ id: true, tz: 'Europe/Berlin', dow: 4, play_time: '18:30:00', opens_minutes: 60, rsvp_until_minutes: 120, rsvp_hide_minutes: 90 }], now: null, users: {}, files: {}, seq: { p: 5, d: 0, m: 0 } };
+const st = { players: ['Vali','Dani','Costi','Zjepko','Ciprian'].map((name,i)=>({id:i+1,name,avatar:null,active:true,user_id:null})), days: [], matches: [], profiles: [], receipts: [], usage: [], rsvps: [], reactions: [], play_dates: [], log: [], attempts: {}, schedule: [{ id: true, tz: 'Europe/Berlin', dow: 4, play_time: '18:30:00', opens_minutes: 60, rsvp_until_minutes: 120, rsvp_hide_minutes: 90 }], now: null, users: {}, files: {}, seq: { p: 5, d: 0, m: 0 } };
 const pages = [];
 const emit = () => pages.forEach(p => p.evaluate(() => window.__emit && window.__emit()).catch(() => {}));
 const isAdmin = u => (st.profiles.find(p => p.id === u) || {}).is_admin;
@@ -21,11 +21,17 @@ function canStart() {
 }
 function rpc(u, r) {
   if (!u && r.op !== 'rpc') return err('not logged in'); // the username lookup is public (anon)
-  const T = { players: st.players, days: st.days, matches: st.matches, profiles: st.profiles, schedule: st.schedule, receipts: st.receipts, rsvps: st.rsvps, reactions: st.reactions, admin_log: st.log, play_dates: st.play_dates }[r.table];
-  const match = row => r.f.every(([op, c, v]) => op === 'eq' ? row[c] === v : row[c] > v);
+  const T = { players: st.players, days: st.days, matches: st.matches, profiles: st.profiles, schedule: st.schedule, receipts: st.receipts, usage: st.usage, rsvps: st.rsvps, reactions: st.reactions, admin_log: st.log, play_dates: st.play_dates }[r.table];
+  const match = row => r.f.every(([op, c, v]) => op === 'eq' ? row[c] === v : op === 'gte' ? row[c] >= v : row[c] > v);
   switch (r.op) {
     case 'rpc': {
-      if (r.name === 'db_version') return { data: st.dbVersion ?? 20261102 };
+      if (r.name === 'db_version') return { data: st.dbVersion ?? 20261103 };
+      if (r.name === 'track') {
+        if (!u) return { data: null };
+        const f = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(st.now || Date.now())), g = x => f.find(p => p.type === x).value;
+        const key = { user_id: u, day: `${g('year')}-${g('month')}-${g('day')}`, hour: +g('hour'), what: r.args.v }, row = st.usage.find(x => ['user_id', 'day', 'hour', 'what'].every(k => x[k] === key[k]));
+        row ? row.n++ : st.usage.push({ ...key, n: 1 }); return { data: null };
+      }
       if (r.name === 'delete_account') {
         if (!isAdmin(u)) return err('Admins only'); if (r.args.uid === u) return err('You cannot remove your own account');
         const pr = st.profiles.find(p => p.id === r.args.uid); if (!pr) return err('No such account');
@@ -57,6 +63,7 @@ function rpc(u, r) {
       let rows = T.map(x => ({ ...x })).filter(match);
       if (r.table === 'days') rows.forEach(d => { d.matches = st.matches.filter(m => m.day_id === d.id).map(m => ({ ...m })); });
       if (r.table === 'admin_log' && !isAdmin(u)) rows = [];
+      if (r.table === 'usage' && !isAdmin(u)) rows = [];
       if (r.table === 'profiles' && st.emptyProfiles) rows = [];   // simulates a hiccup: the list of members comes back empty
       if (r.order) rows.sort((a, b) => (a[r.order] > b[r.order] ? 1 : -1) * (r.desc ? -1 : 1));
       if (r.limit) rows = rows.slice(0, r.limit);

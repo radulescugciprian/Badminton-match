@@ -310,8 +310,37 @@ function adminView() {
     <h2 class="sec">${t('Play background')}</h2><div class="card"><p class="mut" style="margin:0 0 8px">${t('Shown behind the Play tab for everyone.')}</p>
       <button onclick="pickBg()">🖼 ${t('Change background')}</button> <button class="link" onclick="resetBg()">${t('Use default background')}</button>
       <label class="field" style="margin:12px 0 0">${t('Photo dimming')}: <b id="dimv">${dim()}%</b><input type="range" min="0" max="90" step="5" value="${dim()}" oninput="previewDim(this.value)" onchange="saveDim(this.value)"></label></div>
-    ${scheduleForm()}${logCard()}
+    ${usageCard()}${scheduleForm()}${logCard()}
     <div class="actions"><button class="link danger" onclick="eraseAll()">${t('Reset all scores')}</button></div>`;
+}
+
+// admins only: how the app is used (last 30 days): who is active, which tabs, what people do, and when
+function usageCard() {
+  const today = tzParts().date, tabs = ['play', 'board', 'photos', 'stats', 'profile', 'members', 'calendar', 'admin'];
+  const label = { play: t('Play'), board: t('Board'), photos: t('Photos'), stats: t('Stats'), profile: t('Profile'), members: t('Members'), calendar: t('Calendar'), admin: t('Admin tools') };
+  const sum = rows => rows.reduce((x, r) => x + r.n, 0), views = usage.filter(r => tabs.includes(r.what));
+  const active = days => new Set(usage.filter(r => r.day > addDays(today, -days)).map(r => r.user_id)).size;
+  const pct = rows => { const tot = sum(rows); return tabs.map(k => [k, sum(rows.filter(r => r.what === k))]).filter(([, n]) => n).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${label[k]} ${Math.round(100 * n / tot)}%`).join(' · '); };
+  // when: by weekday and by hour of day
+  const byDow = [1, 2, 3, 4, 5, 6, 0].map(d => [d, sum(views.filter(r => dowOf(r.day) === d))]), byHour = Array.from({ length: 24 }, (_, h) => sum(views.filter(r => r.hour === h)));
+  const topDow = [...byDow].sort((a, b) => b[1] - a[1])[0], two = byHour.map((n, h) => n + (byHour[h + 1] || 0)), topH = two.indexOf(Math.max(...two)), max = Math.max(1, ...byDow.map(x => x[1]));
+  const bars = byDow.map(([d, n]) => `<div class="ubar"><i style="height:${Math.round(40 * n / max)}px"></i><small>${esc(dayName(d).slice(0, 2))}</small></div>`).join('');
+  // what each person does
+  const person = m => {
+    const mine = usage.filter(r => r.user_id === m.id), pl = db.players.find(p => p.user === m.id), seen = mine.map(r => r.day).sort().pop();
+    const ans = pl ? rsvps.filter(r => r.player_id === pl.id && r.updated_at) : [];
+    const early = ans.length ? Math.round(ans.reduce((x, r) => x + (Date.parse(`${r.day_date}T${hhmm(playMinsOn(r.day_date))}`) - Date.parse(r.updated_at)) / 36e5, 0) / ans.length) : null;
+    const recorded = db.days.reduce((x, d) => x + d.matches.filter(mt => mt.created_by === m.id).length, 0), act = k => sum(mine.filter(r => r.what === k));
+    return { m, seen, html: `<div class="urow"><b>${esc(m.username)}</b> <span class="mut">${seen ? t('last seen {date}', { date: esc(niceDate(seen)) }) : t('not seen in 30 days')}</span>
+      ${mine.length ? `<small>${pct(mine.filter(r => tabs.includes(r.what)))}</small>` : ''}
+      <small>✅ ${ans.length}${early !== null ? ` (${t('~{h} h before', { h: early })})` : ''} · 🏸 ${recorded} · 📷 ${act('act:photo')} · 🧾 ${receipts.filter(r => r.created_by === m.id).length} · 💬 ${act('act:whatsapp')}</small></div>` };
+  };
+  const people = members.map(person).sort((a, b) => (b.seen || '').localeCompare(a.seen || ''));
+  return `<h2 class="sec">${t('Usage (last 30 days)')}</h2><div class="card usage">
+      <div class="tiles"><div class="tile"><b>${active(7)}</b>${t('active, 7 days')}</div><div class="tile"><b>${active(30)}</b>${t('active, 30 days')}</div><div class="tile"><b>${sum(views)}</b>${t('screens opened')}</div></div>
+      ${views.length ? `<p><b>${t('Most used')}:</b> ${pct(views)}</p><p><b>${t('Busiest')}:</b> ${esc(dayName(topDow[0]))} ${hhmm(topH * 60)}–${hhmm((topH + 2) * 60)}</p><div class="ubars">${bars}</div>` : `<p class="mut">${t('No usage counted yet.')}</p>`}
+      <p class="mut" style="margin:8px 0 0">✅ ${t('answers')} · 🏸 ${t('matches recorded')} · 📷 ${t('photos')} · 🧾 ${t('receipts')} · 💬 ${t('WhatsApp shares')}</p>
+      ${people.map(x => x.html).join('')}</div>`;
 }
 
 // admins only: who did what (written by the database itself, nobody can edit it)
@@ -380,6 +409,7 @@ const ICON = k => `<img class="on" src="ic-${k}-on.png" alt=""><img class="off" 
 const NAV = { play: () => ICON('play') + '<span>' + t('Play') + (session && loaded && invites().length ? ' •' : '') + '</span>', board: () => ICON('board') + '<span>' + t('Board') + '</span>', photos: () => ICON('photos') + '<span>' + t('Photos') + '</span>', stats: () => ICON('stats') + '<span>' + t('Stats') + '</span>' };
 
 function render() {
+  if (session && loaded && view !== lastTracked) { lastTracked = view; track(view); }
   if (view === 'admin' && !isAdmin()) view = 'play';
   document.documentElement.style.setProperty('--dim', dim() / 100);
   document.body.classList.toggle('out', !session);

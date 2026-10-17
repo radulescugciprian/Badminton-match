@@ -187,6 +187,13 @@ select check_that((select count(*) from receipts) = 1, 'members read receipts');
 select check_that(rows_changed($$delete from receipts$$) = 0, 'members cannot delete someone else''s receipt');
 select as_user((select adm from ids));
 select check_that(rows_changed($$delete from receipts$$) = 1, 'admins delete any receipt');
+-- usage counters: everyone adds to their own through track(), only admins read them
+select as_user((select m1 from ids));
+select track('play'); select track('play'); select track('stats');
+select check_that((select count(*) from usage) = 0, 'members cannot read usage');
+select must_fail($$insert into usage (user_id, day, hour, what) values ((select adm from ids), current_date, 1, 'x')$$, 'row-level security');
+select as_user((select adm from ids));
+select check_that((select n from usage where what = 'play') = 2 and (select count(*) from usage) = 2, 'admins read the counts');
 delete from play_dates where day = '2026-10-22';
 select check_that((select count(*) from admin_log where action = 'clear_play_date') = 2, 'clearing logged (the member''s own extra game and the admin''s)');
 select must_fail($$insert into play_dates values ('2026-10-24', 'party')$$, 'check constraint');

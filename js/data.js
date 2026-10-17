@@ -17,10 +17,10 @@ let db = { players: [], days: [] }, members = [], me = {}, session = null, loade
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
-const DB_VERSION = 20261102; // bump together with db_version() in the newest migration
+const DB_VERSION = 20261103; // bump together with db_version() in the newest migration
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
-let slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, bgLoaded = false, rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
+let usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, bgLoaded = false, rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
 let view = 'play', tab = 'day', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0, manualLogout = false, lostSession = false, asMember = false;   // asMember: an admin previewing the app as a normal member
 // the sign-in is kept on the phone (localStorage) and renewed automatically, so people stay logged in until they log out
 const sb = window.supabase && CONFIG.url && !CONFIG.url.includes('YOUR-')
@@ -79,6 +79,7 @@ async function refresh() {
   if (!me) { me = {}; manualLogout = true; await sb.auth.signOut(); return; } // an admin removed this account
   if (me.lang && me.lang !== lang) setLangLocal(me.lang); // the language follows the account
   if (me.is_admin) { const v = await sb.rpc('db_version'); dbBehind = !!v.error || v.data < DB_VERSION; }
+  if (me.is_admin) { const u = await sb.from('usage').select('*').gte('day', addDays(tzParts().date, -30)); usage = u.error ? [] : u.data; }
   if (me.is_admin) { const lg = await sb.from('admin_log').select('*').order('id', { ascending: false }).limit(40); adminLog = lg.error ? [] : lg.data; }
 
   if (!db.days.length) { ok(await sb.from('days').insert(dayRow(null))); return refresh(); }
@@ -221,6 +222,7 @@ function showHelp() {
     <p>${t('With 4 players there are 3 matches and nobody rests.')}</p>
     <h2 class="sec">${t('Rating')}</h2><p>${t('Everyone starts at 1000 points. Beating stronger players earns more.')}</p>
     ${rulesHtml()}
+    <p class="mut">🔒 ${t('Admins can see how often each person opens each screen (only counts, nothing you type).')}</p>
     <button class="primary" id="gotit">${t('Got it')}</button></div>`;
   document.body.append(el);
   el.querySelector('#tourbtn').onclick = () => { el.remove(); startTour(); };
@@ -229,6 +231,8 @@ function showHelp() {
 
 // ---- actions
 const go = v => { view = v; render(); };
+// usage counters for the admins (which tab, which action); errors are ignored so the app never waits on this
+const track = v => { try { sb.rpc('track', { v }).then(() => {}, () => {}); } catch {} };
 // a guest (no account) who has not played for 8 weeks stops joining new days; they can be brought back from the setup screen
 function staleGuest(p) {
   if (p.user || !p.at || Date.now() - Date.parse(p.at) < 56 * 864e5) return false;
@@ -304,6 +308,7 @@ pick.onchange = async () => {
 let shotFor;
 const photo = id => { shotFor = id; shot.value = ''; shot.click(); };
 shot.onchange = async () => {
+  track('act:photo');
   const f = shot.files[0]; if (!f) return;
   const blob = await shrink(f, 1280, .8), path = `days/${shotFor}.jpg`, id = shotFor;
   act(async () => {
@@ -419,7 +424,7 @@ const bfSave = () => {
 // ---- WhatsApp: open WhatsApp with a ready message; you pick the group
 const appLink = q => location.origin + location.pathname + (q ? '?' + q : '');
 const plain = ids => ids.map(id => player(id).name).join(' & ');
-const waShare = text => window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
+const waShare = text => track('act:whatsapp') || window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
 // swiping the day cards: move the dots at once, redraw the list for the new day when the swipe settles
 let slideT, shownSlide = 0;
 function onSlides(el) {

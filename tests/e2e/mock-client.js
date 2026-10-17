@@ -13,6 +13,7 @@
     delete() { this.r.op = 'delete'; return this; }
     eq(c, v) { this.r.f.push(['eq', c, v]); return this; }
     gt(c, v) { this.r.f.push(['gt', c, v]); return this; }
+    gte(c, v) { this.r.f.push(['gte', c, v]); return this; }
     order(c, o) { this.r.order = c; this.r.desc = !!o && o.ascending === false; return this; }
     limit(n) { this.r.limit = n; return this; }
     single() { this.r.single = true; return this; }
