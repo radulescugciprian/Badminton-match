@@ -5,6 +5,13 @@ run('sign-up list, ratings, badges, result card and reactions', async h => {
   const A = await mk(), B = await mk(), C = await mk();
   await signup(A, 'Anna', 'a@x.com', '1'); await signup(B, 'Bob', 'b@x.com', '2'); await signup(C, 'Cleo', 'c@x.com', '3');
   
+  // ---- WhatsApp: a ready message with a link that opens the app on the answer buttons
+  await A.evaluate(() => { window.open = u => { window.__wa = u; }; });
+  await A.click('.rsvp [aria-label="Share on WhatsApp"]');
+  const wa = decodeURIComponent(await A.evaluate(() => window.__wa));
+  assert(wa.startsWith('https://wa.me/?text=') && wa.includes('answer=2026-10-15') && wa.includes('Please answer by 16:30'), wa);
+  await A.goto(h.base + '/index.html?answer=2026-10-15'); await A.waitForSelector('.rsvp.flash');
+  assert(!(await A.evaluate(() => location.search)), 'the link is cleaned from the address bar');
   // ---- sign-up fills the player list
   assert((await A.textContent('.card')).includes('15 Oct'), 'sign-up is for Thursday 15 Oct');
   await B.click("text=I'm out"); await A.click("text=I'm in"); await C.click("text=I'm in");

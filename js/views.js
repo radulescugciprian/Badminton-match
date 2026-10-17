@@ -51,7 +51,7 @@ function rsvpCard() {
   const n = act_.filter(p => ans(p.id) === 'in').length;
   const open = rsvpIsOpen(date);
   return `<div class="card rsvp"><div class="rhead"><div><div class="mut" style="margin:0;font-size:var(--fs-sm)">${t('Next match day')}</div><b>${niceDate(date)}</b> <span class="mut">· ${t('{n} in', { n })}</span></div>
-      <span><button class="link" onclick="go('calendar')" aria-label="${t('Calendar')}">📅</button><button class="link" onclick="toggleRsvp()" aria-expanded="${open}">${open ? '▴' : '▾'} ${t('Details')}</button></span></div>
+      <span><button class="link" onclick="shareSignup()" aria-label="${t('Share on WhatsApp')}" title="${t('Share on WhatsApp')}">💬</button><button class="link" onclick="go('calendar')" aria-label="${t('Calendar')}">📅</button><button class="link" onclick="toggleRsvp()" aria-expanded="${open}">${open ? '▴' : '▾'} ${t('Details')}</button></span></div>
     ${mine && locked ? `<p class="mut" style="margin:8px 0 0">🔒 ${t('Answers closed at {time}.', { time: by })}</p>` : ''}
     ${mine && !locked ? `<div class="seg"><button class="${ans(mine.id) === 'in' ? 'on' : ''}" onclick="setRsvp(${mine.id}, ${ans(mine.id) === 'in' ? 'null' : "'in'"})">✅ ${t("I'm in")}</button>
       <button class="${ans(mine.id) === 'out' ? 'on' : ''}" onclick="setRsvp(${mine.id}, ${ans(mine.id) === 'out' ? 'null' : "'out'"})">❌ ${t("I'm out")}</button></div>` : ''}
@@ -65,9 +65,10 @@ function rsvpCard() {
 // month calendar: weekly play days are highlighted; admins tap a date to add an extra day or cancel a normal one
 function inviteCards() {
   const mine = db.players.find(p => p.user === session.user.id), by = p => esc((members.find(m => m.id === p.created_by) || {}).username || '?');
-  return invites().map(p => `<div class="card invite"><div>🏸 <b>${t('Extra game')}</b> · ${esc(niceDate(p.day))} ${sched ? esc(hhmm(playMins())) : ''}
+  return invites().map(p => `<div class="card invite" data-day="${p.day}"><div>🏸 <b>${t('Extra game')}</b> · ${esc(niceDate(p.day))} ${sched ? esc(hhmm(playMins())) : ''}
       <div class="mut" style="margin:2px 0 8px">${t('Added by {name}. Do you want to join?', { name: by(p) })} · ${t('{n} in', { n: rsvps.filter(r => r.day_date === p.day && r.status === 'in').length })}</div></div>
-    <div class="seg"><button onclick="setRsvp(${mine.id}, 'in', '${p.day}')">✅ ${t("I'm in")}</button><button onclick="setRsvp(${mine.id}, 'out', '${p.day}')">❌ ${t("I'm out")}</button></div></div>`).join('');
+    <div class="seg"><button onclick="setRsvp(${mine.id}, 'in', '${p.day}')">✅ ${t("I'm in")}</button><button onclick="setRsvp(${mine.id}, 'out', '${p.day}')">❌ ${t("I'm out")}</button></div>
+    <button class="link wa" onclick="shareExtra('${p.day}')">💬 ${t('Share on WhatsApp')}</button></div>`).join('');
 }
 
 function calendarView() {
@@ -123,7 +124,7 @@ function setup(d) {
       <ol>${o.slice(0, m).map((id, i) => rowOf(id, i)).join('')}</ol>
       ${!sched || minsUntilPlay(date) <= 15 ? `<div class="next"><small>${t('Match {n}', { n: 1 })}</small>
         <div class="vs"><b style="--c:var(--t1)">${pair(slots(o, a))}</b><span>${t('vs')}</span><b style="--c:var(--t2)">${pair(slots(o, b))}</b></div>
-        ${r ? `<div class="rs">${t('Resting:')} <b>${name(o[r - 1])}</b></div>` : ''}</div>` : ''}
+        ${r ? `<div class="rs">${t('Resting:')} <b>${name(o[r - 1])}</b></div>` : ''}<button class="link wa" onclick="shareLineup()">💬 ${t('Share the line-up on WhatsApp')}</button></div>` : ''}
       <button class="add" onclick="addPlayer()">${t('+ Add guest player (no account)')}</button>
       ${idle.length ? `<details class="fold"><summary>${t('Guests who have not played lately')} (${idle.length})</summary><div class="chips">${idle.map(p => `<button class="chip" onclick="bringBack(${p.id})">${av(p.id, 22)} ${esc(p.name)} +</button>`).join('')}</div></details>` : ''}
       ${o.length > m ? `<details class="fold" ${benchOpen ? 'open' : ''} ontoggle="benchOpen=this.open"><summary>${t('Sitting out')} (${o.length - m})</summary><ol>${o.slice(m).map((id, k) => rowOf(id, m + k)).join('')}</ol></details>` : ''}

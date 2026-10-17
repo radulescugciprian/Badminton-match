@@ -186,3 +186,4 @@
   #tour .tip b{font-size:var(--fs-lg)} #tour .tip p{margin:6px 0 12px}
   #tour .tnav{display:flex;align-items:center;gap:8px} #tour .tnav .mut{flex:1;margin:0;text-shadow:none}
   #tour .tnav .primary{width:auto;padding:10px 18px;font-size:var(--fs-md)} #tour .tnav button:not(.primary):not(.link){padding:10px 14px}
+  .link.wa{display:block;margin:8px auto 0;color:#25d366;font-weight:600} .flash{animation:flash 1.2s ease 2} @keyframes flash{50%{box-shadow:0 0 0 4px var(--acc)}}

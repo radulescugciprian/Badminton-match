@@ -18,7 +18,9 @@ let sched = null; // play schedule (null until loaded / before its migration): n
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
 const DB_VERSION = 20261030; // bump together with db_version() in the newest migration
-let logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, bgLoaded = false, rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
+// links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
+const deepLink = new URLSearchParams(location.search).get('answer');
+let deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, bgLoaded = false, rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
 let view = 'play', tab = 'day', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0, manualLogout = false, lostSession = false, asMember = false;   // asMember: an admin previewing the app as a normal member
 // the sign-in is kept on the phone (localStorage) and renewed automatically, so people stay logged in until they log out
 const sb = window.supabase && CONFIG.url && !CONFIG.url.includes('YOUR-')
@@ -90,6 +92,9 @@ async function refresh() {
     if (order.join() !== day.order.join() || mode !== day.mode) { await patchDay(day.id, { player_order: order, mode })(); return refresh(); }
   }
   loaded = true; render();
+  if (deepLink && !deepDone) { deepDone = true; history.replaceState(null, '', location.pathname); view = 'play'; render();
+    const el = document.querySelector(`.invite[data-day="${deepLink}"]`) || document.querySelector('.rsvp');
+    if (el) { el.scrollIntoView({ block: 'center' }); el.classList.add('flash'); } }
   if (!bgLoaded) { bgLoaded = true; loadBg(); }
   if (!helpShown && !helpSeen()) { helpShown = true; setTimeout(startTour, 300); } // first run: show people around once
 }
@@ -392,6 +397,20 @@ const bfSave = () => {
   });
 };
 // members: tap a free future date to add an extra game (the others get an invite on the Play tab); tap your own extra game to remove it
+// ---- WhatsApp: open WhatsApp with a ready message; you pick the group
+const appLink = q => location.origin + location.pathname + (q ? '?' + q : '');
+const plain = ids => ids.map(id => player(id).name).join(' & ');
+const waShare = text => window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
+const shareSignup = () => {
+  const date = nextPlayDate(), ins = db.players.filter(p => !p.removed && answerOf(p.id, date) === 'in').map(p => p.name);
+  waShare(t('🏸 {day} {time}: {n} in so far{names}. Please answer by {deadline}:', { day: niceDate(date), time: sched ? hhmm(playMins()) : '',
+    n: ins.length, names: ins.length ? ` (${ins.join(', ')})` : '', deadline: sched ? hhmm(playMins() - sched.rsvp_until_minutes) : '' }) + ' ' + appLink('answer=' + date));
+};
+const shareExtra = day => waShare(t('🏸 {name} added an extra game on {date} at {time}. Who is in?', { name: (members.find(m => m.id === (playDates.find(p => p.day === day) || {}).created_by) || me || {}).username || '', date: niceDate(day), time: sched ? hhmm(playMins()) : '' }) + ' ' + appLink('answer=' + day));
+const shareLineup = () => {
+  const d = cur(), o = d.order, cyc = d.mode === 4 ? C4 : C5;
+  waShare('🏸 ' + t('Today\'s matches') + '\n' + cyc.map(([a, b, r], i) => `${i + 1}. ${plain(slots(o, a))} ${t('vs')} ${plain(slots(o, b))}${r ? ` (${t('{name} rests', { name: player(o[r - 1]).name })})` : ''}`).join('\n') + '\n' + appLink());
+};
 const memberExtra = iso => {
   const p = playDates.find(x => x.day === iso), me_ = session.user.id;
   if (p) {
@@ -401,6 +420,7 @@ const memberExtra = iso => {
   }
   if (dowOf(iso) === sched.dow || !confirm(t('Add an extra game on {date}? The others will be asked if they join.', { date: niceDate(iso) }))) return;
   act(async () => ok(await sb.from('play_dates').insert({ day: iso, kind: 'extra', created_by: me_ })), () => { playDates.push({ day: iso, kind: 'extra', created_by: me_ }); });
+  if (confirm(t('Tell the WhatsApp group?'))) shareExtra(iso);
 };
 // extra games someone else added that I have not answered yet (the next play day already has its own sign-up card)
 function invites() {
