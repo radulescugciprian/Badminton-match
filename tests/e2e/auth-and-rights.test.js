@@ -113,15 +113,15 @@ run('sign-in, rights, photos and the play schedule', async h => {
   const C = await mk(); await signup(C, 'Cleo', 'c@x.com', '3'); await C.waitForSelector('text=Next match day');
   const at = async iso => { st.now = Date.parse(iso); await C.evaluate(t => { window.__t = t; render(); }, st.now); await A.evaluate(t => { window.__t = t; render(); }, st.now); };
   await at('2026-10-14T15:00:00Z');                                     // Wednesday 17:00 Berlin
-  assert(await C.locator('button:has-text("Start playing")').isDisabled(), 'member locked on Wednesday');
-  assert((await C.textContent('[role=status]')).includes('Thursday at 18:30') && (await C.textContent('[role=status]')).includes('17:30'));
+  assert.equal(await C.locator('button:has-text("Start playing")').count(), 0, 'no Start playing for members on Wednesday');
   assert(await A.locator('button:has-text("Start playing")').isEnabled(), 'admin never locked');
   await at('2026-10-15T15:29:00Z');                                     // Thursday 17:29 Berlin (CEST)
   assert(await C.locator('button:has-text("Start playing")').isDisabled(), 'locked at 17:29');
+  assert((await C.textContent('.startbar [role=status]')).includes('Thursday at 18:30') && (await C.textContent('.startbar [role=status]')).includes('17:30'), 'the note says when it opens');
   await at('2026-10-15T15:31:00Z');                                     // Thursday 17:31
   assert(await C.locator('button:has-text("Start playing")').isEnabled(), 'open at 17:31');
   await at('2026-10-15T22:00:00Z');                                     // Friday 00:00 Berlin
-  assert(await C.locator('button:has-text("Start playing")').isDisabled(), 'closed again after midnight');
+  assert.equal(await C.locator('button:has-text("Start playing")').count(), 0, 'gone again after midnight');
   st.now = Date.parse('2026-10-14T15:00:00Z');                          // server refuses a direct attempt too
   assert(rpc('u3', { table: 'days', op: 'update', f: [['eq', 'id', st.days[st.days.length - 1].id]], payload: { started: true } }).error, 'server enforces the window');
   await at('2026-10-29T16:31:00Z');                                     // Thursday 17:31 Berlin after the clocks changed (CET)

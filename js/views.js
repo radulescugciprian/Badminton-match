@@ -155,8 +155,9 @@ function setup(d) {
       ${idle.length ? `<details class="fold"><summary>${t('Guests who have not played lately')} (${idle.length})</summary><div class="chips">${idle.map(p => `<button class="chip" onclick="bringBack(${p.id})">${av(p.id, 22)} ${esc(p.name)} +</button>`).join('')}</div></details>` : ''}
       ${o.length > m ? `<details class="fold" ${benchOpen ? 'open' : ''} ontoggle="benchOpen=this.open"><summary>${t('Sitting out')} (${o.length - m})</summary><ol>${o.slice(m).map((id, k) => rowOf(id, m + k)).join('')}</ol></details>` : ''}
 `}</div>
-      <div class="startbar">${open ? '' : `<p class="mut" role="status">🔒 ${startNote()}</p>`}
-      <button class="primary" onclick="start()" ${open ? '' : 'disabled'}>${t('Start playing')}</button></div>`;
+      ${date === tzParts().date ? `<div class="startbar">${open ? '' : `<p class="mut" role="status">🔒 ${startNote()}</p>`}
+      <button class="primary" onclick="start()" ${open ? '' : 'disabled'}>${t('Start playing')}</button></div>`
+      : admin ? `<button class="link" style="display:block;margin:0 auto" onclick="start()">▶ ${t('Start playing')} (${t('admin')})</button>` : ''}`;
 }
 
 const AWARD = { perfect: () => '💯 ' + t('Perfect night'), comeback: () => '🔄 ' + t('Comeback') };
