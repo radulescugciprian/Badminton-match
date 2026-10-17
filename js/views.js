@@ -43,23 +43,31 @@ function profileView() {
       <p class="msg" role="alert"></p><button class="primary" type="submit">${t('Save password')}</button></form>`;
 }
 
-function rsvpCard() {
-  const date = nextPlayDate(), mine = db.players.find(p => p.user === session.user.id), act_ = db.players.filter(p => !p.removed), admin = isAdmin();
+function rsvpCard(date = nextPlayDate(), first = true) {
+  const mine = db.players.find(p => p.user === session.user.id), act_ = db.players.filter(p => !p.removed), admin = isAdmin();
   const ans = id => answerOf(id, date), icon = id => ({ in: '✅', out: '❌' }[ans(id)] || '⏳');
   const by = deadlineText(date), phase = rsvpPhase(date), locked = phase !== 'open' && !admin;
   if (phase === 'hidden' && !admin) return '';
   const n = act_.filter(p => ans(p.id) === 'in').length;
   const open = rsvpIsOpen(date);
-  return `<div class="card rsvp"><div class="rhead"><div><div class="mut" style="margin:0;font-size:var(--fs-sm)">${t('Next match day')}</div><b>${niceDate(date)}${extraOf(date) && extraOf(date).play_time ? ' · ' + hhmm(playMinsOn(date)) : ''}</b> <span class="mut">· ${t('{n} in', { n })}</span></div>
-      <span><button class="link" onclick="shareSignup()" aria-label="${t('Share on WhatsApp')}" title="${t('Share on WhatsApp')}">💬</button><button class="link" onclick="go('calendar')" aria-label="${t('Calendar')}">📅</button><button class="link" onclick="toggleRsvp()" aria-expanded="${open}">${open ? '▴' : '▾'} ${t('Details')}</button></span></div>
+  return `<div class="card rsvp" data-day="${date}"><div class="rhead"><div><div class="mut" style="margin:0;font-size:var(--fs-sm)">${first ? t('Next match day') : extraOf(date) ? t('Extra game') : t('Later')}</div><b>${niceDate(date)}${extraOf(date) && extraOf(date).play_time ? ' · ' + hhmm(playMinsOn(date)) : ''}</b> <span class="mut">· ${t('{n} in', { n })}</span></div>
+      <span><button class="link" onclick="shareSignup('${date}')" aria-label="${t('Share on WhatsApp')}" title="${t('Share on WhatsApp')}">💬</button><button class="link" onclick="go('calendar')" aria-label="${t('Calendar')}">📅</button><button class="link" onclick="toggleRsvp('${date}')" aria-expanded="${open}">${open ? '▴' : '▾'} ${t('Details')}</button></span></div>
     ${mine && locked ? `<p class="mut" style="margin:8px 0 0">🔒 ${t('Answers closed at {time}.', { time: by })}</p>` : ''}
-    ${mine && !locked ? `<div class="seg"><button class="${ans(mine.id) === 'in' ? 'on' : ''}" onclick="setRsvp(${mine.id}, ${ans(mine.id) === 'in' ? 'null' : "'in'"})">✅ ${t("I'm in")}</button>
-      <button class="${ans(mine.id) === 'out' ? 'on' : ''}" onclick="setRsvp(${mine.id}, ${ans(mine.id) === 'out' ? 'null' : "'out'"})">❌ ${t("I'm out")}</button></div>` : ''}
-    ${open ? `<div class="chips">${act_.map(p => admin ? `<button class="chip ${ans(p.id) || ''}" onclick="cycleRsvp(${p.id})" aria-label="${t('Answer for {name}', { name: esc(p.name) })}">${av(p.id, 22)} ${esc(p.name)} ${icon(p.id)}</button>`
+    ${mine && !locked ? `<div class="seg"><button class="${ans(mine.id) === 'in' ? 'on' : ''}" onclick="setRsvp(${mine.id}, ${ans(mine.id) === 'in' ? 'null' : "'in'"}, '${date}')">✅ ${t("I'm in")}</button>
+      <button class="${ans(mine.id) === 'out' ? 'on' : ''}" onclick="setRsvp(${mine.id}, ${ans(mine.id) === 'out' ? 'null' : "'out'"}, '${date}')">❌ ${t("I'm out")}</button></div>` : ''}
+    ${open ? `<div class="chips">${act_.map(p => admin ? `<button class="chip ${ans(p.id) || ''}" onclick="cycleRsvp(${p.id}, '${date}')" aria-label="${t('Answer for {name}', { name: esc(p.name) })}">${av(p.id, 22)} ${esc(p.name)} ${icon(p.id)}</button>`
       : `<span class="chip ${ans(p.id) || ''}">${av(p.id, 22)} ${esc(p.name)} ${icon(p.id)}</span>`).join('')}</div>
     <p class="mut" style="margin:6px 0 0">${by && !locked ? t('Answer before {time}.', { time: by }) + ' ' : ''}${t('The list below fills itself: players who are in first.')}${admin ? ' ' + t('Admins can tap a name to answer for them.') : ''}</p>
-    ${admin && rsvps.some(x => x.day_date === date) ? `<button class="link danger" onclick="resetRsvps()">↺ ${t('Reset answers')}</button>` : ''}
+    ${admin && rsvps.some(x => x.day_date === date) ? `<button class="link danger" onclick="resetRsvps('${date}')">↺ ${t('Reset answers')}</button>` : ''}
     <button class="link" onclick="remindMe()">🔔 ${t('Remind me every {day}', { day: dayName(sched ? sched.dow : 4) })}</button>` : ''}</div>`;
+}
+
+// the next 3 play days side by side: swipe left and right; the dots show where you are
+function rsvpSlides() {
+  const dates = upcomingPlayDates(3), cards = dates.map((d, k) => rsvpCard(d, k === 0)).filter(Boolean);
+  if (cards.length < 2) return cards.join('');
+  return `<div class="slides" onpointerdown="const k=[...this.children].indexOf(event.target.closest('.slide'));if(k>=0)slideIdx=k" onscroll="slideIdx=Math.round(this.scrollLeft/this.clientWidth);document.querySelectorAll('.dots i').forEach((x,k)=>x.classList.toggle('on',k===slideIdx))">${cards.map(c => `<div class="slide">${c}</div>`).join('')}</div>
+    <div class="dots">${cards.map((_, k) => `<i class="${k === slideIdx ? 'on' : ''}"></i>`).join('')}</div>`;
 }
 
 // month calendar: weekly play days are highlighted; admins tap a date to add an extra day or cancel a normal one
@@ -118,7 +126,7 @@ function setup(d) {
   const idle = db.players.filter(p => !p.removed && !o.includes(p.id));
   // who plays with whom is shown from 15 minutes before play time (and on the match screen once started)
   // the sign-ups fill the list and decide 4 or 5 players; the date is today's. Only when nobody has answered can an admin pick 4 or 5 by hand.
-  return `${inviteCards()}${rsvpCard()}${rsvps.some(x => x.day_date === date) && ins < 4 ? `<p class="mut">${t('Only {n} confirmed so far, you need at least 4.', { n: ins })}</p>` : ''}
+  return `${inviteCards()}${rsvpSlides()}${rsvps.some(x => x.day_date === date) && ins < 4 ? `<p class="mut">${t('Only {n} confirmed so far, you need at least 4.', { n: ins })}</p>` : ''}
       ${auto ? '' : `<div class="seg" style="margin:0 0 12px"><button class="${m === 4 ? 'on' : ''}" onclick="setMode(4)">${t('4 players')}</button>
         <button class="${m === 5 ? 'on' : ''}" onclick="setMode(5)" ${o.length < 5 ? 'disabled' : ''}>${t('5 players')}</button></div>`}
       <ol>${o.slice(0, m).map((id, i) => rowOf(id, i)).join('')}</ol>
@@ -368,6 +376,7 @@ function render() {
   const strip = behind + (me.is_admin && asMember ? `<div class="strip"><span>👁 ${t('You are viewing the app as a member. Admin tools are hidden.')}</span><button onclick="toggleView()">${t('Back to admin')}</button></div>` : '');
   app.innerHTML = top + strip + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'admin' && isAdmin() ? adminView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : view === 'backfill' && bf ? backfillView() : `<h1>${t('Photos')}</h1><div class="seg" style="margin-bottom:12px"><button class="${photosTab === 'photos' ? 'on' : ''}" onclick="photosTab='photos';render()">📷 ${t('Photos')}</button><button class="${photosTab === 'receipts' ? 'on' : ''}" onclick="photosTab='receipts';render()">🧾 ${t('Receipts')}</button></div><div id="gal"></div>`);
   drawReactions();
+  const sl = document.querySelector('.slides'); if (sl && slideIdx) sl.scrollLeft = slideIdx * sl.clientWidth;
   if (view === 'photos') gallery().catch(e => { gal.innerHTML = `<p class="msg">${esc(friendly(e))}</p>`; });
 }
 

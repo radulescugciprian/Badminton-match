@@ -189,3 +189,7 @@
   #tour .tnav .primary{width:auto;padding:10px 18px;font-size:var(--fs-md)} #tour .tnav button:not(.primary):not(.link){padding:10px 14px}
   .link.wa{display:block;margin:8px auto 0;color:#25d366;font-weight:600} .flash{animation:flash 1.2s ease 2} @keyframes flash{50%{box-shadow:0 0 0 4px var(--acc)}}
   .tsel{display:flex;align-items:center;gap:6px;margin-top:6px} .tsel select{margin:0;flex:1}
+  .slides{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:12px;scrollbar-width:none;margin:0 -2px;padding:0 2px} .slides::-webkit-scrollbar{display:none}
+  .slide{flex:0 0 100%;scroll-snap-align:center} .slide .rsvp{margin:0}
+  .dots{display:flex;justify-content:center;gap:6px;margin:8px 0 12px} .dots i{width:7px;height:7px;border-radius:50%;background:var(--line)} .dots i.on{background:var(--acc)}
+  .startbar .primary{padding:11px;font-size:var(--fs-md)}

@@ -93,13 +93,13 @@ run('sign-up list, ratings, badges, result card and reactions', async h => {
   // ---- sign-up window on the play day: answers close at 16:30, the section is gone for members at 17:00 (admins keep it)
   const at = async iso => { st.now = Date.parse(iso); for (const p of [A, B, C]) await p.evaluate(t => { window.__t = t; render(); }, st.now); };
   await B.click('nav >> text=Play');
-  await at('2026-10-15T14:29:00Z'); assert.equal(await B.locator("button:has-text(\"I'm in\")").count(), 1, 'open at 16:29');
+  await at('2026-10-15T14:29:00Z'); assert.equal(await B.locator(".rsvp[data-day='2026-10-15'] button:has-text(\"I'm in\")").count(), 1, 'open at 16:29');
   await at('2026-10-15T14:31:00Z');
-  assert.equal(await B.locator("button:has-text(\"I'm in\")").count(), 0, 'locked at 16:31'); assert((await B.textContent('.rsvp')).includes('Answers closed at 16:30'));
-  assert.equal(await A.locator("button:has-text(\"I'm in\")").count(), 1, 'admins can still answer');
+  assert.equal(await B.locator(".rsvp[data-day='2026-10-15'] button:has-text(\"I'm in\")").count(), 0, 'locked at 16:31'); assert((await B.textContent('.rsvp')).includes('Answers closed at 16:30'));
+  assert.equal(await A.locator(".rsvp[data-day='2026-10-15'] button:has-text(\"I'm in\")").count(), 1, 'admins can still answer');
   assert(rpc('u2', { table: 'rsvps', op: 'upsert', payload: { day_date: '2026-10-15', player_id: 2, status: 'in' } }).error, 'the server refuses a late answer');
   await at('2026-10-15T15:01:00Z');
-  assert.equal(await B.locator('.rsvp').count(), 0, 'section hidden at 17:01'); assert.equal(await A.locator('.rsvp').count(), 1, 'admins still see it');
+  assert.equal(await B.locator(".rsvp[data-day='2026-10-15']").count(), 0, 'section hidden at 17:01'); assert.equal(await A.locator(".rsvp[data-day='2026-10-15']").count(), 1, 'admins still see it');
   // the teams of the first match are only shown from 15 minutes before play time
   assert.equal(await B.locator('.next').count(), 0, 'no teams at 17:01');
   await at('2026-10-15T16:16:00Z'); assert.equal(await B.locator('.next').count(), 1, 'teams shown at 18:16');

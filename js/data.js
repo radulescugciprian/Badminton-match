@@ -20,7 +20,7 @@ let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-ma
 const DB_VERSION = 20261031; // bump together with db_version() in the newest migration
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
-let deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, bgLoaded = false, rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
+let slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, bgLoaded = false, rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
 let view = 'play', tab = 'day', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0, manualLogout = false, lostSession = false, asMember = false;   // asMember: an admin previewing the app as a normal member
 // the sign-in is kept on the phone (localStorage) and renewed automatically, so people stay logged in until they log out
 const sb = window.supabase && CONFIG.url && !CONFIG.url.includes('YOUR-')
@@ -93,7 +93,7 @@ async function refresh() {
   }
   loaded = true; render();
   if (deepLink && !deepDone) { deepDone = true; history.replaceState(null, '', location.pathname); view = 'play'; render();
-    const el = document.querySelector(`.invite[data-day="${deepLink}"]`) || document.querySelector('.rsvp');
+    const el = document.querySelector(`.invite[data-day="${deepLink}"], .rsvp[data-day="${deepLink}"]`) || document.querySelector('.rsvp');
     if (el) { el.scrollIntoView({ block: 'center' }); el.classList.add('flash'); } }
   if (!bgLoaded) { bgLoaded = true; loadBg(); }
   if (!helpShown && !helpSeen()) { helpShown = true; setTimeout(startTour, 300); } // first run: show people around once
@@ -361,6 +361,11 @@ function tzParts() { // today's date, weekday and minutes since midnight, in the
 }
 const markOf = iso => (playDates.find(p => p.day === iso) || {}).kind;
 const isPlayDate = iso => markOf(iso) === 'extra' || (markOf(iso) !== 'cancelled' && !!sched && dowOf(iso) === sched.dow);
+function upcomingPlayDates(n) { // the next n play days that have not been played yet, starting with nextPlayDate()
+  const out = [nextPlayDate()];
+  for (let i = 1; out.length < n && i < 120; i++) { const d = addDays(out[0], i); if (isPlayDate(d)) out.push(d); }
+  return sched ? out : out.slice(0, 1);
+}
 function nextPlayDate() { // the play date people are answering for: the next play day that has not been played yet
   const today = tzParts().date;
   if (!sched) return today;
@@ -402,8 +407,8 @@ const bfSave = () => {
 const appLink = q => location.origin + location.pathname + (q ? '?' + q : '');
 const plain = ids => ids.map(id => player(id).name).join(' & ');
 const waShare = text => window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
-const shareSignup = () => {
-  const date = nextPlayDate(), ins = db.players.filter(p => !p.removed && answerOf(p.id, date) === 'in').map(p => p.name);
+const shareSignup = (date = nextPlayDate()) => {
+  const ins = db.players.filter(p => !p.removed && answerOf(p.id, date) === 'in').map(p => p.name);
   waShare(t('🏸 {day} {time}: {n} in so far{names}. Please answer by {deadline}:', { day: niceDate(date), time: sched ? hhmm(playMinsOn(date)) : '',
     n: ins.length, names: ins.length ? ` (${ins.join(', ')})` : '', deadline: deadlineText(date) }) + ' ' + appLink('answer=' + date));
 };
@@ -471,7 +476,7 @@ function invites() {
 }
 const calShift = n => { const [y, m] = (calMonth || tzParts().date.slice(0, 7)).split('-').map(Number); calMonth = new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 7); render(); };
 const rsvpIsOpen = date => rsvpOpen && rsvpOpen.date === date ? rsvpOpen.open : date === tzParts().date;   // compact until the play day, unless toggled by hand for this date
-const toggleRsvp = () => { const date = nextPlayDate(); rsvpOpen = { date, open: !rsvpIsOpen(date) }; render(); };
+const toggleRsvp = (date = nextPlayDate()) => { rsvpOpen = { date, open: !rsvpIsOpen(date) }; render(); };
 // sign-up window on the play day: 'open' until the answers close, 'locked' (visible, read-only) until it is hidden. Later play days stay open.
 // an extra game can have its own start time and answer deadline; other play days use the weekly schedule
 const extraOf = d => playDates.find(p => p.day === d && p.kind === 'extra');
@@ -497,9 +502,9 @@ const setRsvp = (id, status, date = nextPlayDate()) => {
     else ok(await sb.from('rsvps').delete().eq('day_date', date).eq('player_id', id));
   }, () => { rsvps = rsvps.filter(r => !(r.day_date === date && r.player_id === id)); if (status) rsvps.push({ day_date: date, player_id: id, status }); });
 };
-const resetRsvps = () => { const date = nextPlayDate();
+const resetRsvps = (date = nextPlayDate()) => {
   if (confirm(t('Clear everyone\'s answers for {date}? Everybody will show as "no answer" again.', { date: niceDate(date) }))) act(async () => ok(await sb.from('rsvps').delete().eq('day_date', date))); };
-const cycleRsvp = id => setRsvp(id, { in: 'out', out: null }[answerOf(id, nextPlayDate())] ?? 'in'); // admins: in -> out -> no answer
+const cycleRsvp = (id, date = nextPlayDate()) => setRsvp(id, { in: 'out', out: null }[answerOf(id, date)] ?? 'in', date); // admins: in -> out -> no answer
 const remindMe = () => { const s = sched || { tz: 'Europe/Berlin', dow: 4, play_time: '18:30', rsvp_until_minutes: 120 };
   saveFile(calendarFile(s, nextPlayDate(), location.href, t('Badminton: answer if you are coming'),
     t('Open the app and tap I\'m in or I\'m out before {time}.', { time: hhmm(+s.play_time.slice(0, 2) * 60 + +s.play_time.slice(3, 5) - s.rsvp_until_minutes) })), 'badminton.ics'); };
