@@ -193,3 +193,8 @@
   .slide{flex:0 0 100%;scroll-snap-align:center} .slide .rsvp{margin:0}
   .dots{display:flex;justify-content:center;gap:6px;margin:8px 0 12px} .dots i{width:7px;height:7px;border-radius:50%;background:var(--line)} .dots i.on{background:var(--acc)}
   .startbar .primary{padding:11px;font-size:var(--fs-md)}
+  /* compact player list (overrides the larger sizes above) */
+  #app ol{gap:5px} .row{min-height:48px;padding:3px 6px 3px 10px;gap:8px;border-radius:12px} .row .slot{font-size:var(--fs-md);width:16px}
+  .row .nm{font-size:var(--fs-md);flex-direction:row;flex-wrap:wrap;align-items:center;column-gap:6px} .row .nm .tag{font-size:11px;padding:0 6px}
+  .row button:not(.ph):not(.nm){padding:7px 11px;font-size:var(--fs-md)}
+  #app > .seg{margin-bottom:8px} #app > .seg button{padding:8px}
