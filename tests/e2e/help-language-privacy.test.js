@@ -1,16 +1,22 @@
 const { run } = require('./harness');
 run('help, plain errors, languages, privacy and the schedule editor', async h => {
   const { mk, signup, st, rpc, S, assert, fs, sleep, pages, win } = h;
-  // ---- first-run help: shown once, explains the rotation, reopenable with "?"
+  // ---- first run: a guided tour highlights each part of the app once; the help screen explains the rotation and can restart the tour
   const A = await mk({ seenHelp: false });
-  await signup(A, 'Anna', 'a@x.com', '1', 'text=How it works');
+  await signup(A, 'Anna', 'a@x.com', '1', '#tour .tip');
+  assert((await A.textContent('#tour .tip')).includes('Welcome'), 'the tour starts with the sign-up card');
+  const steps = +(await A.textContent('#tour .tnav .mut')).split('/')[1];
+  assert(steps >= 6, 'several parts of the app are shown');
+  for (let i = 1; i < steps; i++) await A.click('#tnext');
+  assert((await A.textContent('#tnext')).includes('Done')); await A.click('#tnext');
+  assert.equal(await A.locator('#tour').count(), 0, 'the tour closes');
+  await A.reload(); await A.waitForSelector('text=Next match day'); await A.waitForTimeout(500);
+  assert.equal(await A.locator('#tour').count(), 0, 'not shown again');
+  await A.click('#helpbtn'); await A.waitForSelector('#help');
   const help = await A.textContent('#help');
   assert(help.includes('5 matches') && help.includes('rests exactly once') && help.includes('3 matches and nobody rests'), 'rotation explained');
   assert((await A.locator('#help table.rot tr').count()) === 6, 'table of the 5 matches');
-  await A.screenshot({ path: require('os').tmpdir() + '/help.png' });
-  await A.click('#gotit'); assert((await A.locator('#help').count()) === 0);
-  await A.reload(); await A.waitForSelector('text=Next match day'); await A.waitForTimeout(300);
-  assert((await A.locator('#help').count()) === 0, 'not shown again');
+  await A.click('#tourbtn'); await A.waitForSelector('#tour .tip'); await A.click('#tskip'); assert.equal(await A.locator('#tour').count(), 0, 'the tour can be replayed and skipped');
   await A.click('[aria-label="How it works"]'); await A.waitForSelector('#help'); await A.click('#gotit');
   
   // ---- friendly errors

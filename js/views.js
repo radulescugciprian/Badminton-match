@@ -362,10 +362,52 @@ function render() {
   if (!loaded) { app.innerHTML = `<p class="mut">${t('Loading…')}</p>`; return; }
   const mp = db.players.find(p => p.user === session.user.id);
   const top = `<div class="top"><button class="me" onclick="go('profile')" aria-label="${t('Profile')}">${mp ? av(mp.id, 44) : '👤'}<span class="col"><span class="n">${esc(me.username || '')}</span></span></button>
-    <span class="bar">${me.is_admin && !asMember ? `<button class="link ico" onclick="toggleView()" aria-label="${t('View as member')}" title="${t('View as member')}">👁</button>` : ''}<button class="link ico" onclick="showHelp()" aria-label="${t('How it works')}" title="${t('How it works')}"><img src="tm-help.png" alt=""></button><button class="link" onclick="go('members')"><img src="tm-members.png" alt="">${t('Members')}</button>${isAdmin() ? `<button class="link" onclick="go('admin')" aria-label="${t('Admin tools')}" title="${t('Admin tools')}"><img src="tm-adminkey.png" alt="">${t('admin')}</button>` : ''}<button class="link" onclick="logout()"><img src="tm-logout.png" alt="">${t('Log out')}</button></span></div>`;
+    <span class="bar">${me.is_admin && !asMember ? `<button class="link ico" onclick="toggleView()" aria-label="${t('View as member')}" title="${t('View as member')}">👁</button>` : ''}<button class="link ico" id="helpbtn" onclick="showHelp()" aria-label="${t('How it works')}" title="${t('How it works')}"><img src="tm-help.png" alt=""></button><button class="link" onclick="go('members')"><img src="tm-members.png" alt="">${t('Members')}</button>${isAdmin() ? `<button class="link" onclick="go('admin')" aria-label="${t('Admin tools')}" title="${t('Admin tools')}"><img src="tm-adminkey.png" alt="">${t('admin')}</button>` : ''}<button class="link" onclick="logout()"><img src="tm-logout.png" alt="">${t('Log out')}</button></span></div>`;
   const behind = isAdmin() && dbBehind ? `<div class="strip"><span>⚠️ ${t('The database is missing updates, so some buttons may fail. Apply the newest migrations in Supabase (see SETUP.md).')}</span></div>` : '';
   const strip = behind + (me.is_admin && asMember ? `<div class="strip"><span>👁 ${t('You are viewing the app as a member. Admin tools are hidden.')}</span><button onclick="toggleView()">${t('Back to admin')}</button></div>` : '');
   app.innerHTML = top + strip + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'admin' && isAdmin() ? adminView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : view === 'backfill' && bf ? backfillView() : `<h1>${t('Photos')}</h1><div class="seg" style="margin-bottom:12px"><button class="${photosTab === 'photos' ? 'on' : ''}" onclick="photosTab='photos';render()">📷 ${t('Photos')}</button><button class="${photosTab === 'receipts' ? 'on' : ''}" onclick="photosTab='receipts';render()">🧾 ${t('Receipts')}</button></div><div id="gal"></div>`);
   drawReactions();
   if (view === 'photos') gallery().catch(e => { gal.innerHTML = `<p class="msg">${esc(friendly(e))}</p>`; });
+}
+
+// ---- guided tour: a spotlight on each part of the app with a short explanation (first run, and from the help screen)
+const TOUR = () => [
+  ['.invite, .rsvp', '👋 ' + t('Welcome!'), t('Before each play day tap “I\'m in” or “I\'m out” here. The player list fills itself from the answers.')],
+  ['#app ol .row', '👥 ' + t('The players'), t('The first 5 (or 4) in the list play, the others sit out. Move people with ▲ ▼ and pick 4 or 5 players above the list.')],
+  ['.startbar', '▶️ ' + t('Start playing'), t('It opens shortly before play time. Who plays with whom shows 15 minutes before.')],
+  ['.win', '🏆 ' + t('Record the winner'), t('After every match tap the team that won. Everyone sees the scores live.')],
+  ['nav [data-v=board]', '🏆 ' + t('Board'), t('Leaderboards for the day, the month and all time, plus everyone\'s rating.')],
+  ['nav [data-v=photos]', '📷 ' + t('Photos'), t('The group photo of each day, and receipts for extra courts or shuttles.')],
+  ['nav [data-v=stats]', '📊 ' + t('Stats'), t('Your rating over time, badges, best partners and head-to-head records.')],
+  ['.top .me', '🙂 ' + t('Your profile'), t('Tap your photo for your profile: picture, language, light or dark theme and privacy.')],
+  ['[aria-label="Admin tools"]', '🔑 ' + t('Admin tools'), t('Players, accounts, the play schedule, the background and the activity log.')],
+  ['#helpbtn', '❔ ' + t('Help'), t('Badminton rules, the rotation and this tour are always here.')],
+];
+function startTour() {
+  helpShown = true; go('play');
+  document.getElementById('tour')?.remove();
+  const steps = TOUR().filter(([sel]) => { const el = document.querySelector(sel); return el && el.getClientRects().length; });
+  const el = document.createElement('div'); el.id = 'tour'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
+  el.innerHTML = '<div class="spot"></div><div class="tip" aria-live="polite"></div>';
+  document.body.append(el);
+  let i = 0;
+  const end = () => { try { localStorage.setItem('seenHelp', '1'); } catch {} el.remove(); removeEventListener('resize', show); };
+  function show() {
+    const [sel, title, text] = steps[i], target = document.querySelector(sel);
+    if (!target) return end();
+    target.scrollIntoView({ block: 'center' });
+    const r = target.getBoundingClientRect(), spot = el.querySelector('.spot'), tip = el.querySelector('.tip'), pad = 6;
+    Object.assign(spot.style, { left: r.left - pad + 'px', top: r.top - pad + 'px', width: r.width + 2 * pad + 'px', height: r.height + 2 * pad + 'px' });
+    tip.innerHTML = `<b>${title}</b><p>${text}</p><div class="tnav"><span class="mut">${i + 1} / ${steps.length}</span>
+      <button class="link" id="tskip">${t('Skip')}</button>${i ? `<button id="tback">${t('Back')}</button>` : ''}<button class="primary" id="tnext">${i === steps.length - 1 ? t('Done') : t('Next')}</button></div>`;
+    const below = r.bottom + 12 + tip.offsetHeight < innerHeight;  // the bubble goes under the highlight when it fits, otherwise above
+    tip.style.top = (below ? r.bottom + pad + 10 : Math.max(8, r.top - pad - 10 - tip.offsetHeight)) + 'px';
+    tip.querySelector('#tnext').onclick = () => (++i < steps.length ? show() : end());
+    tip.querySelector('#tskip').onclick = end;
+    if (i) tip.querySelector('#tback').onclick = () => { i--; show(); };
+    tip.querySelector('#tnext').focus();
+  }
+  el.onkeydown = e => { if (e.key === 'Escape') end(); };
+  addEventListener('resize', show);
+  steps.length ? show() : end();
 }

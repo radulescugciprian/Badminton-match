@@ -91,7 +91,7 @@ async function refresh() {
   }
   loaded = true; render();
   if (!bgLoaded) { bgLoaded = true; loadBg(); }
-  if (!helpShown && !helpSeen()) { helpShown = true; showHelp(); } // first run: explain the rotation once
+  if (!helpShown && !helpSeen()) { helpShown = true; setTimeout(startTour, 300); } // first run: show people around once
 }
 // Every write goes through act(). `optimistic` changes the screen immediately; the server calls then run one after the other,
 // and a single re-fetch at the end shows the server's truth (which also undoes the change if a call failed).
@@ -204,6 +204,7 @@ function showHelp() {
   const rows = C5.map(([a, b, r], i) => `<tr><td>${i + 1}</td><td>${a.join(' + ')} ${t('vs')} ${b.join(' + ')}</td><td>${r}</td></tr>`).join('');
   const el = document.createElement('div'); el.id = 'help'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
   el.innerHTML = `<div class="card"><h1>${t('How it works')}</h1>
+    <button class="add" id="tourbtn">▶ ${t('Show me around')}</button>
     <ol class="steps"><li>${t('Before play day tap “I\'m in” or “I\'m out”. The player list fills itself from the answers.')}</li>
       <li>${t('Start playing opens shortly before play time. The first 5 (or 4) players in the list play, the others sit out.')}</li>
       <li>${t('After every match tap the winning team. The leaderboards and ratings update for everyone.')}</li>
@@ -217,6 +218,7 @@ function showHelp() {
     ${rulesHtml()}
     <button class="primary" id="gotit">${t('Got it')}</button></div>`;
   document.body.append(el);
+  el.querySelector('#tourbtn').onclick = () => { el.remove(); startTour(); };
   el.querySelector('#gotit').onclick = () => { try { localStorage.setItem('seenHelp', '1'); } catch {} el.remove(); };
 }
 

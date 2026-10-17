@@ -179,3 +179,10 @@
   .row button:not(.ph):not(.nm){padding:10px 12px}
   .invite{margin-bottom:12px;border-color:var(--acc)}
   .log{padding:6px 12px;font-size:var(--fs-sm)} .log>div{padding:5px 0;border-bottom:1px solid var(--line);line-height:1.35} .log>div:last-of-type{border:0} .log .mut{margin:0 6px 0 0;font-size:var(--fs-xs)} .log .link{padding:6px 0 0;font-size:var(--fs-sm)}
+  /* guided tour: the highlighted element shows through a dimmed screen, with a speech bubble next to it */
+  #tour{position:fixed;inset:0;z-index:40}
+  #tour .spot{position:fixed;border-radius:14px;box-shadow:0 0 0 9999px rgba(0,0,0,.72),0 0 0 3px var(--acc);transition:all .3s ease;pointer-events:none}
+  #tour .tip{position:fixed;left:16px;right:16px;max-width:448px;margin:auto;background:var(--bg);color:var(--text);border:1px solid var(--acc);border-radius:16px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.5);transition:top .3s ease;text-shadow:none}
+  #tour .tip b{font-size:var(--fs-lg)} #tour .tip p{margin:6px 0 12px}
+  #tour .tnav{display:flex;align-items:center;gap:8px} #tour .tnav .mut{flex:1;margin:0;text-shadow:none}
+  #tour .tnav .primary{width:auto;padding:10px 18px;font-size:var(--fs-md)} #tour .tnav button:not(.primary):not(.link){padding:10px 14px}
