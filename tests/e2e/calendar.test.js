@@ -16,7 +16,8 @@ run('compact sign-up card and play calendar', async h => {
   assert.equal(await B.locator('.slides .slide').count(), 3, 'three play days to swipe through');
   await B.click(".rsvp[data-day='2026-10-29'] >> text=I'm out"); await until(() => st.rsvps.some(r => r.day_date === '2026-10-29' && r.status === 'out'), 'answered for a later day');
   assert(await B.evaluate(() => document.querySelector('.slides').scrollLeft > 0), 'the carousel stays on that day');
-  await B.evaluate(() => { slideIdx = 0; document.querySelector('.slides').scrollLeft = 0; });
+  assert((await B.textContent('#app')).includes('Answers for Thursday 29 Oct'), 'the list below shows that day');
+  await B.evaluate(() => { slideIdx = 0; render(); document.querySelector('.slides').scrollLeft = 0; });
   await B.click('text=Details'); await B.waitForSelector('.rsvp .chips'); await B.click('text=Details'); await B.waitForFunction(() => !document.querySelector('.rsvp .chips'));
 
   // the calendar: all Thursdays are play days, nothing can be changed by a member

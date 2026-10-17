@@ -50,7 +50,7 @@ function rsvpCard(date = nextPlayDate(), first = true) {
   if (phase === 'hidden' && !admin) return '';
   const n = act_.filter(p => ans(p.id) === 'in').length;
   const open = rsvpIsOpen(date);
-  return `<div class="card rsvp" data-day="${date}"><div class="rhead"><div><div class="mut" style="margin:0;font-size:var(--fs-sm)">${first ? t('Next match day') : extraOf(date) ? t('Extra game') : t('Later')}</div><b>${niceDate(date)}${extraOf(date) && extraOf(date).play_time ? ' · ' + hhmm(playMinsOn(date)) : ''}</b> <span class="mut">· ${t('{n} in', { n })}</span></div>
+  return `<div class="card rsvp ${dayTint(date)}" data-day="${date}"><div class="rhead"><div><div class="mut" style="margin:0;font-size:var(--fs-sm)">${first ? t('Next match day') : extraOf(date) ? t('Extra game') : t('Later')}</div><b>${niceDate(date)}${extraOf(date) && extraOf(date).play_time ? ' · ' + hhmm(playMinsOn(date)) : ''}</b> <span class="mut">· ${t('{n} in', { n })}</span></div>
       <span><button class="link" onclick="shareSignup('${date}')" aria-label="${t('Share on WhatsApp')}" title="${t('Share on WhatsApp')}">💬</button><button class="link" onclick="go('calendar')" aria-label="${t('Calendar')}">📅</button><button class="link" onclick="toggleRsvp('${date}')" aria-expanded="${open}">${open ? '▴' : '▾'} ${t('Details')}</button></span></div>
     ${mine && locked ? `<p class="mut" style="margin:8px 0 0">🔒 ${t('Answers closed at {time}.', { time: by })}</p>` : ''}
     ${mine && !locked ? `<div class="seg"><button class="${ans(mine.id) === 'in' ? 'on' : ''}" onclick="setRsvp(${mine.id}, ${ans(mine.id) === 'in' ? 'null' : "'in'"}, '${date}')">✅ ${t("I'm in")}</button>
@@ -62,11 +62,21 @@ function rsvpCard(date = nextPlayDate(), first = true) {
     <button class="link" onclick="remindMe()">🔔 ${t('Remind me every {day}', { day: dayName(sched ? sched.dow : 4) })}</button>` : ''}</div>`;
 }
 
+// the play days in the swipe cards (a member no longer sees today's card once the sign-up is hidden)
+const slideDates = () => upcomingPlayDates(3).filter(d => isAdmin() || rsvpPhase(d) !== 'hidden');
+const dayTint = d => extraOf(d) ? 'extra' : 'regular';
+// a later play day: everyone's answers for that day, players who are in first (read-only)
+function laterList(d) {
+  const rank = id => ({ in: 0, out: 2 }[answerOf(id, d)] ?? 1), icon = id => ({ in: '✅', out: '❌' }[answerOf(id, d)] || '⏳');
+  const ps = db.players.filter(p => !p.removed).sort((x, y) => rank(x.id) - rank(y.id));
+  return `<p class="mut" style="margin:4px 0 8px">${t('Answers for {date}. The playing order is set on the day itself.', { date: esc(niceDate(d)) })}</p>
+    <ol>${ps.map((p, i) => `<li class="row ${rank(p.id) === 2 ? 'bench' : ''}"><span class="slot">${rank(p.id) === 0 ? i + 1 : ''}</span><span class="ph">${av(p.id, 36)}</span><span class="nm">${icon(p.id)} ${esc(p.name)}</span></li>`).join('')}</ol>`;
+}
 // the next 3 play days side by side: swipe left and right; the dots show where you are
 function rsvpSlides() {
-  const dates = upcomingPlayDates(3), cards = dates.map((d, k) => rsvpCard(d, k === 0)).filter(Boolean);
+  const cards = slideDates().map((d, k) => rsvpCard(d, k === 0));
   if (cards.length < 2) return cards.join('');
-  return `<div class="slides" onpointerdown="const k=[...this.children].indexOf(event.target.closest('.slide'));if(k>=0)slideIdx=k" onscroll="slideIdx=Math.round(this.scrollLeft/this.clientWidth);document.querySelectorAll('.dots i').forEach((x,k)=>x.classList.toggle('on',k===slideIdx))">${cards.map(c => `<div class="slide">${c}</div>`).join('')}</div>
+  return `<div class="slides" onpointerdown="const k=[...this.children].indexOf(event.target.closest('.slide'));if(k>=0)slideIdx=k" onscroll="onSlides(this)">${cards.map(c => `<div class="slide">${c}</div>`).join('')}</div>
     <div class="dots">${cards.map((_, k) => `<i class="${k === slideIdx ? 'on' : ''}"></i>`).join('')}</div>`;
 }
 
@@ -116,6 +126,8 @@ function setup(d) {
   const m = d.mode, cyc = m === 4 ? C4 : C5, o = d.order, [a, b, r] = cyc[0], admin = isAdmin();
   const date = nextPlayDate(), ins = o.filter(id => answerOf(id, date) === 'in').length, auto = ins >= 4, icon = id => ({ in: '✅', out: '❌' }[answerOf(id, date)] || '⏳');
   const open = admin || startOpen();
+  // the swipe cards pick the day; the list below belongs to that day (the editable line-up only exists for the next match day)
+  const sd = slideDates(), sel = slideIdx && sd[Math.min(slideIdx, sd.length - 1)] || date;
   const rowOf = (id, i) => `<li class="row ${i >= m ? 'bench' : ''}">
         <span class="slot">${i + 1}</span>
         ${player(id).user === session.user.id ? `<button class="ph" onclick="avatar(${id})" aria-label="${t('Change your photo')}">${av(id, 36)}</button>` : `<span class="ph">${av(id, 36)}</span>`}
@@ -126,7 +138,7 @@ function setup(d) {
   const idle = db.players.filter(p => !p.removed && !o.includes(p.id));
   // who plays with whom is shown from 15 minutes before play time (and on the match screen once started)
   // the sign-ups fill the list and decide 4 or 5 players; the date is today's. Only when nobody has answered can an admin pick 4 or 5 by hand.
-  return `${inviteCards()}${rsvpSlides()}${rsvps.some(x => x.day_date === date) && ins < 4 ? `<p class="mut">${t('Only {n} confirmed so far, you need at least 4.', { n: ins })}</p>` : ''}
+  return `${inviteCards()}<div class="dayzone ${dayTint(sel)}">${rsvpSlides()}${sel !== date ? laterList(sel) : `${rsvps.some(x => x.day_date === date) && ins < 4 ? `<p class="mut">${t('Only {n} confirmed so far, you need at least 4.', { n: ins })}</p>` : ''}
       ${auto ? '' : `<div class="seg" style="margin:0 0 12px"><button class="${m === 4 ? 'on' : ''}" onclick="setMode(4)">${t('4 players')}</button>
         <button class="${m === 5 ? 'on' : ''}" onclick="setMode(5)" ${o.length < 5 ? 'disabled' : ''}>${t('5 players')}</button></div>`}
       <ol>${o.slice(0, m).map((id, i) => rowOf(id, i)).join('')}</ol>
@@ -136,6 +148,7 @@ function setup(d) {
       <button class="add" onclick="addPlayer()">${t('+ Add guest player (no account)')}</button>
       ${idle.length ? `<details class="fold"><summary>${t('Guests who have not played lately')} (${idle.length})</summary><div class="chips">${idle.map(p => `<button class="chip" onclick="bringBack(${p.id})">${av(p.id, 22)} ${esc(p.name)} +</button>`).join('')}</div></details>` : ''}
       ${o.length > m ? `<details class="fold" ${benchOpen ? 'open' : ''} ontoggle="benchOpen=this.open"><summary>${t('Sitting out')} (${o.length - m})</summary><ol>${o.slice(m).map((id, k) => rowOf(id, m + k)).join('')}</ol></details>` : ''}
+`}</div>
       <div class="startbar">${open ? '' : `<p class="mut" role="status">🔒 ${startNote()}</p>`}
       <button class="primary" onclick="start()" ${open ? '' : 'disabled'}>${t('Start playing')}</button></div>`;
 }
@@ -378,7 +391,7 @@ function render() {
   const strip = behind + (me.is_admin && asMember ? `<div class="strip"><span>👁 ${t('You are viewing the app as a member. Admin tools are hidden.')}</span><button onclick="toggleView()">${t('Back to admin')}</button></div>` : '');
   app.innerHTML = top + strip + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'admin' && isAdmin() ? adminView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : view === 'backfill' && bf ? backfillView() : `<h1>${t('Photos')}</h1><div class="seg" style="margin-bottom:12px"><button class="${photosTab === 'photos' ? 'on' : ''}" onclick="photosTab='photos';render()">📷 ${t('Photos')}</button><button class="${photosTab === 'receipts' ? 'on' : ''}" onclick="photosTab='receipts';render()">🧾 ${t('Receipts')}</button></div><div id="gal"></div>`);
   drawReactions();
-  const sl = document.querySelector('.slides'); if (sl && slideIdx) sl.scrollLeft = slideIdx * sl.clientWidth;
+  const sl = document.querySelector('.slides'); shownSlide = slideIdx; if (sl && slideIdx) sl.scrollLeft = slideIdx * sl.clientWidth;
   if (view === 'photos') gallery().catch(e => { gal.innerHTML = `<p class="msg">${esc(friendly(e))}</p>`; });
 }
 

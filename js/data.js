@@ -417,6 +417,13 @@ const bfSave = () => {
 const appLink = q => location.origin + location.pathname + (q ? '?' + q : '');
 const plain = ids => ids.map(id => player(id).name).join(' & ');
 const waShare = text => window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
+// swiping the day cards: move the dots at once, redraw the list for the new day when the swipe settles
+let slideT, shownSlide = 0;
+function onSlides(el) {
+  slideIdx = Math.round(el.scrollLeft / el.clientWidth);
+  document.querySelectorAll('.dots i').forEach((x, k) => x.classList.toggle('on', k === slideIdx));
+  clearTimeout(slideT); slideT = setTimeout(() => { if (slideIdx !== shownSlide) render(); }, 160);
+}
 const shareSignup = (date = nextPlayDate()) => {
   const ins = db.players.filter(p => !p.removed && answerOf(p.id, date) === 'in').map(p => p.name);
   waShare(t('🏸 {day} {time}: {n} in so far{names}. Please answer by {deadline}:', { day: niceDate(date), time: sched ? hhmm(playMinsOn(date)) : '',
