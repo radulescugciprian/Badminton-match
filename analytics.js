@@ -14,7 +14,8 @@ function analyse(days, players) {
     for (const m of d.matches) {
       const avg = ids => ids.reduce((s, id) => s + rating.get(id), 0) / ids.length;
       const e1 = 1 / (1 + 10 ** ((avg(m.t2) - avg(m.t1)) / 400)); // expected score of team 1
-      const d1 = K_FACTOR * ((m.win === 1 ? 1 : 0) - e1);          // both partners get the same change
+      const k = m.t1.length === 1 ? K_FACTOR / 2 : K_FACTOR;           // singles (3-player nights) count half, so one evening cannot swing the rating
+      const d1 = k * ((m.win === 1 ? 1 : 0) - e1);                    // both partners get the same change
       for (const [ids, sign, won] of [[m.t1, 1, m.win === 1], [m.t2, -1, m.win === 2]]) for (const id of ids) {
         rating.set(id, rating.get(id) + sign * d1);
         hist.get(id).push({ day: d.id, date: d.date, n: m.n, r: rating.get(id) });

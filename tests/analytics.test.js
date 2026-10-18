@@ -72,4 +72,12 @@ assert(ratingChart([1000, 1032, 1010]).includes('1032'));
   assert.deepEqual(winnerStays([1, 2, 3], ms), { t1: [3], t2: [1], rest: 2 }, '1 comes back in against the winner');
 }
 
+// singles move the rating half as much as doubles
+{
+  const pl = [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }];
+  const dbl = analyse([{ id: 1, date: 'x', matches: [{ n: 1, t1: [1, 2], t2: [3, 4], win: 1 }] }], pl).rating.get(1) - 1000;
+  const sgl = analyse([{ id: 1, date: 'x', matches: [{ n: 1, t1: [1], t2: [3], win: 1 }] }], pl).rating.get(1) - 1000;
+  assert(Math.abs(sgl - dbl / 2) < 1e-9, 'singles count half: ' + sgl + ' vs ' + dbl);
+}
+
 console.log('analytics tests passed');

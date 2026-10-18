@@ -222,9 +222,12 @@ function board() {
   const days = db.days.filter(d => d.matches.length), si = Math.max(0, days.findIndex(d => d.id === selId)), sel = days.find(d => d.id === selId) || days[days.length - 1];
   const ym = lbMonth || tzParts().date.slice(0, 7), champ = monthChamps().find(c => c.ym === ym), min = tab === 'day' ? 1 : 3;
   const prevYm = new Date(Date.UTC(+ym.slice(0, 4), +ym.slice(5, 7) - 2, 1)).toISOString().slice(0, 7), di = sel ? days.indexOf(sel) : -1;
-  const ms = tab === 'all' ? db.days.flatMap(d => d.matches) : tab === 'month' ? monthMatches(ym) : sel ? sel.matches : [];
-  const prevMs = tab === 'all' ? days.slice(0, -1).flatMap(d => d.matches) : tab === 'month' ? monthMatches(prevYm) : di > 0 ? days[di - 1].matches : [];
-  const order = tab === 'day' ? byWins : byRate, rows = (tab === 'all' ? allTime() : stats(ms)).sort(order), ranked = rows.filter(r => r.p >= min), few = rows.filter(r => r.p < min);
+  // Month and All time keep doubles and singles (3-player nights) apart, so a strong singles player does not distort the doubles table
+  const kind = m => tab === 'day' || (boardKind === 'singles') === (m.t1.length === 1), period = all => all.filter(kind);
+  const periodAll = tab === 'all' ? db.days.flatMap(d => d.matches) : tab === 'month' ? monthMatches(ym) : [], hasSingles = periodAll.some(m => m.t1.length === 1);
+  const ms = tab === 'day' ? (sel ? sel.matches : []) : period(periodAll);
+  const prevMs = period(tab === 'all' ? days.slice(0, -1).flatMap(d => d.matches) : tab === 'month' ? monthMatches(prevYm) : di > 0 ? days[di - 1].matches : []);
+  const order = tab === 'day' ? byWins : byRate, rows = stats(ms).sort(order), ranked = rows.filter(r => r.p >= min), few = rows.filter(r => r.p < min);
   const prevRank = new Map(stats(prevMs).sort(order).filter(r => r.p >= min).map((r, i) => [r.id, i + 1])), mine = db.players.find(p => p.user === session.user.id);
   const form = id => ms.filter(m => m.t1.includes(id) || m.t2.includes(id)).slice(-5).map(m => `<i class="${(m.win === 1 ? m.t1 : m.t2).includes(id) ? 'w' : 'l'}"></i>`).join('');
   const move = (id, i) => { const p = prevRank.get(id); return !p || p === i + 1 ? '' : p > i + 1 ? `<span class="up">▲${p - i - 1}</span>` : `<span class="down">▼${i + 1 - p}</span>`; };
@@ -247,8 +250,9 @@ function board() {
       ${isAdmin() ? `<details class="more"><summary aria-label="${t('More')}">⋯</summary><button class="link danger" onclick="deleteDay(${sel.id})">🗑 ${t("Delete this day's leaderboard")}</button></details>` : ''}</div>` : '')
     : tab === 'month' ? `<div class="calnav"><button onclick="monthShift(-1)" aria-label="${t('Previous month')}">‹</button><b>${esc(monthName(ym))}</b><button onclick="monthShift(1)" aria-label="${t('Next month')}">›</button></div>
       ${champ ? `<p class="mut" style="text-align:center">👑 ${t('Champion of {month}: {name}', { month: esc(monthName(ym)), name: name(champ.id) })}</p>` : ''}` : '';
+  const kindSeg = tab !== 'day' && (hasSingles || boardKind === 'singles') ? `<div class="seg mini2">${[['doubles', t('Doubles')], ['singles', t('Singles')]].map(([k, l]) => `<button class="${boardKind === k ? 'on' : ''}" onclick="boardKind='${k}';render()">${l}</button>`).join('')}</div>` : '';
   const myIdx = mine ? ranked.findIndex(r => r.id === mine.id) : -1, myRow = myIdx >= 0 ? ranked[myIdx] : null;
-  return head + nav + `${ms.length ? `<div class="podium">${podium[1]}${podium[0]}${podium[2]}</div>
+  return head + nav + kindSeg + `${ms.length ? `<div class="podium">${podium[1]}${podium[0]}${podium[2]}</div>
       ${ranked.length ? `<div class="card" style="padding:4px 16px">${ranked.map((r, i) => rowOf(r, i)).join('')}</div>` : ''}
       ${few.length ? `<h2 class="sgroup">${t('Not enough games (fewer than {n})', { n: min })}</h2><div class="card" style="padding:4px 16px">${few.map(r => rowOf(r, null)).join('')}</div>` : ''}
       ${myRow && myIdx > 2 ? `<div class="youbar">${t('You')}: ${myIdx + 1}. · ${myRow.w}–${myRow.p - myRow.w} · ${Math.round(pct(myRow) * 100)}%</div>` : ''}
