@@ -21,7 +21,7 @@ const DB_VERSION = 20261105; // bump together with db_version() in the newest mi
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
 let boardKind = 'doubles', boardOpen = null, memFilter = 'all', memSort = 'name', memOpen = null, adminPage = '', admPanel = '', prevView = 'play', profPanel = '', usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, bgLoaded = false, rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
-let view = 'play', tab = 'day', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0, manualLogout = false, lostSession = false, asMember = false;   // asMember: an admin previewing the app as a normal member
+let view = 'play', tab = 'rating', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0, manualLogout = false, lostSession = false, asMember = false;   // asMember: an admin previewing the app as a normal member
 // the sign-in is kept on the phone (localStorage) and renewed automatically, so people stay logged in until they log out
 const sb = window.supabase && CONFIG.url && !CONFIG.url.includes('YOUR-')
   ? supabase.createClient(CONFIG.url, CONFIG.key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }) : null;
@@ -658,9 +658,15 @@ function stats(matches) {
 // the month leaderboard: matches of the days in month `ym` (YYYY-MM); champions are the winners of finished months
 const monthMatches = ym => db.days.filter(d => d.date.slice(0, 7) === ym).flatMap(d => d.matches);
 const doublesOnly = ms => ms.filter(m => m.t1.length > 1);
-const monthChamps = () => [...new Set(db.days.filter(d => d.matches.length).map(d => d.date.slice(0, 7)))]
-  .filter(ym => ym < tzParts().date.slice(0, 7)).map(ym => { const all = monthMatches(ym), dbl = doublesOnly(all).length ? doublesOnly(all) : all;   // the champion comes from the doubles table
-    const r = stats(dbl).filter(x => x.p >= 3).sort(byRate)[0] || stats(dbl)[0]; return { ym, id: r.id }; });
+// rating points won or lost in a month (the sum of the nightly Elo changes), with the games played: the Month board and its champion
+function monthGains(ym, an = analyse(db.days, db.players)) {
+  const ds = db.days.filter(d => d.date.slice(0, 7) === ym && d.matches.length), out = new Map();
+  for (const d of ds) for (const [id, r] of an.night.get(d.id) || []) { const x = out.get(id) || { id, name: player(id).name, gain: 0, w: 0, p: 0 }; x.gain += r.delta; x.w += r.w; x.p += r.p; out.set(id, x); }
+  return [...out.values()].sort((a, b) => b.gain - a.gain || b.w - a.w);
+}
+const monthChamps = () => { const an = analyse(db.days, db.players);   // the champion of a month: most rating points won, with at least 3 games
+  return [...new Set(db.days.filter(d => d.matches.length).map(d => d.date.slice(0, 7)))].filter(ym => ym < tzParts().date.slice(0, 7))
+    .map(ym => { const g = monthGains(ym, an), r = g.find(x => x.p >= 3) || g[0]; return { ym, id: r.id }; }); };
 const monthName = ym => new Date(ym + '-15T12:00:00Z').toLocaleDateString(LOCALE[lang], { month: 'long', year: 'numeric', timeZone: 'UTC' });
 let lbMonth = null;
 const dayShift = n => { const days = db.days.filter(d => d.matches.length), i = Math.max(0, days.findIndex(d => d.id === selId)), cur_ = selId && i >= 0 && days[i].id === selId ? i : days.length - 1, k = Math.min(days.length - 1, Math.max(0, cur_ + n)); selId = days[k] && days[k].id; render(); };
