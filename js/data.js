@@ -232,7 +232,7 @@ function showHelp() {
     <table class="rot"><tr><th>${t('Match')}</th><th>${t('Teams')}</th><th>${t('Rests')}</th></tr>${rows}</table>
     <p class="mut">${t('The numbers are places in the player list (1 = top).')}</p>
     <p>${t('With 4 players nobody rests: the same teams play best of 3, then change teams, until everyone has played with everyone.')}</p>
-    <p>${t('With 3 players you play singles: the winner stays on court, but after 3 games in a row the winner sits out one game.')}</p>
+    <p>${t('With 3 players you play singles: the winner stays on court, but after 3 wins in a row the winner sits out one game.')}</p>
     <h2 class="sec">${t('Rating')}</h2><p>${t('Everyone starts at 1000 points. Beating stronger players earns more.')}</p>
     ${rulesHtml()}
     <p class="mut">🔒 ${t('Admins can see how often each person opens each screen (only counts, nothing you type).')}</p>
@@ -479,7 +479,7 @@ const shareSignup = (date = nextPlayDate()) => {
 const shareExtra = day => waShare(t('🏸 {name} added an extra game on {date} at {time}. Who is in? Answer by {deadline}:', { name: (members.find(m => m.id === (extraOf(day) || {}).created_by) || me || {}).username || '', date: niceDate(day), time: sched ? hhmm(playMinsOn(day)) : '', deadline: deadlineText(day) }) + ' ' + appLink('answer=' + day));
 const shareLineup = () => {
   const d = cur(), o = d.order, cyc = d.mode === 4 ? C4 : C5;
-  if (d.mode === 3) { const m = nextTeams(d); return waShare('🏸 ' + t('Today\'s matches') + '\n1. ' + `${plain(m.t1)} ${t('vs')} ${plain(m.t2)} (${t('{name} rests', { name: player(m.rest).name })})` + '\n' + t('Winner stays on, at most 3 games in a row.') + '\n' + appLink()); }
+  if (d.mode === 3) { const m = nextTeams(d); return waShare('🏸 ' + t('Today\'s matches') + '\n1. ' + `${plain(m.t1)} ${t('vs')} ${plain(m.t2)} (${t('{name} rests', { name: player(m.rest).name })})` + '\n' + t('Winner stays on, at most 3 wins in a row.') + '\n' + appLink()); }
   waShare('🏸 ' + t('Today\'s matches') + '\n' + cyc.map(([a, b, r], i) => `${i + 1}. ${plain(slots(o, a))} ${t('vs')} ${plain(slots(o, b))}${r ? ` (${t('{name} rests', { name: player(o[r - 1]).name })})` : ''}`).join('\n') + (d.mode === 4 ? '\n' + t('Best of 3, then change teams.') : '') + '\n' + appLink());
 };
 const memberExtra = iso => {

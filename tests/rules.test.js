@@ -17,12 +17,13 @@ for (let k = 0; k < 2000; k++) { const ms = play(4, rnd(12)); let w = [0, 0], sp
     if (!seen.length || seen[seen.length - 1] !== s) { if (seen.length) assert(Math.max(...w) === 2, 'teams only change after a best of 3'); seen.push(s); w = [0, 0]; }
     w[m.win - 1]++; assert(Math.max(...w) <= 2); }
   const firstThree = new Set(seen.slice(0, 3).flatMap(s => s.split('|'))); if (seen.length >= 3) assert.equal(firstThree.size, 6, 'all 6 partnerships in one cycle'); }
-// 3 players: singles, winner stays, nobody plays more than 3 in a row, the resting player always comes on next
+// 3 players: singles, winner stays, nobody wins more than 3 in a row, the resting player always comes on next
 for (let k = 0; k < 2000; k++) { const ms = play(3, rnd(30)); let run = {};
   ms.forEach((m, i) => { assert(m.t1.length === 1 && m.rest); const on = [m.t1[0], m.t2[0]];
     if (i) { assert(on.includes(ms[i - 1].rest), 'the one who rested plays next');
       const prevWin = (ms[i - 1].win === 1 ? ms[i - 1].t1 : ms[i - 1].t2)[0]; if (on.includes(prevWin)) assert(true); else assert.equal(m.rest, prevWin, 'a winner only leaves to rest'); }
-    for (const p of P.slice(0, 3)) run[p] = on.includes(p) ? (run[p] || 0) + 1 : 0; assert(Math.max(...Object.values(run)) <= 3, 'max 3 in a row'); }); }
+    const w = (m.win === 1 ? m.t1 : m.t2)[0]; run = { [w]: (run[w] || 0) + 1 }; assert(run[w] <= 3, 'max 3 wins in a row');
+    if (ms[i + 1]) assert.equal(ms[i + 1].rest === w, run[w] === 3, 'the winner rests exactly after 3 wins in a row'); }); }
 // 2 players: singles, nobody rests
 for (const m of play(2, rnd(5))) assert(m.t1.length === 1 && m.t2.length === 1 && m.rest === null);
 console.log('rules tests passed');

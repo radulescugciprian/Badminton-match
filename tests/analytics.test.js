@@ -60,16 +60,20 @@ assert.equal(bestPair(days, 2, ids => !ids.includes(1)), null, 'privacy filter h
 assert.equal(ratingChart([1000]), '');
 assert(ratingChart([1000, 1032, 1010]).includes('1032'));
 
-// 3 players: winner stays, but sits out after 3 games in a row
+// 3 players: winner stays, but sits out after 3 wins in a row
 {
   const { winnerStays } = require('../analytics.js');
   const ms = [], play = win => { const m = winnerStays([1, 2, 3], ms); ms.push({ ...m, win }); return m; };
   assert.deepEqual(play(1), { t1: [1], t2: [2], rest: 3 });          // 1 beats 2
   assert.deepEqual(play(1), { t1: [1], t2: [3], rest: 2 });          // winner 1 stays, 3 comes in; 1 wins again
   assert.deepEqual(play(1), { t1: [1], t2: [2], rest: 3 });          // 1 plays a third game in a row and wins
-  assert.deepEqual(winnerStays([1, 2, 3], ms), { t1: [2], t2: [3], rest: 1 }, 'after 3 games in a row the winner sits out');
+  assert.deepEqual(winnerStays([1, 2, 3], ms), { t1: [2], t2: [3], rest: 1 }, 'after 3 wins in a row the winner sits out');
   ms.push({ t1: [2], t2: [3], rest: 1, win: 2 });                    // 3 beats 2
   assert.deepEqual(winnerStays([1, 2, 3], ms), { t1: [3], t2: [1], rest: 2 }, '1 comes back in against the winner');
+  ms.push({ t1: [3], t2: [1], rest: 2, win: 1 }, { t1: [3], t2: [2], rest: 1, win: 1 });   // 3 wins twice more: 3 wins in a row
+  assert.deepEqual(winnerStays([1, 2, 3], ms), { t1: [2], t2: [1], rest: 3 }, 'wins count, not games: 3 rests after 3 wins');
+  const ms2 = [{ t1: [1], t2: [2], rest: 3, win: 1 }, { t1: [1], t2: [3], rest: 2, win: 1 }, { t1: [1], t2: [2], rest: 3, win: 1 }, { t1: [2], t2: [3], rest: 1, win: 1 }, { t1: [2], t2: [1], rest: 3, win: 1 }];
+  assert.deepEqual(winnerStays([1, 2, 3], ms2), { t1: [2], t2: [3], rest: 1 }, 'the loser who stayed on has 2 wins in a row, so plays a 4th game in a row');
 }
 
 // singles move the rating half as much as doubles
