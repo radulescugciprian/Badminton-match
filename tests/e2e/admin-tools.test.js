@@ -9,7 +9,7 @@ run('admin tools', async h => {
   await sleep(300);
 
   // standings: the database count equals the local count, and the General board shows them
-  await A.click('nav >> text=Board'); await A.click('.seg >> text=Win %'); await A.waitForSelector('.podium');
+  await A.click('nav >> text=Board'); await A.click('.seg >> text=All time'); await A.waitForSelector('.podium');
   assert(await A.evaluate(() => std !== null && JSON.stringify(allTime()) === JSON.stringify(stats(db.days.flatMap(d => d.matches)))), 'database standings = local standings');
   assert(h.calls.includes('standings'));
 

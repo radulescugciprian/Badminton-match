@@ -231,3 +231,5 @@
   .pod{cursor:pointer} .calnav{position:relative} .more{position:absolute;right:-6px;top:100%;z-index:3} .more summary{list-style:none;cursor:pointer;padding:2px 10px;font-size:20px;color:var(--mut)} .more[open] button{background:var(--bg);border:1px solid var(--line);padding:8px 12px;border-radius:10px;white-space:nowrap}
   .rate{display:block;height:5px;border-radius:3px;background:var(--line);margin:4px 0 2px;overflow:hidden;max-width:140px} .rate i{display:block;height:100%;background:var(--acc)} .brow .bn small{font-size:var(--fs-xs)}
   .seg.mini2{margin:0 auto 10px;max-width:240px} .seg.mini2 button{padding:6px}
+  .kind{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;margin:2px 6px 0 0;vertical-align:middle} .kind.double{background:rgba(34,197,94,.18);color:#86efac} .kind.single{background:rgba(59,130,246,.22);color:#93c5fd}
+  :root[data-theme=light] .kind.double{color:#166534} :root[data-theme=light] .kind.single{color:#1e40af}

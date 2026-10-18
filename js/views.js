@@ -241,11 +241,11 @@ function board() {
     <div class="seg"><button class="${tab === 'rating' ? 'on' : ''}" onclick="tab='rating';render()">${t('Rating')}</button>
       <button class="${tab === 'day' ? 'on' : ''}" onclick="tab='day';render()">${t('Day')}</button>
       <button class="${tab === 'month' ? 'on' : ''}" onclick="tab='month';render()">${t('Month')}</button>
-      <button class="${tab === 'all' ? 'on' : ''}" onclick="tab='all';render()">${t('Win %')}</button></div>`;
+      <button class="${tab === 'all' ? 'on' : ''}" onclick="tab='all';render()">${t('All time')}</button></div>`;
   if (tab === 'rating') return head + ratingList();
   const side = (m, k) => { const ids = k === 1 ? m.t1 : m.t2, nm = m['team' + k + '_name'];
     return `${m.win === k ? '🏆 ' : ''}${nm ? `<b>${esc(nm)}</b> (${pair(ids)})` : pair(ids)}`; };
-  const nav = tab === 'day' ? (days.length ? `<div class="calnav"><button onclick="dayShift(-1)" aria-label="${t('Previous day')}" ${di <= 0 ? 'disabled' : ''}>‹</button><b>${esc(niceDate(sel.date))} · ${tp('{n} matches', sel.matches.length)}</b>
+  const nav = tab === 'day' ? (days.length ? `<div class="calnav"><button onclick="dayShift(-1)" aria-label="${t('Previous day')}" ${di <= 0 ? 'disabled' : ''}>‹</button><b>${esc(niceDate(sel.date))} · ${tp('{n} matches', sel.matches.length)}<br><span class="kind ${sel.matches.some(m => m.t1.length === 1) ? 'single' : 'double'}">${sel.matches.every(m => m.t1.length === 1) ? '1 vs 1 · ' + t('Singles') : sel.matches.some(m => m.t1.length === 1) ? t('Singles') + ' + ' + t('Doubles') : '2 vs 2 · ' + t('Doubles')}</span></b>
       <button onclick="dayShift(1)" aria-label="${t('Next day')}" ${di >= days.length - 1 ? 'disabled' : ''}>›</button>
       ${isAdmin() ? `<details class="more"><summary aria-label="${t('More')}">⋯</summary><button class="link danger" onclick="deleteDay(${sel.id})">🗑 ${t("Delete this day's leaderboard")}</button></details>` : ''}</div>` : '')
     : tab === 'month' ? `<div class="calnav"><button onclick="monthShift(-1)" aria-label="${t('Previous month')}">‹</button><b>${esc(monthName(ym))}</b><button onclick="monthShift(1)" aria-label="${t('Next month')}">›</button></div>
@@ -256,7 +256,7 @@ function board() {
       ${ranked.length ? `<div class="card" style="padding:4px 16px">${ranked.map((r, i) => rowOf(r, i)).join('')}</div>` : ''}
       ${few.length ? `<h2 class="sgroup">${t('Not enough games (fewer than {n})', { n: min })}</h2><div class="card" style="padding:4px 16px">${few.map(r => rowOf(r, null)).join('')}</div>` : ''}
       ${myRow && myIdx > 2 ? `<div class="youbar">${t('You')}: ${myIdx + 1}. · ${myRow.w}–${myRow.p - myRow.w} · ${tab === 'month' ? (myRow.gain >= 0 ? '+' : '') + Math.round(myRow.gain) + ' ' + t('pts') : Math.round(pct(myRow) * 100) + '%'}</div>` : ''}
-      ${tab === 'day' && sel ? `<details class="fold"><summary>${t('Matches')} (${sel.matches.length})</summary><div class="card" style="padding:4px 16px">${sel.matches.map(m => `<div class="mrow"><span class="r">${m.n}</span>
+      ${tab === 'day' && sel ? `<details class="fold"><summary>${t('Matches')} (${sel.matches.length})</summary><div class="card" style="padding:4px 16px">${sel.matches.map(m => `<div class="mrow"><span class="r">${m.n}</span><span class="kind ${m.t1.length === 1 ? 'single' : 'double'}">${m.t1.length === 1 ? '1v1' : '2v2'}</span>
         <span style="flex:1">${side(m, 1)} <span class="mut">${t('vs')}</span> ${side(m, 2)}</span><span class="mut">${m.created_at ? new Date(m.created_at).toLocaleTimeString(LOCALE[lang], { hour: '2-digit', minute: '2-digit' }) : ''}</span></div>`).join('')}</div></details>` : ''}`
       : `<div class="empty">${t('No matches yet.')}<br>${t('Play one and the podium shows up here.')}</div>`}`;
 }

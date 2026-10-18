@@ -13,7 +13,7 @@ run('three players: winner stays', async h => {
   assert.equal(p[1][0], p[0][0], 'the winner stays on'); assert.equal(p[2][0], p[0][0], 'and again');
   assert.equal(p[3][2], p[0][0], 'after 3 games in a row the winner sits out');
   // singles stay out of the doubles tables for Month and All time, and have their own view
-  await A.click('nav >> text=Board'); await A.click('.seg >> text=Win %'); await A.waitForSelector('text=No matches yet');
+  await A.click('nav >> text=Board'); await A.click('.seg >> text=All time'); await A.waitForSelector('text=No matches yet');
   await A.click('.seg >> text=Singles'); await A.waitForSelector('.podium');
   await A.click('.seg >> text=Day'); await A.waitForSelector('.podium');
   assert(A.errs.length === 0, A.errs.join());
