@@ -248,3 +248,4 @@
   .stage .actions{margin-top:10px} .pmore{margin:4px 0 0;text-align:center} .pmore .actions{margin-top:0} .pmore .lineup{text-align:left}
   .toast{margin:0 0 8px;background:var(--bg);border:1px solid var(--acc);border-radius:14px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px}
   :root[data-theme=light] .stage{background:rgba(var(--ovc),.8)}
+  .pbtns{display:flex;gap:10px;margin-top:12px} .pbtns button{flex:1;padding:14px 8px;font-size:var(--fs-md);font-weight:700;background:var(--card);color:var(--text);border:1.5px solid var(--line);border-radius:14px} .pbtns button:disabled{opacity:.45}
