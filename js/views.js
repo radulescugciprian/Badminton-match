@@ -287,18 +287,6 @@ function statsView() {
     <h2 class="sec">${t('Best pair in the group')}</h2><div class="card">${pair_ ? `${pair(pair_.ids)} <span class="mut">${t('{record} together', { record: `${pair_.w}-${pair_.g - pair_.w}` })}</span>` : `<span class="mut">${t('needs 3 games together')}</span>`}</div>`;
 }
 
-function scheduleForm() {
-  if (!isAdmin() || !sched) return '';
-  const zones = ['Europe/Berlin', 'Europe/Bucharest', 'Europe/Zagreb', 'Europe/Stockholm', 'Europe/London', 'Europe/Paris', 'Europe/Rome', 'Europe/Madrid'];
-  return `<h2 class="sec">${t('Play schedule')}</h2><form class="card" onsubmit="saveSchedule(event)">
-    <label class="field">${t('Play day')}<select name="dow">${[1, 2, 3, 4, 5, 6, 0].map(d => `<option value="${d}" ${d === sched.dow ? 'selected' : ''}>${dayName(d)}</option>`).join('')}</select></label>
-    <label class="field">${t('Play time')}${timeSel('time', +sched.play_time.slice(0, 2) * 60 + +sched.play_time.slice(3, 5))}</label>
-    <label class="field">${t('Members can press Start playing this many minutes before play time')}<input type="number" name="mins" min="0" max="720" value="${sched.opens_minutes}" required></label>
-    <label class="field">${t('Answers (in / out) close this many minutes before play time')}<input type="number" name="until" min="0" max="1440" value="${sched.rsvp_until_minutes}" required></label>
-    <label class="field">${t('The sign-up section is hidden this many minutes before play time')}<input type="number" name="hide" min="0" max="1440" value="${sched.rsvp_hide_minutes}" required></label>
-    <label class="field">${t('Time zone')}<input type="text" name="tz" list="tzs" value="${esc(sched.tz)}" required autocapitalize="none"><datalist id="tzs">${zones.map(z => `<option value="${z}">`).join('')}</datalist></label>
-    <p class="msg" role="alert"></p><button class="primary" type="submit">${t('Save schedule')}</button></form>`;
-}
 
 function membersView() {
   const own = id => db.players.find(p => p.user === id);
@@ -311,23 +299,51 @@ function membersView() {
 }
 
 // every admin tool on one page (opened from the top bar)
+// Admin tools: a status card, then a grouped list. Big sections (players, accounts, usage, log) open as their own page,
+// small settings (schedule, times, background, icons) open as a panel under their row.
 function adminView() {
-  const d = cur(), o = d.order, own = id => db.players.find(p => p.user === id);
-  return `<h1>${t('Admin tools')}</h1><p class="mut">${t('Accounts can log in. Admins can close or reset days, remove players, delete photos and remove accounts.')}</p>
-    <h2 class="sec">${t('Players')}</h2><div class="card" style="padding:4px 16px">${db.players.filter(p => !p.removed).map(p => `<div class="member"><span>${av(p.id, 28)} ${esc(p.name)} ${p.user ? '' : `<span class="tag">${t('no account')}</span>`}</span>
+  const d = cur(), o = d.order, own = id => db.players.find(p => p.user === id), back = `<div class="top"><button class="link" onclick="adminPage='';render()">← ${t('Admin tools')}</button></div>`;
+  if (adminPage === 'players') return back + `<h1>${t('Players')}</h1><div class="card" style="padding:4px 16px">${db.players.filter(p => !p.removed).map(p => `<div class="member"><span>${av(p.id, 28)} ${esc(p.name)} ${p.user ? '' : `<span class="tag">${t('no account')}</span>`}</span>
       ${d.started || !o.includes(p.id) ? '' : `<button class="link danger" onclick="removePlayer(${p.id})" aria-label="${t('Remove {name}', { name: esc(p.name) })}">✕</button>`}</div>`).join('')}
-      <button class="add" style="margin:8px 0" onclick="addPlayers()">+ ${t('Add players without an account')}</button></div>
-    <h2 class="sec">${t('Accounts ({n})', { n: members.length })}</h2>
+      <button class="add" style="margin:8px 0" onclick="addPlayers()">+ ${t('Add players without an account')}</button></div>`;
+  if (adminPage === 'accounts') return back + `<h1>${t('Accounts ({n})', { n: members.length })}</h1>
     <div class="card" style="padding:4px 16px">${members.map(a => `<div class="member"><span>${own(a.id) ? av(own(a.id).id, 28) + ' ' : ''}${esc(a.username)}${a.is_admin ? ` · <b>${t('admin')}</b>` : ''}</span>
       ${a.id !== me.id ? `<span><button class="link" onclick="toggleAdmin('${a.id}',${!a.is_admin})">${a.is_admin ? t('Remove admin') : t('Make admin')}</button>
-        <button class="link danger" onclick="removeAccount('${a.id}','${esc(a.username)}')" aria-label="${t('Remove account {name}', { name: esc(a.username) })}">✕</button></span>` : ''}</div>`).join('')}</div>
-    <h2 class="sec">${t('Play background')}</h2><div class="card"><p class="mut" style="margin:0 0 8px">${t('Shown behind the Play tab for everyone.')}</p>
-      <button onclick="pickBg()">🖼 ${t('Change background')}</button> <button class="link" onclick="resetBg()">${t('Use default background')}</button>
-      <label class="field" style="margin:12px 0 0">${t('Photo dimming')}: <b id="dimv">${dim()}%</b><input type="range" min="0" max="90" step="5" value="${dim()}" oninput="previewDim(this.value)" onchange="saveDim(this.value)"></label></div>
-    <h2 class="sec">${t('Icons')}</h2><div class="card"><div class="seg" style="margin:0 0 8px">${[['neon', t('Neon')], ['minimal', t('Minimal')]].map(([k, l]) => `<button class="${iconSet() === k ? 'on' : ''}" onclick="saveIconSet('${k}')">${l}</button>`).join('')}</div>
-      <div class="iconrow">${['play', 'board', 'photos', 'stats', 'members', 'admin', 'logout', 'help'].map(svgIcon).join('')}</div><p class="mut" style="margin:6px 0 0">${t('The minimal set follows the light or dark theme.')}</p></div>
-    ${usageCard()}${scheduleForm()}${logCard()}
-    <div class="actions"><button class="link danger" onclick="eraseAll()">${t('Reset all scores')}</button></div>`;
+        <button class="link danger" onclick="removeAccount('${a.id}','${esc(a.username)}')" aria-label="${t('Remove account {name}', { name: esc(a.username) })}">✕</button></span>` : ''}</div>`).join('')}</div>`;
+  if (adminPage === 'usage') return back + usageCard();
+  if (adminPage === 'log') return back + logCard();
+  const row = (k, icon, label, value, page) => `<button class="srow" data-adm="${k}" onclick="${page ? `adminPage='${k}'` : `admPanel=admPanel==='${k}'?'':'${k}'`};render()"><span>${icon} ${label}</span><span class="mut">${value} ${!page && admPanel === k ? '▾' : '›'}</span></button>`;
+  const panel = (k, html) => admPanel === k ? `<div class="spanel">${html}</div>` : '';
+  const zones = ['Europe/Berlin', 'Europe/Bucharest', 'Europe/Zagreb', 'Europe/Stockholm', 'Europe/London', 'Europe/Paris', 'Europe/Rome', 'Europe/Madrid'];
+  const week = new Set(usage.filter(r => r.day > addDays(tzParts().date, -7)).map(r => r.user_id)).size, last = adminLog[0];
+  const pm = sched ? playMins() : 0, times = sched ? `${t('Start')} ${hhmm(pm - sched.opens_minutes)} · ${t('answers')} ${hhmm(pm - sched.rsvp_until_minutes)}` : '';
+  return `<div class="top"><button class="link" onclick="go(prevView)">← ${t('Back')}</button></div><h1>${t('Admin tools')}</h1>
+    <div class="card astatus"><span>👥 ${db.players.filter(p => !p.removed).length} ${t('players')}</span><span>🔑 ${members.length} ${t('accounts')}</span><span>📊 ${week} ${t('active, 7 days')}</span>
+      <span>${dbBehind ? `⚠ ${t('Database needs updates')}` : `✅ ${t('Database up to date')}`}</span></div>
+    <h2 class="sgroup">${t('People')}</h2><div class="card slist">
+      ${row('players', '👥', t('Players'), db.players.filter(p => !p.removed).length, true)}${row('accounts', '🔑', t('Accounts'), members.length, true)}</div>
+    <h2 class="sgroup">${t('Games and schedule')}</h2><div class="card slist">
+      ${sched ? row('schedule', '🗓', t('Play schedule'), `${esc(dayName(sched.dow))} ${hhmm(pm)}`) + panel('schedule', `<form onsubmit="saveSchedule(event)">
+        <label class="field">${t('Play day')}<select name="dow">${[1, 2, 3, 4, 5, 6, 0].map(x => `<option value="${x}" ${x === sched.dow ? 'selected' : ''}>${dayName(x)}</option>`).join('')}</select></label>
+        <label class="field">${t('Play time')}${timeSel('time', pm)}</label>
+        <label class="field">${t('Time zone')}<input type="text" name="tz" list="tzs" value="${esc(sched.tz)}" required autocapitalize="none"><datalist id="tzs">${zones.map(z => `<option value="${z}">`).join('')}</datalist></label>
+        <p class="msg" role="alert"></p><button class="primary" type="submit">${t('Save schedule')}</button></form>`)
+      + row('times', '⏱', t('Times'), times) + panel('times', `<form onsubmit="saveSchedule(event)">
+        <label class="field">${t('Members can press Start playing this many minutes before play time')}<input type="number" name="mins" min="0" max="720" value="${sched.opens_minutes}" required></label>
+        <label class="field">${t('Answers (in / out) close this many minutes before play time')}<input type="number" name="until" min="0" max="1440" value="${sched.rsvp_until_minutes}" required></label>
+        <label class="field">${t('The sign-up section is hidden this many minutes before play time')}<input type="number" name="hide" min="0" max="1440" value="${sched.rsvp_hide_minutes}" required></label>
+        <p class="msg" role="alert"></p><button class="primary" type="submit">${t('Save schedule')}</button></form>`) : ''}
+      <button class="srow" onclick="go('calendar')"><span>📅 ${t('Calendar')}</span><span class="mut">${t('extra days, cancelled days, old days')} ›</span></button></div>
+    <h2 class="sgroup">${t('Look')}</h2><div class="card slist">
+      ${row('bg', '🖼', t('Play background'), dim() ? `${t('Photo dimming')} ${dim()}%` : '')}${panel('bg', `<p class="mut" style="margin:0 0 8px">${t('Shown behind the Play tab for everyone.')}</p>
+        <button onclick="pickBg()">🖼 ${t('Change background')}</button> <button class="link" onclick="resetBg()">${t('Use default background')}</button>
+        <label class="field" style="margin:12px 0 0">${t('Photo dimming')}: <b id="dimv">${dim()}%</b><input type="range" min="0" max="90" step="5" value="${dim()}" oninput="previewDim(this.value)" onchange="saveDim(this.value)"></label>`)}
+      ${row('icons', '✏', t('Icons'), iconSet() === 'minimal' ? t('Minimal') : t('Neon'))}${panel('icons', `<div class="seg" style="margin:0 0 8px">${[['neon', t('Neon')], ['minimal', t('Minimal')]].map(([k, l]) => `<button class="${iconSet() === k ? 'on' : ''}" onclick="saveIconSet('${k}')">${l}</button>`).join('')}</div>
+        <div class="iconrow">${['play', 'board', 'photos', 'stats', 'members', 'admin', 'logout', 'help'].map(k => svgIcon(k)).join('')}</div><p class="mut" style="margin:6px 0 0">${t('The minimal set follows the light or dark theme.')}</p>`)}</div>
+    <h2 class="sgroup">${t('Insights')}</h2><div class="card slist">
+      ${row('usage', '📊', t('Usage'), `${week} ${t('active, 7 days')}`, true)}${row('log', '📜', t('Activity log'), last ? esc((last.actor_name || '') + ' ' + (LOG[last.action] || (() => last.action))(last.detail)) : '', true)}</div>
+    <h2 class="sgroup danger">${t('Danger zone')}</h2><div class="card slist">
+      ${row('danger', '⚠', t('Reset all scores'), '')}${panel('danger', `<p class="mut" style="margin:0 0 8px">${t('Reset ALL scores? This deletes every day, match and group photo for everyone. Players and accounts are kept. This cannot be undone.')}</p><button class="danger" onclick="eraseAll()">${t('Reset all scores')}</button>`)}</div>`;
 }
 
 // admins only: how the app is used (last 30 days): who is active, which tabs, what people do, and when
@@ -480,7 +496,7 @@ function render() {
   if (!loaded) { app.innerHTML = `<p class="mut">${t('Loading…')}</p>`; return; }
   const mp = db.players.find(p => p.user === session.user.id);
   const top = `<div class="top"><button class="me" onclick="go('profile')" aria-label="${t('Profile')}">${mp ? av(mp.id, 44) : '👤'}<span class="col"><span class="n">${esc(me.username || '')}</span></span></button>
-    <span class="bar">${me.is_admin && !asMember ? `<button class="link ico" onclick="toggleView()" aria-label="${t('View as member')}" title="${t('View as member')}">👁</button>` : ''}<button class="link ico" id="helpbtn" onclick="showHelp()" aria-label="${t('How it works')}" title="${t('How it works')}">${topIcon('help')}</button><button class="link" onclick="go('members')">${topIcon('members')}${t('Members')}</button>${isAdmin() ? `<button class="link" onclick="go('admin')" aria-label="${t('Admin tools')}" title="${t('Admin tools')}">${topIcon('admin')}${t('admin')}</button>` : ''}<button class="link" onclick="logout()">${topIcon('logout')}${t('Log out')}</button></span></div>`;
+    <span class="bar">${me.is_admin && !asMember ? `<button class="link ico" onclick="toggleView()" aria-label="${t('View as member')}" title="${t('View as member')}">👁</button>` : ''}<button class="link ico" id="helpbtn" onclick="showHelp()" aria-label="${t('How it works')}" title="${t('How it works')}">${topIcon('help')}</button><button class="link" onclick="go('members')">${topIcon('members')}${t('Members')}</button>${isAdmin() ? `<button class="link" onclick="adminPage='';admPanel='';go('admin')" aria-label="${t('Admin tools')}" title="${t('Admin tools')}">${topIcon('admin')}${t('admin')}</button>` : ''}<button class="link" onclick="logout()">${topIcon('logout')}${t('Log out')}</button></span></div>`;
   const behind = isAdmin() && dbBehind ? `<div class="strip"><span>⚠️ ${t('The database is missing updates, so some buttons may fail. Apply the newest migrations in Supabase (see SETUP.md).')}</span></div>` : '';
   const strip = behind + (me.is_admin && asMember ? `<div class="strip"><span>👁 ${t('You are viewing the app as a member. Admin tools are hidden.')}</span><button onclick="toggleView()">${t('Back to admin')}</button></div>` : '');
   app.innerHTML = top + strip + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'admin' && isAdmin() ? adminView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : view === 'backfill' && bf ? backfillView() : `<h1>${t('Photos')}</h1><div class="seg" style="margin-bottom:12px"><button class="${photosTab === 'photos' ? 'on' : ''}" onclick="photosTab='photos';render()">📷 ${t('Photos')}</button><button class="${photosTab === 'receipts' ? 'on' : ''}" onclick="photosTab='receipts';render()">🧾 ${t('Receipts')}</button></div><div id="gal"></div>`);

@@ -10,7 +10,7 @@ run('admin views the app as a member', async h => {
   await A.waitForFunction(() => (members.find(m => m.username === 'Bob') || {}).share_stats === false);
 
   // as admin: guest controls, remove buttons, a start button that always works
-  await A.click('[aria-label="Admin tools"]'); assert((await A.locator('[aria-label^="Remove"]').count()) > 0 ); await A.click('nav >> text=Play');
+  await A.click('[aria-label="Admin tools"]'); await A.click('[data-adm=players]'); assert((await A.locator('[aria-label^="Remove"]').count()) > 0 ); await A.click('nav >> text=Play');
   assert(await A.locator('button:has-text("Start playing")').isEnabled());
   await A.click('[aria-label="View as member"]');
   await A.waitForSelector('.strip');

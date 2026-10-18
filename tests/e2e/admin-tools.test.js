@@ -22,7 +22,7 @@ run('admin tools', async h => {
   await B.click('text=Undo last'); await A.waitForFunction(() => cur().matches.length === 2);
   await A.click('nav >> text=Play'); await A.click('text=Close day'); await A.waitForSelector('text=Day closed');
   await A.click('nav >> text=Board'); await A.click('text=Delete this day'); await A.waitForSelector('text=No matches yet');
-  await A.click('[aria-label="Admin tools"]'); await A.waitForSelector('text=Activity log');
+  await A.click('[aria-label="Admin tools"]'); await A.click('[data-adm=log]'); await A.waitForSelector('text=Activity log');
   const log = await A.textContent('#app');
   assert(log.includes('Bob') && log.includes('removed match 3'), 'the undo is attributed to Bob');
   assert(log.includes('Anna') && log.includes('closed the day') && /deleted the day .* with 2 matches/.test(log), 'closing and deleting are attributed to Anna');
@@ -36,7 +36,7 @@ run('admin tools', async h => {
   // a member adds a guest and may remove that guest again
   await B.click('text=Add guest player'); await B.click('summary:has-text("Sitting out")'); await B.waitForSelector('[aria-label="Remove Eve"]');
   await B.click('[aria-label="Remove Eve"]'); await h.until(() => st.players.find(p => p.name === 'Eve').active === false, 'guest removed by the member who added it');
-  await A.click('[aria-label="Admin tools"]');
+  await A.click('[aria-label="Admin tools"]'); await A.click('[data-adm=players]');
   // admins add several players without an account at once; they join the next match day
   A.promptAnswer = 'Ana, Mihai'; await A.click('text=Add players without an account');
   await h.until(() => ['Ana', 'Mihai'].every(n => st.players.some(p => p.name === n && !p.user_id)), 'two players added');
@@ -46,14 +46,15 @@ run('admin tools', async h => {
   await B.click('nav >> text=Stats'); await B.click('nav >> text=Board'); await B.click('nav >> text=Play');
   await h.until(() => st.usage.some(r => r.what === 'stats') && st.usage.some(r => r.what === 'board'), 'tabs counted');
   assert(h.rpc('u2', { table: 'usage', op: 'select', f: [] }).data.length === 0, 'members cannot read usage');
-  await A.reload(); await A.click('[aria-label="Admin tools"]'); await A.waitForSelector('text=Usage (last 30 days)');
+  await A.reload(); await A.click('[aria-label="Admin tools"]'); await A.click('[data-adm=usage]'); await A.waitForSelector('text=Usage (last 30 days)');
   const ut = await A.textContent('.usage'); assert(ut.includes('Most used') && ut.includes('Bob') && ut.includes('last seen'), ut.slice(0, 200));
   // icons: an admin switches everyone to the minimal line icons
-  await A.click('.seg >> text=Minimal'); await h.until(() => st.schedule[0].icon_set === 'minimal', 'icon set saved');
+  await A.click('text=← Admin tools'); await A.click('[data-adm=icons]'); await A.click('.seg >> text=Minimal'); await h.until(() => st.schedule[0].icon_set === 'minimal', 'icon set saved');
   await A.waitForFunction(() => document.querySelectorAll('nav svg.lic').length === 4 && document.querySelectorAll('.top svg.lic').length >= 3);
   await B.reload(); await B.waitForFunction(() => document.querySelectorAll('nav svg.lic').length === 4);
   // photo dimming: the admin's slider is saved for everyone, members have no slider
   assert.equal(await B.locator('input[type=range]').count(), 0, 'members cannot set the dimming');
+  await A.click('[data-adm=bg]');
   await A.locator('input[type=range]').evaluate(el => { el.value = 40; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); });
   await h.until(() => st.schedule[0].bg_dim === 40, 'dimming saved');
   assert.equal(await A.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--dim').trim()), '0.4');
