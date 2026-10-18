@@ -206,3 +206,6 @@
   .usage p{margin:8px 0} .usage .tiles{margin:0}
   .ubars{display:flex;gap:6px;align-items:flex-end;height:58px} .ubar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px} .ubar i{display:block;width:100%;min-height:2px;border-radius:4px;background:var(--acc)} .ubar small{font-size:var(--fs-xs);color:var(--mut)}
   .urow{padding:8px 0;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:2px} .urow small{color:var(--mut);font-size:var(--fs-xs)} .urow .mut{margin:0;font-size:var(--fs-xs)}
+  /* minimal line icons: take the text colour, the accent when the tab is selected */
+  .lic{width:26px;height:26px;display:block} nav .lic{color:var(--mut)} nav [aria-current=page] .lic{color:var(--acc)} .top .lic{color:var(--text)} .top .ico .lic{width:28px;height:28px}
+  .iconrow{display:flex;justify-content:space-between;color:var(--text)} .iconrow .lic{width:24px;height:24px}

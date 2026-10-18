@@ -17,7 +17,7 @@ let db = { players: [], days: [] }, members = [], me = {}, session = null, loade
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
-const DB_VERSION = 20261104; // bump together with db_version() in the newest migration
+const DB_VERSION = 20261105; // bump together with db_version() in the newest migration
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
 let usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, bgLoaded = false, rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
@@ -324,6 +324,8 @@ const loadBg = async () => {
   document.documentElement.style.setProperty('--pbg', u ? `url("${u.signedUrl}")` : 'url(bg-play.jpg)');
 };
 const openStats = id => { statsId = id; go('stats'); };
+const iconSet = () => (sched && sched.icon_set) || 'neon';
+const saveIconSet = k => act(async () => ok(await sb.from('schedule').update({ icon_set: k }).eq('id', true)), () => { if (sched) sched.icon_set = k; });
 const dim = () => (sched && sched.bg_dim) || 0;
 const previewDim = v => { document.documentElement.style.setProperty('--dim', v / 100); dimv.textContent = v + '%'; };
 const saveDim = v => act(async () => ok(await sb.from('schedule').update({ bg_dim: +v }).eq('id', true)), () => { if (sched) sched.bg_dim = +v; });

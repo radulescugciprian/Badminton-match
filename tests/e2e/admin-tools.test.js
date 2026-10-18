@@ -48,6 +48,10 @@ run('admin tools', async h => {
   assert(h.rpc('u2', { table: 'usage', op: 'select', f: [] }).data.length === 0, 'members cannot read usage');
   await A.reload(); await A.click('[aria-label="Admin tools"]'); await A.waitForSelector('text=Usage (last 30 days)');
   const ut = await A.textContent('.usage'); assert(ut.includes('Most used') && ut.includes('Bob') && ut.includes('last seen'), ut.slice(0, 200));
+  // icons: an admin switches everyone to the minimal line icons
+  await A.click('.seg >> text=Minimal'); await h.until(() => st.schedule[0].icon_set === 'minimal', 'icon set saved');
+  await A.waitForFunction(() => document.querySelectorAll('nav svg.lic').length === 4 && document.querySelectorAll('.top svg.lic').length >= 3);
+  await B.reload(); await B.waitForFunction(() => document.querySelectorAll('nav svg.lic').length === 4);
   // photo dimming: the admin's slider is saved for everyone, members have no slider
   assert.equal(await B.locator('input[type=range]').count(), 0, 'members cannot set the dimming');
   await A.locator('input[type=range]').evaluate(el => { el.value = 40; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); });

@@ -311,6 +311,8 @@ function adminView() {
     <h2 class="sec">${t('Play background')}</h2><div class="card"><p class="mut" style="margin:0 0 8px">${t('Shown behind the Play tab for everyone.')}</p>
       <button onclick="pickBg()">🖼 ${t('Change background')}</button> <button class="link" onclick="resetBg()">${t('Use default background')}</button>
       <label class="field" style="margin:12px 0 0">${t('Photo dimming')}: <b id="dimv">${dim()}%</b><input type="range" min="0" max="90" step="5" value="${dim()}" oninput="previewDim(this.value)" onchange="saveDim(this.value)"></label></div>
+    <h2 class="sec">${t('Icons')}</h2><div class="card"><div class="seg" style="margin:0 0 8px">${[['neon', t('Neon')], ['minimal', t('Minimal')]].map(([k, l]) => `<button class="${iconSet() === k ? 'on' : ''}" onclick="saveIconSet('${k}')">${l}</button>`).join('')}</div>
+      <div class="iconrow">${['play', 'board', 'photos', 'stats', 'members', 'admin', 'logout', 'help'].map(svgIcon).join('')}</div><p class="mut" style="margin:6px 0 0">${t('The minimal set follows the light or dark theme.')}</p></div>
     ${usageCard()}${scheduleForm()}${logCard()}
     <div class="actions"><button class="link danger" onclick="eraseAll()">${t('Reset all scores')}</button></div>`;
 }
@@ -406,7 +408,21 @@ async function openPhoto(id) {
 }
 
 const drawReactions = () => { const el = document.getElementById('rx'); if (el && lbDay) el.innerHTML = reactionBar(lbDay); };
-const ICON = k => `<img class="on" src="ic-${k}-on.png" alt=""><img class="off" src="ic-${k}-off.png" alt="">`;
+// two icon sets, chosen by an admin for everyone: the neon pictures, or minimal line icons that take the text colour
+const LINE = {
+  play: '<circle cx="12" cy="18" r="3"/><path d="M9.6 16.2 6 4h12l-3.6 12.2M7.2 8.5h9.6M10.2 4l.9 11.2M13.8 4l-.9 11.2"/>',
+  board: '<path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3.5 3.8M16 6h3a3 3 0 0 1-3.5 3.8M12 13v4M8.5 20h7M10 17h4"/>',
+  photos: '<path d="M4 8h3.2l1.8-2.8h6L16.8 8H20v11H4z"/><circle cx="12" cy="13.2" r="3.3"/>',
+  stats: '<path d="M4 20h16M7 16.5V12M12 16.5V7.5M17 16.5V10"/>',
+  members: '<circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9" r="2.5"/><path d="M15.6 14.2A4.5 4.5 0 0 1 21 18.5"/>',
+  admin: '<circle cx="8" cy="12" r="4"/><path d="M12 12h9M17.5 12v3M20.5 12v2.2"/>',
+  logout: '<path d="M10 4H5v16h5M14 8l4 4-4 4M18 12H9"/>',
+  help: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.4c-.6.3-1 .8-1 1.4v.6"/><path d="M12 17h.01"/>',
+};
+const svgIcon = k => `<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LINE[k]}</svg>`;
+const ICON = k => iconSet() === 'minimal' ? svgIcon(k) : `<img class="on" src="ic-${k}-on.png" alt=""><img class="off" src="ic-${k}-off.png" alt="">`;
+const TOPIMG = { members: 'tm-members.png', admin: 'tm-adminkey.png', logout: 'tm-logout.png', help: 'tm-help.png' };
+const topIcon = k => iconSet() === 'minimal' ? svgIcon(k) : `<img src="${TOPIMG[k]}" alt="">`;
 const NAV = { play: () => ICON('play') + '<span>' + t('Play') + (session && loaded && invites().length ? ' •' : '') + '</span>', board: () => ICON('board') + '<span>' + t('Board') + '</span>', photos: () => ICON('photos') + '<span>' + t('Photos') + '</span>', stats: () => ICON('stats') + '<span>' + t('Stats') + '</span>' };
 
 function render() {
@@ -423,7 +439,7 @@ function render() {
   if (!loaded) { app.innerHTML = `<p class="mut">${t('Loading…')}</p>`; return; }
   const mp = db.players.find(p => p.user === session.user.id);
   const top = `<div class="top"><button class="me" onclick="go('profile')" aria-label="${t('Profile')}">${mp ? av(mp.id, 44) : '👤'}<span class="col"><span class="n">${esc(me.username || '')}</span></span></button>
-    <span class="bar">${me.is_admin && !asMember ? `<button class="link ico" onclick="toggleView()" aria-label="${t('View as member')}" title="${t('View as member')}">👁</button>` : ''}<button class="link ico" id="helpbtn" onclick="showHelp()" aria-label="${t('How it works')}" title="${t('How it works')}"><img src="tm-help.png" alt=""></button><button class="link" onclick="go('members')"><img src="tm-members.png" alt="">${t('Members')}</button>${isAdmin() ? `<button class="link" onclick="go('admin')" aria-label="${t('Admin tools')}" title="${t('Admin tools')}"><img src="tm-adminkey.png" alt="">${t('admin')}</button>` : ''}<button class="link" onclick="logout()"><img src="tm-logout.png" alt="">${t('Log out')}</button></span></div>`;
+    <span class="bar">${me.is_admin && !asMember ? `<button class="link ico" onclick="toggleView()" aria-label="${t('View as member')}" title="${t('View as member')}">👁</button>` : ''}<button class="link ico" id="helpbtn" onclick="showHelp()" aria-label="${t('How it works')}" title="${t('How it works')}">${topIcon('help')}</button><button class="link" onclick="go('members')">${topIcon('members')}${t('Members')}</button>${isAdmin() ? `<button class="link" onclick="go('admin')" aria-label="${t('Admin tools')}" title="${t('Admin tools')}">${topIcon('admin')}${t('admin')}</button>` : ''}<button class="link" onclick="logout()">${topIcon('logout')}${t('Log out')}</button></span></div>`;
   const behind = isAdmin() && dbBehind ? `<div class="strip"><span>⚠️ ${t('The database is missing updates, so some buttons may fail. Apply the newest migrations in Supabase (see SETUP.md).')}</span></div>` : '';
   const strip = behind + (me.is_admin && asMember ? `<div class="strip"><span>👁 ${t('You are viewing the app as a member. Admin tools are hidden.')}</span><button onclick="toggleView()">${t('Back to admin')}</button></div>` : '');
   app.innerHTML = top + strip + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'admin' && isAdmin() ? adminView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : view === 'backfill' && bf ? backfillView() : `<h1>${t('Photos')}</h1><div class="seg" style="margin-bottom:12px"><button class="${photosTab === 'photos' ? 'on' : ''}" onclick="photosTab='photos';render()">📷 ${t('Photos')}</button><button class="${photosTab === 'receipts' ? 'on' : ''}" onclick="photosTab='receipts';render()">🧾 ${t('Receipts')}</button></div><div id="gal"></div>`);
