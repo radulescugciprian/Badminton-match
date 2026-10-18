@@ -236,3 +236,5 @@
   /* compact podium in the theme's own colours: card-coloured steps with a medal-coloured top edge */
   .podium{margin:8px 0 14px;gap:6px} .pod .av{--s:40px;margin:2px 0} .pod .medal{font-size:20px;line-height:1.1} .pod .pn{font-size:var(--fs-sm)} .pod .pw{font-size:var(--fs-xs);margin-bottom:4px}
   .podium .bar{height:calc(var(--h) * .42);background:var(--card);border:1px solid var(--line);border-top:3px solid var(--c);color:var(--text);font-size:var(--fs-lg);border-radius:10px 10px 0 0}
+  /* leave / join during play */
+  .lineup{margin-top:14px} .lineup .row{margin-bottom:5px} .lineup .row button{margin-left:auto}

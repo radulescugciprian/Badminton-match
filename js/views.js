@@ -213,7 +213,12 @@ function play() {
       ${admin ? `<button class="link" onclick="closeDay()" ${n ? '' : 'disabled'}>🏁 ${t('Close day')}</button>` : ''}
       <button class="link" onclick="newDayBtn()">${t('Next match day')}</button>
       ${admin ? `<button class="link danger" onclick="resetDay()">${t('Reset day')}</button>` : ''}
-    </div>`;
+    </div>
+    <details class="fold lineup" ${lineupOpen ? 'open' : ''} ontoggle="lineupOpen=this.open"><summary>${t('Someone leaving or arriving?')}</summary>
+      ${d.order.map((id, i) => i < d.mode
+        ? `<div class="row">${av(id, 28)} <b>${name(id)}</b>${d.mode > 2 ? `<button class="link danger" onclick="changeLineup(${id},true)">${t('Leaves')}</button>` : ''}</div>`
+        : d.mode < 5 ? `<div class="row">${av(id, 28)} <span class="mut">${name(id)}</span><button class="link" onclick="changeLineup(${id},false)">${t('Joins')}</button></div>` : '').join('')}
+      <p class="mut">${t('The rotation starts again from the next match.')}</p></details>`;
 }
 
 // Board: Day / Month / All time with arrows, a podium, ranked rows (record, form, rank change), a minimum of 3 games

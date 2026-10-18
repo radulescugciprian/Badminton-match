@@ -17,10 +17,10 @@ let db = { players: [], days: [] }, members = [], me = {}, session = null, loade
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
-const DB_VERSION = 20261105; // bump together with db_version() in the newest migration
+const DB_VERSION = 20261106; // bump together with db_version() in the newest migration
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
-let boardKind = 'doubles', boardOpen = null, memFilter = 'all', memSort = 'name', memOpen = null, adminPage = '', admPanel = '', prevView = 'play', profPanel = '', usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, bgLoaded = false, rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
+let boardKind = 'doubles', boardOpen = null, memFilter = 'all', memSort = 'name', memOpen = null, adminPage = '', admPanel = '', prevView = 'play', profPanel = '', usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, lineupOpen = false, bgLoaded = false, rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
 let view = 'play', tab = 'rating', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0, manualLogout = false, lostSession = false, asMember = false;   // asMember: an admin previewing the app as a normal member
 // the sign-in is kept on the phone (localStorage) and renewed automatically, so people stay logged in until they log out
 const sb = window.supabase && CONFIG.url && !CONFIG.url.includes('YOUR-')
@@ -71,7 +71,7 @@ async function refresh() {
   sched = !sc.error && sc.data[0] ? sc.data[0] : null;
   rsvps = rs.error ? [] : rs.data; reactions = rx.error ? [] : rx.data; // empty until the migration has been applied
   db.players = ok(p).map(x => ({ id: x.id, name: x.name, avatar: x.avatar, removed: !x.active, user: x.user_id, by: x.created_by, at: x.created_at }));
-  db.days = ok(d).sort((a, b) => a.closed === b.closed ? (a.closed ? (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) : 0) : a.closed ? -1 : 1).map(x => ({ id: x.id, date: x.date, order: x.player_order, mode: x.mode, started: x.started, closed: x.closed,
+  db.days = ok(d).sort((a, b) => a.closed === b.closed ? (a.closed ? (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) : 0) : a.closed ? -1 : 1).map(x => ({ id: x.id, date: x.date, order: x.player_order, mode: x.mode, rotFrom: x.rot_from || 0, started: x.started, closed: x.closed,
     photo: x.photo_path, matches: x.matches.sort((a, b) => a.n - b.n) }));
   if (!session) return; // logged out while loading
   members = ok(m); me = members.find(x => x.id === session.user.id);
@@ -366,10 +366,19 @@ const resetBg = () => act(async () => { ok(await sb.storage.from('photos').remov
 const nameTeam = n => { const v = prompt(t('Name for team {n}', { n }), tn[n]); if (v !== null) { tn[n] = v.trim().slice(0, 24); render(); } };
 // the next match of a day: the fixed rotation for 4 or 5 players, "winner stays" for 3 (player ids, not slots)
 function nextTeams(d) {
-  if (d.mode === 3) return winnerStays(d.order, d.matches);
-  const cyc = d.mode === 4 ? C4 : C5, [a, b, r] = cyc[d.matches.length % cyc.length];
+  const ms = d.matches.slice(d.rotFrom || 0); // the rotation restarts whenever someone leaves or joins
+  if (d.mode === 2) return { t1: [d.order[0]], t2: [d.order[1]], rest: null };
+  if (d.mode === 3) return winnerStays(d.order, ms);
+  const cyc = d.mode === 4 ? C4 : C5, [a, b, r] = cyc[ms.length % cyc.length];
   return { t1: slots(d.order, a), t2: slots(d.order, b), rest: r ? d.order[r - 1] : null };
 }
+// someone leaves early or arrives late: they play from / stop playing at the next match (2 to 5 players)
+const changeLineup = (id, leaving) => {
+  const d = cur(), on = d.order.slice(0, d.mode).filter(x => x !== id), off = d.order.slice(d.mode).filter(x => x !== id);
+  if (leaving && !confirm(t('{name} leaves? The next matches are played without them.', { name: player(id).name }))) return;
+  const order = leaving ? [...on, ...off, id] : [...on, id, ...off], mode = on.length + (leaving ? 0 : 1), rotFrom = d.matches.length;
+  act(patchDay(d.id, { player_order: order, mode, rot_from: rotFrom }), () => Object.assign(d, { order, mode, rotFrom }));
+};
 const recordWin = team => {
   if (performance.now() - lastWin < 700) return; lastWin = performance.now(); // a double tap must not record two matches
   primeAudio();
