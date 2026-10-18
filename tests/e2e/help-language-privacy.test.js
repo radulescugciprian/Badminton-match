@@ -61,7 +61,7 @@ run('help, plain errors, languages, privacy and the schedule editor', async h =>
   assert((await A.locator('select[aria-label=Player] option').allTextContents()).some(x => x.includes('Dani') && x.includes('🔒')), 'admin sees all');
   await A.selectOption('select[aria-label=Player]', { label: 'Dani 🔒' }); await A.waitForSelector('text=keeps these stats private');
   // the leaderboard still shows results for everyone
-  await C.click('nav >> text=Board'); await C.click('.seg >> text=General');
+  await C.click('nav >> text=Board'); await C.click('.seg >> text=All time');
   assert((await C.textContent('#app')).includes('Dani'), 'results stay visible');
   await B.click('.top .me'); await B.click('.check >> nth=0'); await B.waitForFunction(() => document.querySelector('.check input').checked === true);   // Bob shares again
   await C.click('.seg >> text=Rating'); await C.waitForFunction(() => !document.getElementById('app').textContent.includes('private'));

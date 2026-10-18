@@ -78,7 +78,7 @@ run('sign-up list, ratings, badges, result card and reactions', async h => {
   assert((await A.textContent('.calnav')).includes('2026'), 'the month leaderboard shows the month');
   await A.click('nav >> text=Stats'); await A.waitForSelector('text=Head-to-head');
   await A.click('nav >> text=Board'); await A.click('.seg >> text=Rating');
-  await A.click('.seg >> text=Day'); await A.waitForSelector('text=Smashers');                              // match list shows the team name
+  await A.click('.seg >> text=Day'); await A.click('summary:has-text("Matches")'); await A.waitForSelector('text=Smashers');                              // match list shows the team name
   await A.screenshot({ path: require('os').tmpdir() + '/board2.png', fullPage: true });
   // ---- admin resets the answers for the coming play date
   await A.click('nav >> text=Play'); await A.click('text=Start next match day'); await A.waitForSelector('text=Reset answers');

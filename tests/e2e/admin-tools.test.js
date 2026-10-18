@@ -9,19 +9,19 @@ run('admin tools', async h => {
   await sleep(300);
 
   // standings: the database count equals the local count, and the General board shows them
-  await A.click('nav >> text=Board'); await A.click('.seg >> text=General'); await A.waitForSelector('.podium');
+  await A.click('nav >> text=Board'); await A.click('.seg >> text=All time'); await A.waitForSelector('.podium');
   assert(await A.evaluate(() => std !== null && JSON.stringify(allTime()) === JSON.stringify(stats(db.days.flatMap(d => d.matches)))), 'database standings = local standings');
   assert(h.calls.includes('standings'));
 
   // match times are recorded and shown
-  await A.click('.seg >> text=Day'); await A.waitForSelector('h2.sec:has-text("Matches")');
+  await A.click('.seg >> text=Day'); await A.click('summary:has-text("Matches")'); await A.waitForSelector('.mrow');
   assert(/\d\d:\d\d/.test(await A.textContent('.mrow')), 'a time next to each match');
   assert(st.matches.every(m => m.created_at), 'matches are timestamped');
 
   // Bob (a member) undoes the last match; Anna closes the day and deletes it: all of it lands in the log, only admins can read it
   await B.click('text=Undo last'); await A.waitForFunction(() => cur().matches.length === 2);
   await A.click('nav >> text=Play'); await A.click('text=Close day'); await A.waitForSelector('text=Day closed');
-  await A.click('nav >> text=Board'); await A.click('text=Delete this day'); await A.waitForSelector('text=No matches yet');
+  await A.click('nav >> text=Board'); await A.click('.more summary'); await A.click('text=Delete this day'); await A.waitForSelector('text=No matches yet');
   await A.click('[aria-label="Admin tools"]'); await A.click('[data-adm=log]'); await A.waitForSelector('text=Activity log');
   const log = await A.textContent('#app');
   assert(log.includes('Bob') && log.includes('removed match 3'), 'the undo is attributed to Bob');
