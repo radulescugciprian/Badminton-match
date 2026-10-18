@@ -645,6 +645,8 @@ function saveSchedule(e) { // admins only; the database also refuses unknown tim
 // ---- stats
 const pct = r => (r.p ? r.w / r.p : 0);
 const byWins = (a, b) => b.w - a.w || pct(b) - pct(a) || a.name.localeCompare(b.name);
+// Month and All time rank by win rate (ties: more wins, then more games); players need 3 games to be ranked
+const byRate = (a, b) => pct(b) - pct(a) || b.w - a.w || b.p - a.p || a.name.localeCompare(b.name);
 function stats(matches) {
   const s = new Map(db.players.map(p => [p.id, { id: p.id, name: p.name, w: 0, p: 0 }]));
   for (const m of matches) {
@@ -656,7 +658,7 @@ function stats(matches) {
 // the month leaderboard: matches of the days in month `ym` (YYYY-MM); champions are the winners of finished months
 const monthMatches = ym => db.days.filter(d => d.date.slice(0, 7) === ym).flatMap(d => d.matches);
 const monthChamps = () => [...new Set(db.days.filter(d => d.matches.length).map(d => d.date.slice(0, 7)))]
-  .filter(ym => ym < tzParts().date.slice(0, 7)).map(ym => ({ ym, id: stats(monthMatches(ym))[0].id }));
+  .filter(ym => ym < tzParts().date.slice(0, 7)).map(ym => { const r = stats(monthMatches(ym)).filter(x => x.p >= 3).sort(byRate)[0] || stats(monthMatches(ym))[0]; return { ym, id: r.id }; });
 const monthName = ym => new Date(ym + '-15T12:00:00Z').toLocaleDateString(LOCALE[lang], { month: 'long', year: 'numeric', timeZone: 'UTC' });
 let lbMonth = null;
 const dayShift = n => { const days = db.days.filter(d => d.matches.length), i = Math.max(0, days.findIndex(d => d.id === selId)), cur_ = selId && i >= 0 && days[i].id === selId ? i : days.length - 1, k = Math.min(days.length - 1, Math.max(0, cur_ + n)); selId = days[k] && days[k].id; render(); };

@@ -229,3 +229,4 @@
   .up{color:#22c55e;font-size:var(--fs-xs);font-weight:700} .down{color:var(--danger);font-size:var(--fs-xs);font-weight:700}
   .youbar{position:sticky;bottom:calc(84px + env(safe-area-inset-bottom));margin:8px 0;padding:8px 14px;border-radius:12px;background:var(--nav);box-shadow:inset 0 0 0 1px var(--acc);font-weight:600;text-align:center}
   .pod{cursor:pointer} .calnav{position:relative} .more{position:absolute;right:-6px;top:100%;z-index:3} .more summary{list-style:none;cursor:pointer;padding:2px 10px;font-size:20px;color:var(--mut)} .more[open] button{background:var(--bg);border:1px solid var(--line);padding:8px 12px;border-radius:10px;white-space:nowrap}
+  .rate{display:block;height:5px;border-radius:3px;background:var(--line);margin:4px 0 2px;overflow:hidden;max-width:140px} .rate i{display:block;height:100%;background:var(--acc)} .brow .bn small{font-size:var(--fs-xs)}

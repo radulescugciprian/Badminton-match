@@ -224,12 +224,12 @@ function board() {
   const prevYm = new Date(Date.UTC(+ym.slice(0, 4), +ym.slice(5, 7) - 2, 1)).toISOString().slice(0, 7), di = sel ? days.indexOf(sel) : -1;
   const ms = tab === 'all' ? db.days.flatMap(d => d.matches) : tab === 'month' ? monthMatches(ym) : sel ? sel.matches : [];
   const prevMs = tab === 'all' ? days.slice(0, -1).flatMap(d => d.matches) : tab === 'month' ? monthMatches(prevYm) : di > 0 ? days[di - 1].matches : [];
-  const rows = tab === 'all' ? allTime() : stats(ms), ranked = rows.filter(r => r.p >= min), few = rows.filter(r => r.p < min);
-  const prevRank = new Map(stats(prevMs).filter(r => r.p >= min).map((r, i) => [r.id, i + 1])), mine = db.players.find(p => p.user === session.user.id);
+  const order = tab === 'day' ? byWins : byRate, rows = (tab === 'all' ? allTime() : stats(ms)).sort(order), ranked = rows.filter(r => r.p >= min), few = rows.filter(r => r.p < min);
+  const prevRank = new Map(stats(prevMs).sort(order).filter(r => r.p >= min).map((r, i) => [r.id, i + 1])), mine = db.players.find(p => p.user === session.user.id);
   const form = id => ms.filter(m => m.t1.includes(id) || m.t2.includes(id)).slice(-5).map(m => `<i class="${(m.win === 1 ? m.t1 : m.t2).includes(id) ? 'w' : 'l'}"></i>`).join('');
   const move = (id, i) => { const p = prevRank.get(id); return !p || p === i + 1 ? '' : p > i + 1 ? `<span class="up">▲${p - i - 1}</span>` : `<span class="down">▼${i + 1 - p}</span>`; };
   const rowOf = (r, i) => `<button class="rank brow ${mine && r.id === mine.id ? 'me' : ''}" onclick="boardOpen=boardOpen===${r.id}?null:${r.id};render()"><span class="r">${i === null ? '–' : i + 1}</span>${av(r.id, 32)}
-      <span class="bn"><b>${esc(r.name)}</b><span class="form">${form(r.id)}</span></span><span class="mut" style="margin:0">${r.w}–${r.p - r.w}</span><b>${Math.round(pct(r) * 100)}%</b>${i === null ? '' : move(r.id, i)}</button>${boardOpen === r.id ? miniProfile(player(r.id)) : ''}`;
+      <span class="bn"><b>${esc(r.name)}</b>${tab === 'day' ? `<span class="form">${form(r.id)}</span>` : `<span class="rate"><i style="width:${Math.round(pct(r) * 100)}%"></i></span><small class="mut">${tp('{n} matches', r.p)}</small>`}</span><span class="mut" style="margin:0">${r.w}–${r.p - r.w}</span><b>${Math.round(pct(r) * 100)}%</b>${i === null ? '' : move(r.id, i)}</button>${boardOpen === r.id ? miniProfile(player(r.id)) : ''}`;
   const podium = [[0, '🥇', '#facc15', 120], [1, '🥈', '#cbd5e1', 90], [2, '🥉', '#d97706', 64]].map(([i, medal, c, h]) => ranked[i] ?
     `<div class="pod" onclick="boardOpen=boardOpen===${ranked[i].id}?null:${ranked[i].id};render()"><div class="medal">${medal}</div>${av(ranked[i].id)}<div class="pn">${esc(ranked[i].name)}</div>
      <div class="pw">${ranked[i].w}–${ranked[i].p - ranked[i].w} · ${Math.round(pct(ranked[i]) * 100)}%</div>
