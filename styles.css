@@ -212,3 +212,10 @@
   .pw{position:relative} .pw input{padding-right:48px} .pw .link{position:absolute;right:4px;top:50%;transform:translateY(-50%);padding:8px 10px;font-size:18px}
   .lic.inl{display:inline-block;width:1.15em;height:1.15em;vertical-align:-.2em} .lic.i-check{color:#22c55e} .lic.i-cross,.lic.i-ban,.lic.i-trash{color:var(--danger)} .lic.i-warn{color:#facc15}
   .row .lic.inl{width:1.05em;height:1.05em}
+  /* Profile: settings list with rows that open a small panel */
+  .sgroup{font-size:var(--fs-sm);text-transform:uppercase;letter-spacing:.08em;color:var(--mut);margin:16px 4px 6px}
+  .slist{padding:0 14px} .srow{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;background:none;padding:14px 0;border-bottom:1px solid var(--line);border-radius:0;color:var(--text);text-align:left;font-weight:600}
+  .slist>.srow:last-child{border-bottom:0} .srow .mut{margin:0;font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%} .srow.static{cursor:default}
+  .spanel{padding:10px 0 14px;border-bottom:1px solid var(--line)} .spanel .check{display:flex;gap:10px;align-items:flex-start}
+  .quick{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px} .quick button{padding:10px 4px;font-size:var(--fs-sm)}
+  .seg.mini{display:inline-grid;grid-template-columns:auto auto;margin:0;padding:2px} .seg.mini button{padding:4px 10px}

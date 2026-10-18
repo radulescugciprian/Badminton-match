@@ -20,7 +20,7 @@ let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-ma
 const DB_VERSION = 20261105; // bump together with db_version() in the newest migration
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
-let usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, bgLoaded = false, rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
+let prevView = 'play', profPanel = '', usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, bgLoaded = false, rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
 let view = 'play', tab = 'day', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0, manualLogout = false, lostSession = false, asMember = false;   // asMember: an admin previewing the app as a normal member
 // the sign-in is kept on the phone (localStorage) and renewed automatically, so people stay logged in until they log out
 const sb = window.supabase && CONFIG.url && !CONFIG.url.includes('YOUR-')
@@ -239,7 +239,7 @@ function showHelp() {
 }
 
 // ---- actions
-const go = v => { view = v; render(); };
+const go = v => { if (v !== view && view !== 'profile') prevView = view; view = v; render(); };
 // usage counters for the admins (which tab, which action); errors are ignored so the app never waits on this
 const track = v => { try { sb.rpc('track', { v }).then(() => {}, () => {}); } catch {} };
 // a guest (no account) who has not played for 8 weeks stops joining new days; they can be brought back from the setup screen

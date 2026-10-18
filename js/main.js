@@ -1,6 +1,6 @@
 // Start-up: connect the pieces and draw the first screen (data.js and views.js are already loaded).
 sb && sb.auth.onAuthStateChange((ev, s) => {
-  if (ev === 'PASSWORD_RECOVERY') { view = 'profile'; render(); } // arrived from the reset-password email
+  if (ev === 'PASSWORD_RECOVERY') { view = 'profile'; profPanel = 'password'; render(); } // arrived from the reset-password email
   const was = !!session; session = s; authReady = true; authMode = 'in';
   if (!s && was && ev === 'SIGNED_OUT' && !manualLogout) lostSession = true;      // signed out by expiry, not by the person: say so on the login page
   if (s) { lostSession = false; manualLogout = false; if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } // ask the browser not to wipe our saved sign-in

@@ -26,7 +26,7 @@ run('help, plain errors, languages, privacy and the schedule editor', async h =>
   await A.click('text=Back to log in'); await A.fill('[name=login]', 'anna'); await A.fill('[name=password]', 'secret1'); await A.click('button[type=submit]'); await A.waitForSelector('text=Next match day');
   
   // ---- language: follows the account
-  await A.click('.top .me'); await A.selectOption('.field select', 'ro');
+  await A.click('.top .me'); await A.click('[data-row=lang]'); await A.selectOption('.field select', 'ro');
   await A.waitForSelector('text=Profilul tău');
   assert((await A.textContent('nav')).includes('Joc') && (await A.textContent('nav')).includes('Clasament'), 'navigation translated');
   assert(st.profiles[0].lang === 'ro', 'saved on the account');
@@ -45,7 +45,7 @@ run('help, plain errors, languages, privacy and the schedule editor', async h =>
   for (let i = 0; i < 4; i++) await win(A, 1);
   await A.waitForSelector('text=Match 5');
   await B.click('.top .me'); await B.waitForSelector('text=Your profile');
-  await B.click('.check >> nth=0'); await B.waitForFunction(() => document.querySelector('.check input').checked === false);
+  await B.click('[data-row=share]'); await B.click('.check >> nth=0'); await B.waitForFunction(() => document.querySelector('.check input').checked === false);
   assert(st.profiles.find(p => p.username === 'Bob').share_stats === false, 'choice saved');
   // Cleo (member): Dani (Bob's player) is private
   await C.waitForFunction(() => members.find(m => m.username === 'Bob').share_stats === false);   // Cleo's phone has heard about it

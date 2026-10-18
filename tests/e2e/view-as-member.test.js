@@ -6,7 +6,7 @@ run('admin views the app as a member', async h => {
   const A = await mk(), B = await mk();
   await signup(A, 'Anna', 'a@x.com', '1'); await signup(B, 'Bob', 'b@x.com', '2');
   assert.equal(await B.locator('[aria-label="View as member"]').count(), 0, 'members do not get the switch');
-  await B.click('.top .me'); await B.click('.check >> nth=0');                    // Bob keeps his stats private
+  await B.click('.top .me'); await B.click('[data-row=share]'); await B.click('.check >> nth=0');                    // Bob keeps his stats private
   await A.waitForFunction(() => (members.find(m => m.username === 'Bob') || {}).share_stats === false);
 
   // as admin: guest controls, remove buttons, a start button that always works

@@ -22,27 +22,38 @@ function login_() {
     <div class="actions">${langPicker()}</div>`;
 }
 
+// Profile: a card with quick links, then a short settings list; each row opens its own small panel (one at a time)
 function profileView() {
   const mine = db.players.find(p => p.user === session.user.id), an = analyse(db.days, db.players), ms = mine && stats(db.days.flatMap(d => d.matches)).find(r => r.id === mine.id);
   const pst = mine && ms && { rating: an.rating.get(mine.id), p: ms.p, w: ms.w };
-  return `<h1>${t('Your profile')}</h1>
-    ${mine ? `<div class="card" style="margin-bottom:20px"><div style="display:flex;align-items:center;gap:14px">${av(mine.id, 72)}
+  const row = (k, icon, label, value) => `<button class="srow" data-row="${k}" aria-expanded="${profPanel === k}" onclick="profPanel=profPanel==='${k}'?'':'${k}';render()"><span>${icon} ${label}</span><span class="mut">${value} ${profPanel === k ? '▾' : '›'}</span></button>`;
+  const panel = (k, html) => profPanel === k ? `<div class="spanel">${html}</div>` : '';
+  const games = mine ? slideDates().map(d => { const a = answerOf(mine.id, d), open = rsvpPhase(d) === 'open' || isAdmin();
+    return `<div class="member"><span>${esc(niceDate(d))} · ${hhmm(playMinsOn(d))}${extraOf(d) ? ` <span class="tag">${t('Extra game')}</span>` : ''}</span>
+      ${open ? `<span class="seg mini"><button class="${a === 'in' ? 'on' : ''}" onclick="setRsvp(${mine.id}, ${a === 'in' ? 'null' : "'in'"}, '${d}')">✅</button><button class="${a === 'out' ? 'on' : ''}" onclick="setRsvp(${mine.id}, ${a === 'out' ? 'null' : "'out'"}, '${d}')">❌</button></span>` : `<span class="mut">🔒</span>`}</div>`; }).join('') : '';
+  return `<div class="top"><button class="link" onclick="go(prevView)">← ${t('Back')}</button></div><h1>${t('Your profile')}</h1>
+    ${mine ? `<div class="card" style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:14px">${av(mine.id, 64)}
       <div style="flex:1;min-width:0"><b style="font-size:var(--fs-lg)">${esc(mine.name)}</b><div class="mut" style="margin:0">@${esc(me.username || '')} · ${isAdmin() ? t('admin') : t('Member')}</div></div>
-      <button onclick="avatar(${mine.id})" >📷 ${t('Change photo')}</button></div>
-      <div class="mut" style="margin:12px 0 0">${t('Email')}: ${esc(session.user.email || '')}<br>${t('Member since')}: ${esc(niceDate(String(session.user.created_at || '').slice(0, 10) || tzParts().date, { day: 'numeric', month: 'long', year: 'numeric' }))}</div>
-      ${pst ? `<div class="tiles" style="margin-top:12px"><div class="tile"><b>${Math.round(pst.rating)}</b>${t('Rating')}</div><div class="tile"><b>${pst.p}</b>${t('matches')}</div><div class="tile"><b>${pst.p ? Math.round(100 * pst.w / pst.p) : 0}%</b>${t('win rate')}</div></div>
-        <button class="add" style="margin:12px 0 0" onclick="statsId=${mine.id};go('stats')">📊 ${t('View my stats')}</button>` : ''}</div>` : ''}
-    <label class="field">${t('Language')}${langPicker()}</label>
-    <div class="field">${t('Theme')}<div class="seg" style="margin-top:6px">${[['auto', t('Auto')], ['light', t('Light')], ['dark', t('Dark')]].map(([k, l]) => `<button class="${themePref() === k ? 'on' : ''}" onclick="setTheme('${k}')">${l}</button>`).join('')}</div></div>
-    <label class="card check"><input type="checkbox" ${me.share_stats !== false ? 'checked' : ''} onchange="setShare(this.checked)">
-      <span>🔓 ${t('Share my rating and stats with the others')}<br><small class="mut">${t('The leaderboards always show results.')}</small></span></label>
-    <label class="card check"><input type="checkbox" ${fxOn() ? 'checked' : ''} onchange="setFx(this.checked)">
-      <span>🎉 ${t('Confetti and sound when a match is recorded')}</span></label>
-    <button class="add" onclick="showHelp()">❓ ${t('How it works')}</button>
-    <h2 style="margin:0 0 8px">${t('New password')}</h2>
-    <form onsubmit="newPassword(event)">
-      <input type="password" name="password" placeholder="${t('New password (6+ characters)')}" required minlength="6" autocomplete="new-password">
-      <p class="msg" role="alert"></p><button class="primary" type="submit">${t('Save password')}</button></form>`;
+      <button onclick="avatar(${mine.id})" aria-label="${t('Change photo')}">📷 ${t('Change photo')}</button></div>
+      ${pst ? `<div class="tiles" style="margin-top:12px"><div class="tile"><b>${Math.round(pst.rating)}</b>${t('Rating')}</div><div class="tile"><b>${pst.p}</b>${t('matches')}</div><div class="tile"><b>${pst.p ? Math.round(100 * pst.w / pst.p) : 0}%</b>${t('win rate')}</div></div>` : ''}
+      <div class="quick"><button onclick="statsId=${mine.id};go('stats')">📊 ${t('My stats')}</button><button onclick="profPanel=profPanel==='games'?'':'games';render()">📅 ${t('My next games')}</button><button onclick="photosTab='receipts';go('photos')">🧾 ${t('Receipts')}</button></div>
+      ${profPanel === 'games' ? `<div class="spanel" style="margin-top:10px">${games}</div>` : ''}</div>` : ''}
+    <h2 class="sgroup">${t('Appearance')}</h2><div class="card slist">
+      ${row('lang', '🌐', t('Language'), LANGS[lang])}${panel('lang', `<label class="field" style="margin:0">${langPicker()}</label>`)}
+      ${row('theme', '🌗', t('Theme'), { auto: t('Auto'), light: t('Light'), dark: t('Dark') }[themePref()])}${panel('theme', `<div class="seg" style="margin:0">${[['auto', t('Auto')], ['light', t('Light')], ['dark', t('Dark')]].map(([k, l]) => `<button class="${themePref() === k ? 'on' : ''}" onclick="setTheme('${k}')">${l}</button>`).join('')}</div>`)}</div>
+    <h2 class="sgroup">${t('Privacy and fun')}</h2><div class="card slist">
+      ${row('share', '🔓', t('Share my stats'), me.share_stats !== false ? t('On') : t('Off'))}${panel('share', `<label class="check"><input type="checkbox" ${me.share_stats !== false ? 'checked' : ''} onchange="setShare(this.checked)">
+        <span>${t('Share my rating and stats with the others')}<br><small class="mut">${t('The leaderboards always show results.')}</small></span></label>`)}
+      ${row('fx', '🎉', t('Confetti and sound'), fxOn() ? t('On') : t('Off'))}${panel('fx', `<label class="check"><input type="checkbox" ${fxOn() ? 'checked' : ''} onchange="setFx(this.checked);render()">
+        <span>${t('Confetti and sound when a match is recorded')}</span></label>`)}</div>
+    <h2 class="sgroup">${t('Account')}</h2><div class="card slist">
+      <div class="srow static"><span>✉ ${t('Email')}</span><span class="mut">${esc(session.user.email || '')}</span></div>
+      ${row('password', '🔒', t('Password'), t('Change'))}${panel('password', `<h2 style="margin:0 0 8px">${t('New password')}</h2><form onsubmit="newPassword(event)">
+        <input type="password" name="password" placeholder="${t('New password (6+ characters)')}" required minlength="6" autocomplete="new-password">
+        <p class="msg" role="alert"></p><button class="primary" type="submit">${t('Save password')}</button></form>`)}
+      ${row('help', '❔', t('Help and tour'), '')}${panel('help', `<button class="add" style="margin:0 0 8px" onclick="showHelp()">${t('How it works')}</button><button class="add" style="margin:0" onclick="startTour()">▶ ${t('Show me around')}</button>`)}
+      <button class="srow" onclick="logout()"><span>⎋ ${t('Log out')}</span><span class="mut">›</span></button></div>
+    <p class="mut" style="text-align:center">${t('Member since')}: ${esc(niceDate(String(session.user.created_at || '').slice(0, 10) || tzParts().date, { day: 'numeric', month: 'long', year: 'numeric' }))}</p>`;
 }
 
 function rsvpCard(date = nextPlayDate(), first = true) {
