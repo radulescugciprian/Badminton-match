@@ -9,7 +9,7 @@ run('leave early, join late', async h => {
   const day = () => st.days[st.days.length - 1], name = id => st.players.find(p => p.id === id).name;
   const leave = async () => { const n = day().mode, who = name(day().player_order[n - 1]);
     await A.click(`.lineup .row:has-text("${who}") >> text=Leaves`); await until(() => day().mode === n - 1, `${who} left`); return day().player_order[n - 1]; };
-  await A.click('summary:has-text("Someone leaving")');
+  await A.click('summary:has-text("More")'); await A.click('summary:has-text("Someone leaving")');
   const gone = await leave();
   assert.equal(day().rot_from, 2, 'the rotation restarts after match 2');
   await win(A, 1); await until(() => st.matches.length === 3, 'match 3');

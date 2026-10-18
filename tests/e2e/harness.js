@@ -41,6 +41,7 @@ async function run(name, body) {
   };
   h.until = async (fn, what = 'condition', ms = 8000) => { const t0 = Date.now(); while (!fn()) { if (Date.now() - t0 > ms) throw new Error('timed out waiting for ' + what); await sleep(50); } };   // wait for the server side of something
   h.win = async (p, team = 1) => { await sleep(750); await p.click(`text=Team ${team} Wins`); };   // a second tap within 0.7s counts as a double tap
+  h.more = p => p.evaluate(() => { moreOpen = true; render(); });   // open the play screen's ⋯ More menu (Close day, Reset day…)
   let failed = false;
   try { await body(h); console.log('ok  ' + name); }
   catch (e) {

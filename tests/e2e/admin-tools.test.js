@@ -20,7 +20,7 @@ run('admin tools', async h => {
 
   // Bob (a member) undoes the last match; Anna closes the day and deletes it: all of it lands in the log, only admins can read it
   await B.click('text=Undo last'); await A.waitForFunction(() => cur().matches.length === 2);
-  await A.click('nav >> text=Play'); await A.click('text=Close day'); await A.waitForSelector('text=Day closed');
+  await A.click('nav >> text=Play'); await h.more(A); await A.click('text=Close day'); await A.waitForSelector('text=Day closed');
   await A.click('nav >> text=Board'); await A.click('.more summary'); await A.click('text=Delete this day'); await A.waitForSelector('text=No matches yet');
   await A.click('[aria-label="Admin tools"]'); await A.click('[data-adm=log]'); await A.waitForSelector('text=Activity log');
   const log = await A.textContent('#app');

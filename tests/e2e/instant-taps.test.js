@@ -29,5 +29,5 @@ run('instant taps', async h => {
   st.failInsert = false;
 
   // sign-up answers and photo reactions are instant as well
-  await A.click('text=Close day'); await A.click('text=Next match day').catch(() => {});
+  await h.more(A); await A.click('text=Close day'); await A.click('text=Next match day').catch(() => {});
 });

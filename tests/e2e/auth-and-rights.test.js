@@ -41,7 +41,7 @@ run('sign-in, rights, photos and the play schedule', async h => {
   assert(B.alerts.some(a => a.includes('already recorded')), 'duplicate warned: ' + B.alerts);
   assert(st.matches.length === 2, 'no duplicate match stored');
   // close day (admin) -> member photo -> shared library
-  await A.click('nav >> text=Play'); await A.click('text=Close day'); await B.waitForSelector('text=Day closed');
+  await A.click('nav >> text=Play'); await h.more(A); await A.click('text=Close day'); await B.waitForSelector('text=Day closed');
   await B.click('text=Take group photo'); await B.setInputFiles('#shot', S + 'red.png');
   await B.waitForSelector('text=Photo saved'); await A.waitForSelector('text=Photo saved');
   await A.click('nav >> text=Photos'); await A.waitForSelector('.grid img');
@@ -73,7 +73,7 @@ run('sign-in, rights, photos and the play schedule', async h => {
   assert(A.alerts.includes('Password changed.'));
   await A.click('text=Log out'); await A.fill('[name=login]', 'anna'); await A.fill('[name=password]', 'brandnew1'); await A.click('button[type=submit]'); await A.waitForSelector('text=Day closed');
   // reset day (admin) clears matches + photo for everyone
-  await A.click('text=Reopen day'); await A.click('text=Reset day'); await B.waitForSelector('text=No photos yet'); await B.click('nav >> text=Play'); await B.waitForSelector('text=Next match day');
+  await A.click('text=Reopen day'); await h.more(A); await A.click('text=Reset day'); await B.waitForSelector('text=No photos yet'); await B.click('nav >> text=Play'); await B.waitForSelector('text=Next match day');
   assert(st.matches.length === 0 && Object.keys(st.files).length === 0, 'reset cleaned matches and photo');
   // admin tools: guests are marked, accounts can be removed, scores can be reset
   await A.click('nav >> text=Play'); await A.waitForSelector('text=Next match day');
@@ -93,7 +93,7 @@ run('sign-in, rights, photos and the play schedule', async h => {
   assert(st.matches.length === 0 && st.players.length === 5 && st.profiles.length === 1, 'scores reset, players and accounts kept');
   // delete a photo (card button) and delete single days (admin)
   await A.click('nav >> text=Play'); await A.waitForSelector('text=Next match day');
-  await A.click('text=Start playing'); await win(A, 1); await A.click('text=Close day'); await A.waitForSelector('text=Day closed');
+  await A.click('text=Start playing'); await win(A, 1); await h.more(A); await A.click('text=Close day'); await A.waitForSelector('text=Day closed');
   await A.click('text=Take group photo'); await A.setInputFiles('#shot', S + 'red.png'); await A.waitForSelector('text=Photo saved');
   await A.click('nav >> text=Photos'); await A.waitForSelector('.grid img');
   await A.click('.grid .x'); await A.waitForSelector('text=No photos yet');

@@ -55,8 +55,6 @@
   .team small{color:var(--c);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
   .rest{text-align:center;background:var(--card);border:1px dashed var(--line);border-radius:14px;padding:12px;margin-bottom:16px;color:var(--mut)}
   .rest b{color:var(--text)}
-  .win{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .win button{padding:28px 8px;font-size:var(--fs-lg);font-weight:800;color:#fff;background:var(--c)}
 
   /* board */
   .seg{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));background:var(--card);border-radius:12px;padding:4px;margin-bottom:12px}
@@ -115,7 +113,6 @@
   .confetti{position:fixed;inset:0;pointer-events:none;z-index:20}
   .rx{padding:8px 12px;border-radius:999px;font-size:var(--fs-md);background:var(--line);color:var(--text)}
   .rx.on{background:var(--acc);color:var(--on-acc)}
-  .tname{background:none;color:var(--mut);padding:4px;font-size:var(--fs-xs);display:block;margin:4px auto 0}
 
   /* settings, help */
   .field{display:block;margin-bottom:12px;font-size:var(--fs-sm);color:var(--mut)}
@@ -163,7 +160,7 @@
   :root[data-theme=light] nav img,:root[data-theme=light] .top img:not(.av){filter:brightness(.55) saturate(1.8) contrast(1.15)}
   /* light theme, photo shown as it is: text straight on the photo is white; light surfaces (cards, buttons, bars) keep dark text */
   :root[data-theme=light] body:is(.out,[data-view=play],[data-view=board],[data-view=photos],[data-view=stats]){--text:#fff;--mut:#eaf2ed;--ts:rgba(0,0,0,.8);--line-t:#c4d8cd}
-  :root[data-theme=light] :is(.card,button:not(.link,.primary,.win button),select,input,.row,.team,.rest,.seg,.tile,.badge,.cal .d,.top,nav,.rsvp,.rx){--text:#10231a;--mut:#3d5a4c;--ts:rgba(255,255,255,.95);color:var(--text)}
+  :root[data-theme=light] :is(.card,.stage,.toast,button:not(.link,.primary),select,input,.row,.team,.rest,.seg,.tile,.badge,.cal .d,.top,nav,.rsvp,.rx){--text:#10231a;--mut:#3d5a4c;--ts:rgba(255,255,255,.95);color:var(--text)}
   .field select{width:100%;margin-top:6px}
   .next{margin:12px 0;padding:12px;border-radius:14px;background:var(--card);border:1px solid var(--line);text-align:center}
   .next small{display:block;color:var(--mut);font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:8px}
@@ -238,3 +235,16 @@
   .podium .bar{height:calc(var(--h) * .42);background:var(--card);border:1px solid var(--line);border-top:3px solid var(--c);color:var(--text);font-size:var(--fs-lg);border-radius:10px 10px 0 0}
   /* leave / join during play */
   .lineup{margin-top:14px} .lineup .row{margin-bottom:5px} .lineup .row button{margin-left:auto}
+  /* play screen: a calm panel over the photo, tap a team to record its win */
+  .stage{background:rgba(var(--ovc),.55);border-radius:18px;padding:12px;margin:0 -4px;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+  .pchips{display:flex;flex-wrap:wrap;gap:6px} .pchips span{background:var(--chip);border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:var(--fs-xs);font-weight:600;color:var(--mut)}
+  .stage .num{margin:4px 0 0;line-height:1.1}
+  .stage .teams{margin:12px 0 8px}
+  button.team{display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:2px;padding:12px 8px 0;font:inherit;color:var(--text);cursor:pointer;overflow:hidden;min-height:150px}
+  button.team .who b{font-size:var(--fs-lg)} button.team:active{transform:scale(.98)}
+  .wbar{align-self:stretch;margin:10px -8px 0;padding:12px 4px;background:var(--c);color:#fff;font-weight:800;font-size:var(--fs-md)}
+  .stage .rest{display:flex;align-items:center;justify-content:center;gap:6px;padding:4px;margin:0 0 6px;background:none;border:0;font-size:var(--fs-sm)}
+  .upnext{font-size:var(--fs-sm);color:var(--mut);text-align:center;margin:4px 0 10px}
+  .stage .actions{margin-top:10px} .pmore{margin:4px 0 0;text-align:center} .pmore .actions{margin-top:0} .pmore .lineup{text-align:left}
+  .toast{position:fixed;left:16px;right:16px;max-width:448px;margin:auto;bottom:calc(96px + env(safe-area-inset-bottom));z-index:20;background:var(--bg);border:1px solid var(--acc);border-radius:14px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;box-shadow:0 6px 20px rgba(0,0,0,.45)}
+  :root[data-theme=light] .stage{background:rgba(var(--ovc),.8)}

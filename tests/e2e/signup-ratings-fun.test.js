@@ -37,7 +37,7 @@ run('sign-up list, ratings, badges, result card and reactions', async h => {
   
   // ---- play: team names, celebration
   await A.click('text=Start playing'); await A.waitForSelector('text=Match 1');
-  A.promptAnswer = 'Smashers'; await A.click('.team >> nth=0 >> .tname'); await A.waitForSelector('text=Smashers');
+  A.promptAnswer = 'Smashers'; await A.click('summary:has-text("More")'); await A.click('text=Name for team 1'); await A.waitForSelector('text=Smashers');
   await win(A, 1);
   await A.waitForSelector('canvas.confetti', { timeout: 3000 });
   await A.waitForSelector('text=Match 2');
@@ -47,7 +47,7 @@ run('sign-up list, ratings, badges, result card and reactions', async h => {
   await A.waitForSelector('text=Match 5');
   
   // ---- close day: player of the night, awards, result card
-  await A.click('text=Close day'); await A.waitForSelector('text=Player of the night');
+  await h.more(A); await A.click('text=Close day'); await A.waitForSelector('text=Player of the night');
   assert((await A.textContent('.potn')).includes('Vali'), 'Vali won everything');
   assert((await A.textContent('#app')).includes('Perfect night'), 'perfect night award');
   const [card] = await Promise.all([A.waitForEvent('download'), A.click('text=Share result card')]);

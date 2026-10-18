@@ -196,29 +196,35 @@ function play() {
       <button class="add" onclick="newDayBtn()">${t('Start next match day')}</button>
       ${admin ? `<div class="actions"><button class="link" onclick="reopenDay()">${t('Reopen day')}</button></div>` : ''}`;
   }
-  const { t1, t2, rest } = nextTeams(d), bo3 = series(d.matches.slice(d.rotFrom || 0).map(m => m.win)).w;
-  return `<p class="mut" style="margin:0">${esc(d.date)} · ${t('{n} played', { n })}${d.mode === 3 ? ' · ' + t('Winner stays on, at most 3 games in a row.') : ''}${d.mode === 4 ? ' · ' + t('Best of 3: {a}–{b}', { a: bo3[0], b: bo3[1] }) : ''}</p>
+  const { t1, t2, rest } = nextTeams(d), ms = d.matches.slice(d.rotFrom || 0), bo3 = series(ms.map(m => m.win)).w, last = ms[ms.length - 1];
+  const won = last && (last.win === 1 ? last.t1 : last.t2)[0], streak = won === t1[0] ? ms.slice().reverse().findIndex(m => ![...m.t1, ...m.t2].includes(won)) : 0;
+  const rule = d.mode === 3 ? t('Winner stays · game {n}/3', { n: (streak < 0 ? ms.length : streak) + 1 }) : d.mode === 4 ? t('Best of 3: {a}–{b}', { a: bo3[0], b: bo3[1] }) : '';
+  // the match after this one, for either result (they differ with "winner stays" and at the end of a best of 3)
+  const peek = w => nextTeams({ ...d, matches: [...d.matches, { t1, t2, rest, win: w }] }), vs = m => `${pair(m.t1)} <span class="mut">${t('vs')}</span> ${pair(m.t2)}`;
+  const [n1, n2] = [vs(peek(1)), vs(peek(2))];
+  const team = k => `<button class="team" style="--c:var(--t${k})" onclick="recordWin(${k})"><small>${esc(tn[k] || (k === 1 ? t('Team 1') : t('Team 2')))}</small>${(k === 1 ? t1 : t2).map(who).join('')}<span class="wbar">🏆 ${k === 1 ? t('Team 1 Wins') : t('Team 2 Wins')}</span></button>`;
+  const fresh = n && Date.now() - lastRec < 5000, lw = fresh && d.matches[n - 1];
+  return `<div class="stage">
+    <div class="pchips"><span>${t1.length === 1 ? t('Singles') : t('Doubles')}</span>${rule ? `<span>${rule}</span>` : ''}<span>${t('{n} played', { n })}</span></div>
     <p class="num">${t('Match {n}', { n: n + 1 })}</p>
-    <div class="teams">
-      <div class="team" style="--c:var(--t1)"><small>${esc(tn[1] || t('Team 1'))}</small>${t1.map(who).join('')}<button class="tname" onclick="nameTeam(1)">✎ ${t('name')}</button></div>
-      <div class="team" style="--c:var(--t2)"><small>${esc(tn[2] || t('Team 2'))}</small>${t2.map(who).join('')}<button class="tname" onclick="nameTeam(2)">✎ ${t('name')}</button></div>
-    </div>
-    ${rest ? `<div class="rest">${t('Resting:')} <b>${name(rest)}</b></div>` : ''}
-    <div class="win">
-      <button style="--c:var(--t1)" onclick="recordWin(1)">${t('Team 1 Wins')}</button>
-      <button style="--c:var(--t2)" onclick="recordWin(2)">${t('Team 2 Wins')}</button>
-    </div>
-    <div class="actions">
-      <button class="link" onclick="undo()" ${n ? '' : 'disabled'}>↶ ${t('Undo last')}</button>
-      ${admin ? `<button class="link" onclick="closeDay()" ${n ? '' : 'disabled'}>🏁 ${t('Close day')}</button>` : ''}
-      <button class="link" onclick="newDayBtn()">${t('Next match day')}</button>
-      ${admin ? `<button class="link danger" onclick="resetDay()">${t('Reset day')}</button>` : ''}
-    </div>
-    <details class="fold lineup" ${lineupOpen ? 'open' : ''} ontoggle="lineupOpen=this.open"><summary>${t('Someone leaving or arriving?')}</summary>
+    <div class="teams">${team(1)}${team(2)}</div>
+    ${rest ? `<div class="rest">${av(rest, 22)} ${t('Resting:')} <b>${name(rest)}</b></div>` : ''}
+    <div class="upnext"><b>${t('Next')}:</b> ${n1 === n2 ? n1 : `<div>${t('If team {n} wins: {m}', { n: 1, m: n1 })}</div><div>${t('If team {n} wins: {m}', { n: 2, m: n2 })}</div>`}</div>
+    <div class="actions"><button class="link" onclick="undo()" ${n ? '' : 'disabled'}>↶ ${t('Undo last')}</button></div>
+    <details class="fold pmore" ${moreOpen ? 'open' : ''} ontoggle="moreOpen=this.open"><summary>⋯ ${t('More')}</summary>
+      <div class="actions">
+        <button class="link" onclick="nameTeam(1)">✎ ${t('Name for team {n}', { n: 1 })}</button><button class="link" onclick="nameTeam(2)">✎ ${t('Name for team {n}', { n: 2 })}</button>
+        ${admin ? `<button class="link" onclick="closeDay()" ${n ? '' : 'disabled'}>🏁 ${t('Close day')}</button>` : ''}
+        <button class="link" onclick="newDayBtn()">${t('Next match day')}</button>
+        ${admin ? `<button class="link danger" onclick="resetDay()">${t('Reset day')}</button>` : ''}
+      </div>
+      <details class="fold lineup" ${lineupOpen ? 'open' : ''} ontoggle="lineupOpen=this.open"><summary>${t('Someone leaving or arriving?')}</summary>
       ${d.order.map((id, i) => i < d.mode
         ? `<div class="row">${av(id, 28)} <b>${name(id)}</b>${d.mode > 2 ? `<button class="link danger" onclick="changeLineup(${id},true)">${t('Leaves')}</button>` : ''}</div>`
         : d.mode < 5 ? `<div class="row">${av(id, 28)} <span class="mut">${name(id)}</span><button class="link" onclick="changeLineup(${id},false)">${t('Joins')}</button></div>` : '').join('')}
-      <p class="mut">${t('The rotation starts again from the next match.')}</p></details>`;
+      <p class="mut">${t('The rotation starts again from the next match.')}</p></details></details>
+    ${lw ? `<div class="toast">✓ ${pair(lw.win === 1 ? lw.t1 : lw.t2)} <button class="link" onclick="lastRec=0;undo()">↶ ${t('Undo')}</button></div>` : ''}
+  </div>`;
 }
 
 // Board: Day / Month / All time with arrows, a podium, ranked rows (record, form, rank change), a minimum of 3 games
@@ -555,7 +561,7 @@ const TOUR = () => [
   ['.invite, .rsvp', '👋 ' + t('Welcome!'), t('Before each play day tap “I\'m in” or “I\'m out” here. The player list fills itself from the answers.')],
   ['#app ol .row', '👥 ' + t('The players'), t('The first 5 (or 4) in the list play, the others sit out. Move people with ▲ ▼ and pick 4 or 5 players above the list.')],
   ['.startbar', '▶️ ' + t('Start playing'), t('It opens shortly before play time. Who plays with whom shows 15 minutes before.')],
-  ['.win', '🏆 ' + t('Record the winner'), t('After every match tap the team that won. Everyone sees the scores live.')],
+  ['.teams', '🏆 ' + t('Record the winner'), t('After every match tap the team that won. Everyone sees the scores live.')],
   ['nav [data-v=board]', '🏆 ' + t('Board'), t('Leaderboards for the day, the month and all time, plus everyone\'s rating.')],
   ['nav [data-v=photos]', '📷 ' + t('Photos'), t('The group photo of each day, and receipts for extra courts or shuttles.')],
   ['nav [data-v=stats]', '📊 ' + t('Stats'), t('Your rating over time, badges, best partners and head-to-head records.')],
