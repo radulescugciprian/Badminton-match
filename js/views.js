@@ -288,14 +288,31 @@ function statsView() {
 }
 
 
+// Members: everyone once (player + account), who is coming next, filters and sorting, and a mini profile on tap
 function membersView() {
-  const own = id => db.players.find(p => p.user === id);
-  return `<h1>${t('Members')}</h1>
-    <h2 style="margin:0 0 8px">${t('Accounts ({n})', { n: members.length })}</h2>
-    <div class="card" style="padding:4px 16px;margin-bottom:20px">${members.map(m => `<div class="member"><span>${own(m.id) ? av(own(m.id).id, 28) + ' ' : ''}${esc(m.username)}${m.is_admin ? ` · <b>${t('admin')}</b>` : ''}</span></div>`).join('')}</div>
-    <h2 style="margin:0 0 8px">${t('Players')}</h2>
-    <div class="card" style="padding:4px 16px">${db.players.filter(p => !p.removed).map(p => `<div class="member"><span>${av(p.id, 28)} ${esc(p.name)}</span>
-      ${p.user ? `<span class="mut" style="margin:0">${esc((members.find(m => m.id === p.user) || {}).username || '')}</span>` : `<span class="tag">${t('no account')}</span>`}</div>`).join('')}</div>`;
+  const date = nextPlayDate(), an = analyse(db.days, db.players), mine = db.players.find(p => p.user === session.user.id), rel = mine ? relations(db.days, mine.id) : null;
+  const lastPlayed = id => (db.days.filter(d => d.matches.some(m => m.t1.includes(id) || m.t2.includes(id))).pop() || {}).date || '';
+  const acct = p => members.find(m => m.id === p.user), ans = id => answerOf(id, date), icon = id => ({ in: '✅', out: '❌' }[ans(id)] || '⏳');
+  let ps = db.players.filter(p => !p.removed).filter(p => memFilter === 'acct' ? p.user : memFilter === 'guest' ? !p.user : true);
+  ps = ps.sort(memSort === 'rating' ? (a, b) => (canSee(b.id) ? an.rating.get(b.id) : 0) - (canSee(a.id) ? an.rating.get(a.id) : 0)
+    : memSort === 'last' ? (a, b) => lastPlayed(b.id).localeCompare(lastPlayed(a.id)) : (a, b) => a.name.localeCompare(b.name));
+  const all = db.players.filter(p => !p.removed), cnt = k => all.filter(p => (ans(p.id) || 'none') === k).length;
+  const wl = x => x ? `${x.w}-${x.g - x.w}` : '–';
+  const detail = p => { const ms = stats(db.days.flatMap(d => d.matches)).find(r => r.id === p.id), seen = canSee(p.id);
+    return `<div class="spanel">${seen && ms ? `<div class="tiles"><div class="tile"><b>${Math.round(an.rating.get(p.id))}</b>${t('Rating')}</div><div class="tile"><b>${ms.p}</b>${t('matches')}</div><div class="tile"><b>${Math.round(100 * pct(ms))}%</b>${t('win rate')}</div></div>
+      <p class="mut" style="margin:8px 0 0">${t('Last played')}: ${lastPlayed(p.id) ? esc(niceDate(lastPlayed(p.id))) : '–'}${rel && mine.id !== p.id ? ` · ${t('Together')}: ${wl(rel.mate.get(p.id))} · ${t('Against')}: ${wl(rel.foe.get(p.id))}` : ''}</p>
+      <button class="add" style="margin:10px 0 0" onclick="statsId=${p.id};go('stats')">📊 ${t('View full stats')}</button>`
+      : `<p class="mut" style="margin:0">${seen ? t('No matches yet.') : '🔒 ' + t('{name} keeps these stats private.', { name: esc(p.name) })}</p>`}</div>`; };
+  return `<div class="top"><button class="link" onclick="go(prevView)">← ${t('Back')}</button></div><h1>${t('Members')}</h1>
+    <div class="card astatus one"><span>👥 ${all.length} ${t('players')} · ${members.length} ${t('accounts')}</span><span>📅 ${esc(niceDate(date))}</span>
+      <span>✅ ${cnt('in')} ${t('in')} · ❌ ${cnt('out')} ${t('out')} · ⏳ ${cnt('none')} ${t('no answer')}</span></div>
+    <div class="chips" style="margin:8px 0">${[['all', t('All')], ['acct', t('With account')], ['guest', t('Guests')]].map(([k, l]) => `<button class="chip ${memFilter === k ? 'in' : ''}" onclick="memFilter='${k}';render()">${l}</button>`).join('')}
+      <select class="sortsel" onchange="memSort=this.value;render()" aria-label="${t('Sort')}">${[['name', t('Name')], ['rating', t('Rating')], ['last', t('Last played')]].map(([k, l]) => `<option value="${k}" ${memSort === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+    <div class="card slist">${ps.map(p => { const a = acct(p);
+      return `<button class="srow mrow2" onclick="memOpen=memOpen===${p.id}?null:${p.id};render()" aria-expanded="${memOpen === p.id}"><span style="display:flex;align-items:center;gap:10px;min-width:0">${av(p.id, 36)}
+        <span style="min-width:0"><b>${esc(p.name)}</b>${a && a.is_admin ? ` <span class="adm-badge">${t('admin')}</span>` : ''}<br><small class="mut">${a ? '@' + esc(a.username) : `<span class="tag">${t('no account')}</span>`}</small></span></span>
+        <span>${icon(p.id)}</span></button>${memOpen === p.id ? detail(p) : ''}`; }).join('') || `<p class="mut">${t('Nobody here.')}</p>`}</div>
+    <button class="add" onclick="waShare(t('Join our badminton app: {link} Create an account and pick your name from the list so your results follow you.', { link: appLink() }))">💬 ${t('Invite to the app')}</button>`;
 }
 
 // every admin tool on one page (opened from the top bar)

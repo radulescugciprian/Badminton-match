@@ -220,3 +220,5 @@
   .quick{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px} .quick button{padding:10px 4px;font-size:var(--fs-sm)}
   .seg.mini{display:inline-grid;grid-template-columns:auto auto;margin:0;padding:2px} .seg.mini button{padding:4px 10px}
   .astatus{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:var(--fs-sm)} .sgroup.danger{color:var(--danger)}
+  .mrow2{padding:10px 0} .mrow2 small{font-weight:400} .adm-badge{font-size:11px;color:var(--acc);border:1px solid var(--acc);border-radius:999px;padding:0 6px;margin-left:4px} .sortsel{width:auto;margin-left:auto;padding:4px 8px}
+  .astatus.one{grid-template-columns:1fr}

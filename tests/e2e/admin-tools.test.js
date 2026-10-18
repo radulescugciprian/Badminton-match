@@ -66,5 +66,11 @@ run('admin tools', async h => {
   await A.click('nav >> text=Photos'); await A.click('.seg >> text=Receipts'); await A.waitForSelector('#gal .member');
   await B.waitForSelector('#gal .member'); await B.click('[aria-label="Delete this receipt?"]');
   await h.until(() => st.receipts.length === 0, 'receipt deleted by the member who added it');
+  // Members: one row per person, filters, a mini profile on tap, and an invite to share
+  await B.click('text=Members'); await B.waitForSelector('.mrow2');
+  const everyone = await B.locator('.mrow2').count(); await B.click('.chip >> text=Guests');
+  assert(await B.locator('.mrow2').count() < everyone && await B.locator('.mrow2 .tag').count() === await B.locator('.mrow2').count(), 'only guests');
+  await B.click('.chip >> text=All'); await B.click('.mrow2 >> nth=0'); await B.waitForSelector('.spanel');
+  await B.click('text=Invite to the app'); assert(decodeURIComponent(await B.evaluate(() => window.__wa)).includes('Join our badminton app'), 'invite shared');
   assert(h.assert && A.errs.length + B.errs.length === 0, 'no page errors');
 });
