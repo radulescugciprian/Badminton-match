@@ -378,6 +378,7 @@ async function gallery() {
       <img src="${urls[d.photo]}" alt=""><span>${esc(d.date)} · ${tp('{n} matches', d.matches.length)}<br>🏆 ${esc((stats(d.matches)[0] || { name: '-' }).name)}${KINDS.map(([k, e]) => { const n = reactions.filter(r => r.day_id === d.id && r.kind === k).length; return n ? ` ${e}${n}` : ''; }).join('')}</span></button>
       ${isAdmin() ? `<button class="x" onclick="removePhoto(${d.id})" aria-label="${t('Delete photo of {date}', { date: esc(d.date) })}">✕</button>` : ''}</div>`).join('')}</div>`
     : `<div class="empty">${t('No photos yet.')}<br>${t('Close the day and take the group photo.')}</div>`;
+  minimalize(gal);
 }
 async function receiptList() {
   const sig = {}, paths = receipts.map(r => r.photo_path).filter(Boolean);
@@ -390,6 +391,7 @@ async function receiptList() {
         <span style="min-width:0"><b>${esc(r.note || t('Receipt'))}</b>${r.amount != null ? ` · ${(+r.amount).toFixed(2)}` : ''}<br><span class="mut" style="margin:0">${who(r)} · ${esc(niceDate(r.created_at.slice(0, 10), { day: 'numeric', month: 'short', year: 'numeric' }))}</span></span></a>
       ${r.created_by === session.user.id || isAdmin() ? `<button class="link danger" onclick="removeReceipt(${r.id})" aria-label="${t('Delete this receipt?')}">✕</button>` : ''}</div>`).join('')}</div>`
     : `<div class="empty">${t('No receipts yet.')}<br>${t('Add one when you pay for an extra court or shuttles.')}</div>`);
+  minimalize(gal);
 }
 async function openPhoto(id) {
   const d = db.days.find(x => x.id === id), blob = await (await fetch(urls[d.photo])).blob(), u = URL.createObjectURL(blob);
@@ -400,7 +402,7 @@ async function openPhoto(id) {
     <a href="${u}" download="${nm}">⬇ ${t('Save')}</a>
     ${navigator.canShare && navigator.canShare({ files: [f] }) ? `<button id="sh">${t('Share')}</button>` : ''}
     ${isAdmin() ? `<button id="rm" class="danger">${t('Delete')}</button>` : ''}<button id="cl">${t('Close')}</button></div>`;
-  document.body.append(el);
+  document.body.append(el); minimalize(el);
   lbDay = id; drawReactions();
   el.querySelector('#cl').onclick = () => { el.remove(); URL.revokeObjectURL(u); lbDay = null; };
   el.querySelector('#cd').onclick = () => shareCard(id);
@@ -421,7 +423,33 @@ const LINE = {
   logout: '<path d="M10 4H5v16h5M14 8l4 4-4 4M18 12H9"/>',
   help: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.4c-.6.3-1 .8-1 1.4v.6"/><path d="M12 17h.01"/>',
 };
-const svgIcon = k => `<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LINE[k]}</svg>`;
+Object.assign(LINE, {
+  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  chat: '<path d="M4 5h16v11H9l-5 4z"/>',
+  calendar: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>', cross: '<path d="M6 6l12 12M18 6L6 18"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', pencil: '<path d="M4 20l1-4L16 5l3 3L8 19z"/>',
+  share: '<path d="M12 15V4M8 8l4-4 4 4M5 13v6h14v-6"/>', bell: '<path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0"/>',
+  receipt: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/>', image: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 8"/>',
+  ban: '<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>', undo: '<path d="M4 9h11a5 5 0 0 1 0 10h-4M8 5 4 9l4 4"/>',
+  trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>', go: '<path d="M8 5l11 7-11 7z"/>',
+  lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>', mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+  flag: '<path d="M5 21V4h12l-2 4 2 4H5"/>', warn: '<path d="M12 3l10 18H2zM12 10v5M12 18h.01"/>', save: '<path d="M12 4v11M8 11l4 4 4-4M5 20h14"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/>',
+});
+// minimal set: the emoji used as icons anywhere in the app become line icons (reactions, medals and badges stay as they are)
+const EMO = { '👁': 'eye', '💬': 'chat', '📅': 'calendar', '✅': 'check', '❌': 'cross', '✕': 'cross', '⏳': 'clock', '✎': 'pencil', '📤': 'share', '🔔': 'bell',
+  '🧾': 'receipt', '🖼': 'image', '🚫': 'ban', '↺': 'undo', '↶': 'undo', '🗑': 'trash', '▶': 'go', '🔒': 'lock', '✉': 'mail', '🏁': 'flag', '📷': 'photos',
+  '📊': 'stats', '🏆': 'board', '🏸': 'play', '👥': 'members', '❔': 'help', '❓': 'help', '⚙': 'gear', '⚠': 'warn', '🔑': 'admin', '⬇': 'save' };
+const EMO_RE = new RegExp('(' + Object.keys(EMO).join('|') + ')\uFE0F?', 'gu');
+function minimalize(root) {
+  if (!root || iconSet() !== 'minimal') return;
+  const skip = n => /^(OPTION|SELECT|TEXTAREA|SCRIPT|STYLE|TITLE)$/.test(n.parentNode.nodeName) || n.parentNode.closest('#rx, .podium, .badge, .rx, .lic');
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), hits = [];
+  while (w.nextNode()) { EMO_RE.lastIndex = 0; if (EMO_RE.test(w.currentNode.data) && !skip(w.currentNode)) hits.push(w.currentNode); }
+  for (const n of hits) { const s = document.createElement('span'); s.innerHTML = esc(n.data).replace(EMO_RE, (_, e) => svgIcon(EMO[e], 'inl i-' + EMO[e])); n.replaceWith(...s.childNodes); }
+}
+const svgIcon = (k, cls = '') => `<svg class="lic ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LINE[k]}</svg>`;
 const ICON = k => iconSet() === 'minimal' ? svgIcon(k) : `<img class="on" src="ic-${k}-on.png" alt=""><img class="off" src="ic-${k}-off.png" alt="">`;
 const TOPIMG = { members: 'tm-members.png', admin: 'tm-adminkey.png', logout: 'tm-logout.png', help: 'tm-help.png' };
 const topIcon = k => iconSet() === 'minimal' ? svgIcon(k) : `<img src="${TOPIMG[k]}" alt="">`;
@@ -447,6 +475,7 @@ function render() {
   app.innerHTML = top + strip + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'admin' && isAdmin() ? adminView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : view === 'backfill' && bf ? backfillView() : `<h1>${t('Photos')}</h1><div class="seg" style="margin-bottom:12px"><button class="${photosTab === 'photos' ? 'on' : ''}" onclick="photosTab='photos';render()">📷 ${t('Photos')}</button><button class="${photosTab === 'receipts' ? 'on' : ''}" onclick="photosTab='receipts';render()">🧾 ${t('Receipts')}</button></div><div id="gal"></div>`);
   drawReactions();
   const sl = document.querySelector('.slides'); shownSlide = slideIdx; if (sl && slideIdx) sl.scrollLeft = slideIdx * sl.clientWidth;
+  minimalize(app);
   if (view === 'photos') gallery().catch(e => { gal.innerHTML = `<p class="msg">${esc(friendly(e))}</p>`; });
 }
 
@@ -480,6 +509,7 @@ function startTour() {
     Object.assign(spot.style, { left: r.left - pad + 'px', top: r.top - pad + 'px', width: r.width + 2 * pad + 'px', height: r.height + 2 * pad + 'px' });
     tip.innerHTML = `<b>${title}</b><p>${text}</p><div class="tnav"><span class="mut">${i + 1} / ${steps.length}</span>
       <button class="link" id="tskip">${t('Skip')}</button>${i ? `<button id="tback">${t('Back')}</button>` : ''}<button class="primary" id="tnext">${i === steps.length - 1 ? t('Done') : t('Next')}</button></div>`;
+    minimalize(tip);
     const below = r.bottom + 12 + tip.offsetHeight < innerHeight;  // the bubble goes under the highlight when it fits, otherwise above
     tip.style.top = (below ? r.bottom + pad + 10 : Math.max(8, r.top - pad - 10 - tip.offsetHeight)) + 'px';
     tip.querySelector('#tnext').onclick = () => (++i < steps.length ? show() : end());

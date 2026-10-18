@@ -233,7 +233,7 @@ function showHelp() {
     ${rulesHtml()}
     <p class="mut">🔒 ${t('Admins can see how often each person opens each screen (only counts, nothing you type).')}</p>
     <button class="primary" id="gotit">${t('Got it')}</button></div>`;
-  document.body.append(el);
+  document.body.append(el); minimalize(el);
   el.querySelector('#tourbtn').onclick = () => { el.remove(); startTour(); };
   el.querySelector('#gotit').onclick = () => { try { localStorage.setItem('seenHelp', '1'); } catch {} el.remove(); };
 }
@@ -501,7 +501,7 @@ function extraForm(iso, old) {
     <p class="msg" role="alert"></p><button class="primary" type="submit">${old ? t('Save') : t('Add extra game')}</button>
     ${old && canCallOff(iso) ? `<button class="link" type="button" id="xoff">${old.called_off ? '↺ ' + t('Bring the game back') : '🚫 ' + t('Cancel the game (keep the booking)')}</button>` : ''}
     ${old ? `<button class="link danger" type="button" id="xdel">${t('Remove extra game')}</button>` : ''}<button class="link" type="button" id="xcancel">${t('Cancel')}</button></form>`;
-  document.body.append(el);
+  document.body.append(el); minimalize(el);
   el.querySelector('#xcancel').onclick = () => el.remove();
   if (old && el.querySelector('#xoff')) el.querySelector('#xoff').onclick = () => { el.remove(); callOff(iso, !old.called_off); };
   if (old) el.querySelector('#xdel').onclick = () => { el.remove(); act(async () => ok(await sb.from('play_dates').delete().eq('day', iso)), () => { playDates = playDates.filter(x => x.day !== iso); }); };
