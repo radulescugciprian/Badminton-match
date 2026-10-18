@@ -8,8 +8,12 @@ const C5 = [
   [[4, 2], [5, 1], 3],
   [[5, 2], [1, 3], 4],
 ];
-// 4 players: nobody rests, every pairing happens once
+// 4 players: nobody rests, every pairing happens once, each one played best of 3
 const C4 = [[[1, 2], [3, 4]], [[1, 3], [2, 4]], [[1, 4], [2, 3]]];
+// the best-of-3 state after these results (1/2 = winning team): how many series are done and the score of the current one
+const series = wins => { let k = 0, w = [0, 0]; for (const x of wins) if (x && ++w[x - 1] === 2) { k++; w = [0, 0]; } return { k, w }; };
+// the teams of match i (from 0) given the results before it: 4 players change teams after a best of 3, 5 players after every match
+const cycAt = (size, wins, i) => size === 4 ? C4[series(wins.slice(0, i)).k % 3] : C5[i % 5];
 const today = () => new Date().toLocaleDateString('sv-SE'); // local YYYY-MM-DD
 
 // Everything lives in Supabase (see supabase/migrations); this is the last fetched copy, shared by all logged-in members.
@@ -227,7 +231,7 @@ function showHelp() {
     <p>${t('With 5 players there are 5 matches, 2 against 2, and one player rests each time. Everyone rests exactly once and plays with every other player exactly once.')}</p>
     <table class="rot"><tr><th>${t('Match')}</th><th>${t('Teams')}</th><th>${t('Rests')}</th></tr>${rows}</table>
     <p class="mut">${t('The numbers are places in the player list (1 = top).')}</p>
-    <p>${t('With 4 players there are 3 matches and nobody rests.')}</p>
+    <p>${t('With 4 players nobody rests: the same teams play best of 3, then change teams, until everyone has played with everyone.')}</p>
     <p>${t('With 3 players you play singles: the winner stays on court, but after 3 games in a row the winner sits out one game.')}</p>
     <h2 class="sec">${t('Rating')}</h2><p>${t('Everyone starts at 1000 points. Beating stronger players earns more.')}</p>
     ${rulesHtml()}
@@ -369,7 +373,7 @@ function nextTeams(d) {
   const ms = d.matches.slice(d.rotFrom || 0); // the rotation restarts whenever someone leaves or joins
   if (d.mode === 2) return { t1: [d.order[0]], t2: [d.order[1]], rest: null };
   if (d.mode === 3) return winnerStays(d.order, ms);
-  const cyc = d.mode === 4 ? C4 : C5, [a, b, r] = cyc[ms.length % cyc.length];
+  const [a, b, r] = cycAt(d.mode, ms.map(m => m.win), ms.length);
   return { t1: slots(d.order, a), t2: slots(d.order, b), rest: r ? d.order[r - 1] : null };
 }
 // someone leaves early or arrives late: they play from / stop playing at the next match (2 to 5 players)
@@ -437,12 +441,12 @@ const bfRows = () => Math.max(bf.extra || 0, (bf.ids.length === 4 ? C4 : C5).len
 const bfMore = () => { bf.extra = bfRows() + 1; render(); };
 const bfWin = (n, w) => { bf.res[n] = bf.res[n] === w ? 0 : w; render(); };
 const bfSave = () => {
-  const ids = bf.ids, cyc = ids.length === 4 ? C4 : C5, w = bf.res.slice(0, bfRows()), n = w.findIndex(x => !x), res = n < 0 ? w : w.slice(0, n), date = bf.date;
+  const ids = bf.ids, w = bf.res.slice(0, bfRows()), n = w.findIndex(x => !x), res = n < 0 ? w : w.slice(0, n), date = bf.date;
   if (ids.length < 4 || !res.length) return;
   act(async () => {
     const old = bf.editId && db.days.find(x => x.id === bf.editId);   // editing = save the corrected day, then delete the old one (its photo moves over)
     const d = ok(await sb.from('days').insert({ date, player_order: ids, mode: ids.length, started: true, ...(old && old.photo && { photo_path: old.photo }) }).select().single());
-    ok(await sb.from('matches').insert(res.map((win, i) => { const [t1, t2, rest] = cyc[i % cyc.length]; return { day_id: d.id, n: i + 1, t1: slots(ids, t1), t2: slots(ids, t2), rest: rest ? ids[rest - 1] : null, win }; })));
+    ok(await sb.from('matches').insert(res.map((win, i) => { const [t1, t2, rest] = cycAt(ids.length, res, i); return { day_id: d.id, n: i + 1, t1: slots(ids, t1), t2: slots(ids, t2), rest: rest ? ids[rest - 1] : null, win }; })));
     await patchDay(d.id, { closed: true })();
     if (old) ok(await sb.from('days').delete().eq('id', old.id));
     bf = null; go('calendar');
@@ -478,7 +482,7 @@ const shareExtra = day => waShare(t('🏸 {name} added an extra game on {date} a
 const shareLineup = () => {
   const d = cur(), o = d.order, cyc = d.mode === 4 ? C4 : C5;
   if (d.mode === 3) { const m = nextTeams(d); return waShare('🏸 ' + t('Today\'s matches') + '\n1. ' + `${plain(m.t1)} ${t('vs')} ${plain(m.t2)} (${t('{name} rests', { name: player(m.rest).name })})` + '\n' + t('Winner stays on, at most 3 games in a row.') + '\n' + appLink()); }
-  waShare('🏸 ' + t('Today\'s matches') + '\n' + cyc.map(([a, b, r], i) => `${i + 1}. ${plain(slots(o, a))} ${t('vs')} ${plain(slots(o, b))}${r ? ` (${t('{name} rests', { name: player(o[r - 1]).name })})` : ''}`).join('\n') + '\n' + appLink());
+  waShare('🏸 ' + t('Today\'s matches') + '\n' + cyc.map(([a, b, r], i) => `${i + 1}. ${plain(slots(o, a))} ${t('vs')} ${plain(slots(o, b))}${r ? ` (${t('{name} rests', { name: player(o[r - 1]).name })})` : ''}`).join('\n') + (d.mode === 4 ? '\n' + t('Best of 3, then change teams.') : '') + '\n' + appLink());
 };
 const memberExtra = iso => {
   const p = playDates.find(x => x.day === iso), me_ = session.user.id;

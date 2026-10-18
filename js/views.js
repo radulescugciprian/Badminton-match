@@ -130,7 +130,7 @@ function calendarView() {
 
 function backfillView() {
   const ids = bf.ids, cyc = ids.length === 4 ? C4 : ids.length === 5 ? C5 : null, who_ = id => `<button class="chip ${ids.includes(id) ? 'in' : ''}" onclick="bfWho(${id})" aria-pressed="${ids.includes(id)}">${av(id, 22)} ${name(id)}${ids.includes(id) ? ' ' + (ids.indexOf(id) + 1) : ''}</button>`;
-  const rows = cyc ? Array.from({ length: bfRows() }, (_, i) => cyc[i % cyc.length]).map(([t1, t2], i) => `<div class="card"><div>${t('Match {n}', { n: i + 1 })}: ${pair(slots(ids, t1))} <span class="mut">${t('vs')}</span> ${pair(slots(ids, t2))}</div>
+  const rows = cyc ? Array.from({ length: bfRows() }, (_, i) => cycAt(ids.length, bf.res, i)).map(([t1, t2], i) => `<div class="card"><div>${t('Match {n}', { n: i + 1 })}: ${pair(slots(ids, t1))} <span class="mut">${t('vs')}</span> ${pair(slots(ids, t2))}</div>
     <div class="seg" style="margin-top:8px"><button class="${bf.res[i] === 1 ? 'on' : ''}" onclick="bfWin(${i},1)">${t('Team 1 Wins')}</button><button class="${bf.res[i] === 2 ? 'on' : ''}" onclick="bfWin(${i},2)">${t('Team 2 Wins')}</button></div></div>`).join('') : '';
   const saved = bf.editId ? [] : db.days.filter(d => d.date === bf.date && d.closed && d.matches.length);
   return `<div class="top"><button class="link" onclick="go('calendar')">← ${t('Back')}</button></div><h1>${bf.editId ? t('Edit match day') : t('Add an old match day')}</h1><p class="mut">${niceDate(bf.date)}</p>
@@ -196,8 +196,8 @@ function play() {
       <button class="add" onclick="newDayBtn()">${t('Start next match day')}</button>
       ${admin ? `<div class="actions"><button class="link" onclick="reopenDay()">${t('Reopen day')}</button></div>` : ''}`;
   }
-  const { t1, t2, rest } = nextTeams(d);
-  return `<p class="mut" style="margin:0">${esc(d.date)} · ${t('{n} played', { n })}${d.mode === 3 ? ' · ' + t('Winner stays on, at most 3 games in a row.') : ''}</p>
+  const { t1, t2, rest } = nextTeams(d), bo3 = series(d.matches.slice(d.rotFrom || 0).map(m => m.win)).w;
+  return `<p class="mut" style="margin:0">${esc(d.date)} · ${t('{n} played', { n })}${d.mode === 3 ? ' · ' + t('Winner stays on, at most 3 games in a row.') : ''}${d.mode === 4 ? ' · ' + t('Best of 3: {a}–{b}', { a: bo3[0], b: bo3[1] }) : ''}</p>
     <p class="num">${t('Match {n}', { n: n + 1 })}</p>
     <div class="teams">
       <div class="team" style="--c:var(--t1)"><small>${esc(tn[1] || t('Team 1'))}</small>${t1.map(who).join('')}<button class="tname" onclick="nameTeam(1)">✎ ${t('name')}</button></div>

@@ -16,14 +16,22 @@ run('leave early, join late', async h => {
   const m3 = st.matches[2], o = day().player_order;
   assert.deepEqual([m3.t1, m3.t2], [[o[0], o[1]], [o[2], o[3]]], 'first match of the 4-player rotation');
   assert(![...m3.t1, ...m3.t2].includes(gone), 'the one who left does not play');
-  await leave(); await win(A, 1); await until(() => st.matches.length === 4, 'match 4');
-  assert(st.matches[3].t1.length === 1 && st.matches[3].rest, '3 players: singles with one resting');
-  await leave(); await win(A, 2); await until(() => st.matches.length === 5, 'match 5');
-  assert(st.matches[4].t1.length === 1 && !st.matches[4].rest, '2 players: singles, nobody resting');
+  // 4 players: the same teams until one side has won 2, then the next pairing
+  assert((await A.textContent('#app')).includes('Best of 3: 1–0'), 'the series score is shown');
+  await win(A, 2); await until(() => st.matches.length === 4, 'match 4');
+  assert.deepEqual([st.matches[3].t1, st.matches[3].t2], [m3.t1, m3.t2], '1–1: same teams');
+  await win(A, 1); await until(() => st.matches.length === 5, 'match 5');
+  assert.deepEqual([st.matches[4].t1, st.matches[4].t2], [m3.t1, m3.t2], 'the deciding game: same teams');
+  await win(A, 1); await until(() => st.matches.length === 6, 'match 6');
+  assert.deepEqual([st.matches[5].t1, st.matches[5].t2], [[o[0], o[2]], [o[1], o[3]]], '2–1 done: new teams');
+  await leave(); await win(A, 1); await until(() => st.matches.length === 7, 'match 7');
+  assert(st.matches[6].t1.length === 1 && st.matches[6].rest, '3 players: singles with one resting');
+  await leave(); await win(A, 2); await until(() => st.matches.length === 8, 'match 8');
+  assert(st.matches[7].t1.length === 1 && !st.matches[7].rest, '2 players: singles, nobody resting');
   assert(!(await A.isVisible('.lineup >> text=Leaves')), 'cannot go below 2');
   await A.click(`.lineup .row:has-text("${name(gone)}") >> text=Joins`); await until(() => day().mode === 3 && day().player_order.slice(0, 3).includes(gone), 'a late arrival joins');
-  await win(A, 1); await until(() => st.matches.length === 6, 'match 6');
-  const games = id => st.matches.slice(0, 5).filter(m => [...m.t1, ...m.t2].includes(id)).length, m6 = st.matches[5];
+  await win(A, 1); await until(() => st.matches.length === 9, 'match 9');
+  const games = id => st.matches.slice(0, 8).filter(m => [...m.t1, ...m.t2].includes(id)).length, m6 = st.matches[8];
   assert(m6.rest !== gone && [m6.t1[0], m6.t2[0], m6.rest].every(x => games(m6.rest) >= games(x)), 'whoever played most rests first');
   assert(A.errs.length === 0, A.errs.join());
 });

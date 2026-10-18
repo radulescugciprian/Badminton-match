@@ -45,9 +45,10 @@ run('compact sign-up card and play calendar', async h => {
   await A.click('text=Add another match'); await A.click('text=Team 1 Wins >> nth=3'); await A.click('text=Save this day'); await A.waitForSelector('text=Calendar');
   await until(() => st.days.some(d => d.date === '2026-10-12' && d.closed), 'the old day on the server');
   const old = st.days.find(d => d.date === '2026-10-12');
-  assert.deepEqual(st.matches.filter(m => m.day_id === old.id).map(m => m.win), [1, 2, 1, 1], 'four matches saved: the rotation starts again after one round');
-  const m6 = st.matches.filter(m => m.day_id === old.id)[3], m1 = st.matches.filter(m => m.day_id === old.id)[0];
-  assert.deepEqual([m6.t1, m6.t2], [m1.t1, m1.t2], 'match 4 repeats the match 1 pairing');
+  assert.deepEqual(st.matches.filter(m => m.day_id === old.id).map(m => m.win), [1, 2, 1, 1], 'four matches saved');
+  const [m1, , m3, m4] = st.matches.filter(m => m.day_id === old.id);
+  assert.deepEqual([m3.t1, m3.t2], [m1.t1, m1.t2], '4 players: 1–1 after two, so match 3 is the deciding game of the same teams');
+  assert.deepEqual([m4.t1, m4.t2], [[1, 3], [2, 4]], 'after the best of 3 the teams change');
   assert(!st.play_dates.some(x => x.day === '2026-10-12'), 'the past date was not marked');
   // the saved day can be corrected or deleted from the same date
   await A.click('.cal button[aria-label*="12 October"]'); await A.click('text=✎ Edit'); await A.waitForSelector('text=Edit match day');

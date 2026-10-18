@@ -14,7 +14,7 @@ run('help, plain errors, languages, privacy and the schedule editor', async h =>
   assert.equal(await A.locator('#tour').count(), 0, 'not shown again');
   await A.click('#helpbtn'); await A.waitForSelector('#help');
   const help = await A.textContent('#help');
-  assert(help.includes('5 matches') && help.includes('rests exactly once') && help.includes('3 matches and nobody rests'), 'rotation explained');
+  assert(help.includes('5 matches') && help.includes('rests exactly once') && help.includes('best of 3, then change teams'), 'rotation explained');
   assert((await A.locator('#help table.rot tr').count()) === 6, 'table of the 5 matches');
   await A.click('#tourbtn'); await A.waitForSelector('#tour .tip'); await A.click('#tskip'); assert.equal(await A.locator('#tour').count(), 0, 'the tour can be replayed and skipped');
   await A.click('[aria-label="How it works"]'); await A.waitForSelector('#help'); await A.click('#gotit');
