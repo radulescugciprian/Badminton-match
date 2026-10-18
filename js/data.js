@@ -122,7 +122,7 @@ const showMsg = text => { document.querySelector('.msg').textContent = text; }; 
 const authForm = e => {
   e.preventDefault(); showMsg('');
   const f = new FormData(e.target);
-  (authMode === 'up' ? signup : authMode === 'reset' ? reset : login)(f).catch(err => showMsg(friendly(err)));
+  (authMode === 'up' ? signup : authMode === 'reset' ? reset : authMode === 'link' ? emailLink : login)(f).catch(err => showMsg(friendly(err)));
 };
 // The login box takes an email or a username. For a username the database releases the email only when the password is right
 // (and throttles wrong guesses), so nobody can look up other people's emails.
@@ -150,6 +150,14 @@ async function reset(f) { // by email only: looking an email up from a username 
   const { error } = await sb.auth.resetPasswordForEmail(f.get('login').trim(), { redirectTo: location.origin + location.pathname });
   if (error) return showMsg(friendly(error));
   showMsg(t('If that account exists, a reset link is on its way. Check your email.')); // same answer either way
+}
+// log in without a password: Supabase emails a one-time link that opens the app logged in (only for existing accounts)
+async function emailLink(f) {
+  const email = f.get('login').trim();
+  const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: false, emailRedirectTo: location.origin + location.pathname } });
+  if (error && !/signups not allowed|not found/i.test(error.message)) return showMsg(friendly(error));
+  try { localStorage.setItem('lastLogin', email); } catch {}
+  showMsg(t('If that account exists, a login link is on its way. Open it on this phone.'));   // same answer either way
 }
 async function newPassword(e) {
   e.preventDefault();

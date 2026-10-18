@@ -38,4 +38,11 @@ run('login privacy', async h => {
   st.legacyDb = true; await A.click('text=Log out'); await login('anna', 'secret1'); await A.waitForSelector('text=Next match day');
   await A.click('text=Log out'); await login('anna', 'wrongpw'); await A.waitForSelector('text=Wrong username/email or password');
   assert(calls.includes('email_for_username'), 'fallback used');
+  // simpler log in: the last name is remembered, the password can be shown, or log in with an email link (no password)
+  st.legacyDb = false; await A.click('text=Back to log in').catch(() => {});
+  assert.equal(await A.inputValue('[name=login]'), 'anna', 'the last username is filled in');
+  await A.fill('[name=password]', 'abc123'); await A.click('[aria-label="Show password"]');
+  assert.equal(await A.getAttribute('[name=password]', 'type'), 'text', 'the password can be shown');
+  await A.click('text=Log in with an email link instead'); await A.fill('[name=login]', 'a@x.com'); await A.click('button[type=submit]');
+  await A.waitForSelector('text=a login link is on its way'); assert((st.links || []).includes('a@x.com'), 'link requested');
 });

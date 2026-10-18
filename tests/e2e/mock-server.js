@@ -159,6 +159,7 @@ function auth(op, a) {
   }
   if (op === 'reset' && st.rateLimit) return err('email rate limit exceeded', 'over_email_send_rate_limit');
   if (op === 'reset') { st.resets = (st.resets || []).concat(a.email); return { data: {} }; }
+  if (op === 'otp') { st.links = (st.links || []).concat(a.email); return { data: {} }; }
   if (op === 'update') { const e = Object.keys(st.users).find(k => st.users[k].id === a.uid); st.users[e].password = a.password; return { data: {} }; }
   const u = st.users[a.email];
   return !u || u.password !== a.password ? err('Invalid login credentials') : { data: { session: { user: { id: u.id } } } };

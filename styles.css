@@ -209,3 +209,4 @@
   /* minimal line icons: take the text colour, the accent when the tab is selected */
   .lic{width:26px;height:26px;display:block} nav .lic{color:var(--mut)} nav [aria-current=page] .lic{color:var(--acc)} .top .lic{color:var(--text)} .top .ico .lic{width:28px;height:28px}
   .iconrow{display:flex;justify-content:space-between;color:var(--text)} .iconrow .lic{width:24px;height:24px}
+  .pw{position:relative} .pw input{padding-right:48px} .pw .link{position:absolute;right:4px;top:50%;transform:translateY(-50%);padding:8px 10px;font-size:18px}

@@ -35,6 +35,7 @@
       signInWithPassword: async a => { const r = await window.__auth('in', a); if (r.error) return r; sess = r.data.session; localStorage.setItem('mock-session', JSON.stringify(sess)); cb('SIGNED_IN', sess); return r; },
       signUp: async a => { const r = await window.__auth('up', a); if (r.error) return r; sess = r.data.session; localStorage.setItem('mock-session', JSON.stringify(sess)); cb('SIGNED_IN', sess); return r; },
       resetPasswordForEmail: (email, o) => window.__auth('reset', { email, o }),
+      signInWithOtp: a => window.__auth('otp', a),
       updateUser: a => window.__auth('update', { ...a, uid: sess && sess.user.id }),
       signOut: async () => { sess = null; localStorage.removeItem('mock-session'); cb('SIGNED_OUT', null); },
     },

@@ -4,19 +4,21 @@ const langPicker = () => `<select class="lang" onchange="setLang(this.value)" ar
 
 function login_() {
   const m = authMode, up = m === 'up';
-  return `<h1 style="font-size:var(--fs-2xl);margin-top:40px">🏸 Badminton</h1>${lostSession && m === 'in' ? `<p class="mut" role="status">${t('You were signed out. Please log in again.')}</p>` : ''}<p class="mut">${up ? t('Create your account') : m === 'reset' ? t('Reset your password') : t('Log in to see the scores')}</p>
+  return `<h1 style="font-size:var(--fs-2xl);margin-top:40px">🏸 Badminton</h1>${lostSession && m === 'in' ? `<p class="mut" role="status">${t('You were signed out. Please log in again.')}</p>` : ''}<p class="mut">${up ? t('Create your account') : m === 'reset' ? t('Reset your password') : m === 'link' ? t('We email you a link that logs you in, no password needed.') : t('Log in to see the scores')}</p>
     <form onsubmit="authForm(event)">
       ${up ? `<input type="text" name="username" placeholder="${t('Username (3-20 letters, numbers, . _)')}" required pattern="[A-Za-z0-9_.]{3,20}" title="${t('3-20 letters, numbers, dot or underscore')}" autocapitalize="none" autocomplete="username">` : ''}
       ${up ? `<select name="player" aria-label="${t('Which player are you?')}"><option value="">${t("I'm a new player")}</option>${unclaimed.map(p => `<option value="${p.id}">${t("I'm {name}", { name: esc(p.name) })}</option>`).join('')}</select>` : ''}
       ${up ? `<input type="email" name="email" placeholder="${t('Email')}" required autocomplete="email">`
-           : m === 'reset' ? `<input type="email" name="login" placeholder="${t('Email')}" required autocomplete="email">`
-           : `<input type="text" name="login" placeholder="${t('Username or email')}" value="${esc(lastLogin())}" required autocapitalize="none" autocomplete="username">`}
-      ${m === 'reset' ? '' : `<input type="password" name="password" placeholder="${t('Password (6+ characters)')}" required minlength="6" autocomplete="${up ? 'new-password' : 'current-password'}">`}
+           : m === 'reset' || m === 'link' ? `<input type="email" name="login" placeholder="${t('Email')}" required autocomplete="email" ${m === 'link' ? 'autofocus' : ''}>`
+           : `<input type="text" name="login" placeholder="${t('Username or email')}" value="${esc(lastLogin())}" required autocapitalize="none" autocomplete="username" ${lastLogin() ? '' : 'autofocus'}>`}
+      ${m === 'reset' || m === 'link' ? '' : `<div class="pw"><input type="password" name="password" placeholder="${t('Password (6+ characters)')}" required minlength="6" autocomplete="${up ? 'new-password' : 'current-password'}" ${m === 'in' && lastLogin() ? 'autofocus' : ''}>
+        <button type="button" class="link" onclick="const i=this.previousElementSibling;i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁':'🙈'" aria-label="${t('Show password')}">👁</button></div>`}
       <p class="msg" role="alert"></p>
-      <button class="primary" type="submit">${up ? t('Create account') : m === 'reset' ? t('Send reset link') : t('Log in')}</button>
+      <button class="primary" type="submit">${up ? t('Create account') : m === 'reset' ? t('Send reset link') : m === 'link' ? t('Email me a login link') : t('Log in')}</button>
     </form>
     <div class="actions">${m === 'in' ? `<button class="link" onclick="setAuthMode('up')">${t('Create an account')}</button>
-      <button class="link" onclick="setAuthMode('reset')">${t('Forgot password?')}</button>` : `<button class="link" onclick="setAuthMode('in')">${t('Back to log in')}</button>`}</div>
+      <button class="link" onclick="setAuthMode('reset')">${t('Forgot password?')}</button></div>
+    <div class="actions" style="margin-top:0"><button class="link" onclick="setAuthMode('link')">✉️ ${t('Log in with an email link instead')}</button>` : `<button class="link" onclick="setAuthMode('in')">${t('Back to log in')}</button>`}</div>
     <div class="actions">${langPicker()}</div>`;
 }
 
