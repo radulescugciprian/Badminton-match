@@ -623,7 +623,7 @@ const eraseAll = () => confirm(t('Reset ALL scores? This deletes every day, matc
 const removeAccount = (id, uname) => confirm(t('Remove the account of {name}? They can no longer log in. Their player and results stay and show as "no account".', { name: uname }))
   && act(async () => ok(await sb.rpc('delete_account', { uid: id })));
 // delete one day's leaderboard = delete the day with its matches and group photo (admins only)
-const deleteDay = id => {
+const deleteDay = id => { dayMore = false;
   const d = db.days.find(x => x.id === id);
   if (!d || !confirm(t('Delete the leaderboard of {date}? Its matches and group photo are removed for everyone. This cannot be undone.', { date: d.date }))) return;
   act(async () => {
