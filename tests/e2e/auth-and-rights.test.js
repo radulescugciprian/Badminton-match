@@ -101,10 +101,10 @@ run('sign-in, rights, photos and the play schedule', async h => {
   await A.click('nav >> text=Play'); await A.click('text=Start next match day'); await A.click('text=Start playing'); await win(A, 2);
   await A.click('nav >> text=Board'); await A.click('.seg >> text=Day'); await A.waitForSelector('.calnav');
   assert.equal(await A.evaluate(() => db.days.filter(d => d.matches.length).length), 2, 'two days with matches');
-  await A.evaluate(() => { selId = db.days.filter(d => d.matches.length)[0].id; render(); }); await A.click('.more summary'); await A.click('text=Delete this day');
+  await A.evaluate(() => { selId = db.days.filter(d => d.matches.length)[0].id; render(); }); await A.evaluate(() => { dayMore = true; render(); }); await A.click('text=Delete this day');
   await A.waitForFunction(() => db.days.filter(d => d.matches.length).length === 1);
   assert(st.days.length === 1 && st.matches.length === 1, 'old day deleted with its matches');
-  await A.click('.more summary'); await A.click('text=Delete this day');      // the current day: a fresh one replaces it
+  await A.evaluate(() => { dayMore = true; render(); }); await A.click('text=Delete this day');      // the current day: a fresh one replaces it
   await A.waitForSelector('text=No matches yet');
   assert(st.matches.length === 0 && st.days.length === 1 && !st.days[0].started, 'current day deleted and replaced by an open one');
   await A.click('nav >> text=Play'); await A.waitForSelector('text=Next match day');

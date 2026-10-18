@@ -196,8 +196,8 @@ function play() {
       <button class="add" onclick="newDayBtn()">${t('Start next match day')}</button>
       ${admin ? `<div class="actions"><button class="link" onclick="reopenDay()">${t('Reopen day')}</button></div>` : ''}`;
   }
-  const { t1, t2, rest } = nextTeams(d), ms = d.matches.slice(d.rotFrom || 0), bo3 = series(ms.map(m => m.win)).w, last = ms[ms.length - 1];
-  const won = last && (last.win === 1 ? last.t1 : last.t2)[0], streak = won === t1[0] ? ms.slice().reverse().findIndex(m => ![...m.t1, ...m.t2].includes(won)) : 0;
+  const { t1, t2, rest } = nextTeams(d), ms = d.matches.slice(d.rotFrom || 0), bo3 = series(ms.map(m => m.win)).w;
+  const streak = ms.slice().reverse().findIndex(m => ![...m.t1, ...m.t2].includes(t1[0])); // games in a row the player staying on has played
   const rule = d.mode === 3 ? t('Winner stays · game {n}/3', { n: (streak < 0 ? ms.length : streak) + 1 }) : d.mode === 4 ? t('Best of 3: {a}–{b}', { a: bo3[0], b: bo3[1] }) : '';
   // the match after this one, for either result (they differ with "winner stays" and at the end of a best of 3)
   const peek = w => nextTeams({ ...d, matches: [...d.matches, { t1, t2, rest, win: w }] }), vs = m => `${pair(m.t1)} <span class="mut">${t('vs')}</span> ${pair(m.t2)}`;
