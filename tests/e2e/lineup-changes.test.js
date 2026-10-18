@@ -21,6 +21,9 @@ run('leave early, join late', async h => {
   await leave(); await win(A, 2); await until(() => st.matches.length === 5, 'match 5');
   assert(st.matches[4].t1.length === 1 && !st.matches[4].rest, '2 players: singles, nobody resting');
   assert(!(await A.isVisible('.lineup >> text=Leaves')), 'cannot go below 2');
-  await A.click(`.lineup .row:has-text("${name(gone)}") >> text=Joins`); await until(() => day().mode === 3 && day().player_order[2] === gone, 'a late arrival joins');
+  await A.click(`.lineup .row:has-text("${name(gone)}") >> text=Joins`); await until(() => day().mode === 3 && day().player_order.slice(0, 3).includes(gone), 'a late arrival joins');
+  await win(A, 1); await until(() => st.matches.length === 6, 'match 6');
+  const games = id => st.matches.slice(0, 5).filter(m => [...m.t1, ...m.t2].includes(id)).length, m6 = st.matches[5];
+  assert(m6.rest !== gone && [m6.t1[0], m6.t2[0], m6.rest].every(x => games(m6.rest) >= games(x)), 'whoever played most rests first');
   assert(A.errs.length === 0, A.errs.join());
 });

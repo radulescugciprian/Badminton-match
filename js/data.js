@@ -376,7 +376,9 @@ function nextTeams(d) {
 const changeLineup = (id, leaving) => {
   const d = cur(), on = d.order.slice(0, d.mode).filter(x => x !== id), off = d.order.slice(d.mode).filter(x => x !== id);
   if (leaving && !confirm(t('{name} leaves? The next matches are played without them.', { name: player(id).name }))) return;
-  const order = leaving ? [...on, ...off, id] : [...on, id, ...off], mode = on.length + (leaving ? 0 : 1), rotFrom = d.matches.length;
+  const games = x => d.matches.filter(m => [...m.t1, ...m.t2].includes(x)).length, most = [...on, ...leaving ? [] : [id]].sort((a, b) => games(b) - games(a));
+  // the rest order is the last slot, then slot 1, 2…: whoever has played most so far rests first
+  const playing = [...most.slice(1), most[0]], order = [...playing, ...off, ...leaving ? [id] : []], mode = playing.length, rotFrom = d.matches.length;
   act(patchDay(d.id, { player_order: order, mode, rot_from: rotFrom }), () => Object.assign(d, { order, mode, rotFrom }));
 };
 const recordWin = team => {
