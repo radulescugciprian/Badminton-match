@@ -202,19 +202,18 @@ function play() {
   // the match after this one, for either result (they differ with "winner stays" and at the end of a best of 3)
   const peek = w => nextTeams({ ...d, matches: [...d.matches, { t1, t2, rest, win: w }] }), vs = m => `${pair(m.t1)} <span class="mut">${t('vs')}</span> ${pair(m.t2)}`;
   const [n1, n2] = [vs(peek(1)), vs(peek(2))];
-  const team = k => `<button class="team" style="--c:var(--t${k})" onclick="recordWin(${k})"><small>${esc(tn[k] || (k === 1 ? t('Team 1') : t('Team 2')))}</small>${(k === 1 ? t1 : t2).map(who).join('')}<span class="wbar">🏆 ${k === 1 ? t('Team 1 Wins') : t('Team 2 Wins')}</span></button>`;
+  const team = k => `<button class="team" style="--c:var(--t${k})" onclick="recordWin(${k})"><small>${k === 1 ? t('Team 1') : t('Team 2')}</small>${(k === 1 ? t1 : t2).map(who).join('')}<span class="wbar">🏆 ${k === 1 ? t('Team 1 Wins') : t('Team 2 Wins')}</span></button>`;
   const fresh = n && Date.now() - lastRec < 5000, lw = fresh && d.matches[n - 1];
   return `<div class="stage">
     <div class="pchips"><span>${t1.length === 1 ? t('Singles') : t('Doubles')}</span>${rule ? `<span>${rule}</span>` : ''}<span>${t('{n} played', { n })}</span></div>
     <p class="num">${t('Match {n}', { n: n + 1 })}</p>
     <div class="teams">${team(1)}${team(2)}</div>
     ${rest ? `<div class="rest">${av(rest, 22)} ${t('Resting:')} <b>${name(rest)}</b></div>` : ''}
+    ${lw ? `<div class="toast">✓ ${pair(lw.win === 1 ? lw.t1 : lw.t2)} <button class="link" onclick="lastRec=0;undo()">↶ ${t('Undo')}</button></div>` : ''}
     <div class="upnext"><b>${t('Next')}:</b> ${n1 === n2 ? n1 : `<div>${t('If team {n} wins: {m}', { n: 1, m: n1 })}</div><div>${t('If team {n} wins: {m}', { n: 2, m: n2 })}</div>`}</div>
-    <div class="actions"><button class="link" onclick="undo()" ${n ? '' : 'disabled'}>↶ ${t('Undo last')}</button></div>
+    <div class="actions"><button class="link" onclick="undo()" ${n ? '' : 'disabled'}>↶ ${t('Undo last')}</button>${admin ? `<button class="link" onclick="closeDay()" ${n ? '' : 'disabled'}>🏁 ${t('Close day')}</button>` : ''}</div>
     <details class="fold pmore" ${moreOpen ? 'open' : ''} ontoggle="moreOpen=this.open"><summary>⋯ ${t('More')}</summary>
       <div class="actions">
-        <button class="link" onclick="nameTeam(1)">✎ ${t('Name for team {n}', { n: 1 })}</button><button class="link" onclick="nameTeam(2)">✎ ${t('Name for team {n}', { n: 2 })}</button>
-        ${admin ? `<button class="link" onclick="closeDay()" ${n ? '' : 'disabled'}>🏁 ${t('Close day')}</button>` : ''}
         <button class="link" onclick="newDayBtn()">${t('Next match day')}</button>
         ${admin ? `<button class="link danger" onclick="resetDay()">${t('Reset day')}</button>` : ''}
       </div>
@@ -223,7 +222,6 @@ function play() {
         ? `<div class="row">${av(id, 28)} <b>${name(id)}</b>${d.mode > 2 ? `<button class="link danger" onclick="changeLineup(${id},true)">${t('Leaves')}</button>` : ''}</div>`
         : d.mode < 5 ? `<div class="row">${av(id, 28)} <span class="mut">${name(id)}</span><button class="link" onclick="changeLineup(${id},false)">${t('Joins')}</button></div>` : '').join('')}
       <p class="mut">${t('The rotation starts again from the next match.')}</p></details></details>
-    ${lw ? `<div class="toast">✓ ${pair(lw.win === 1 ? lw.t1 : lw.t2)} <button class="link" onclick="lastRec=0;undo()">↶ ${t('Undo')}</button></div>` : ''}
   </div>`;
 }
 

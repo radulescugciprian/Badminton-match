@@ -35,14 +35,11 @@ run('sign-up list, ratings, badges, result card and reactions', async h => {
   const ics = fs.readFileSync(await dl.path(), 'utf8');
   assert(ics.includes('RRULE:FREQ=WEEKLY;BYDAY=TH') && ics.includes('DTSTART;TZID=Europe/Berlin:20261015T173000') && ics.includes('TRIGGER:PT0M') && ics.includes('TZID:Europe/Berlin'), 'ics content');
   
-  // ---- play: team names, celebration
+  // ---- play: celebration
   await A.click('text=Start playing'); await A.waitForSelector('text=Match 1');
-  A.promptAnswer = 'Smashers'; await A.click('summary:has-text("More")'); await A.click('text=Name for team 1'); await A.waitForSelector('text=Smashers');
   await win(A, 1);
   await A.waitForSelector('canvas.confetti', { timeout: 3000 });
   await A.waitForSelector('text=Match 2');
-  assert(st.matches[0].team1_name === 'Smashers' && !st.matches[0].team2_name, 'team name saved with the match');
-  assert(!(await A.textContent('.team')).includes('Smashers'), 'name resets for the next match');
   for (let i = 0; i < 3; i++) await win(A, 1);
   await A.waitForSelector('text=Match 5');
   
@@ -78,7 +75,7 @@ run('sign-up list, ratings, badges, result card and reactions', async h => {
   assert((await A.textContent('.calnav')).includes('2026'), 'the month leaderboard shows the month');
   await A.click('nav >> text=Stats'); await A.waitForSelector('text=Head-to-head');
   await A.click('nav >> text=Board'); await A.click('.seg >> text=Rating');
-  await A.click('.seg >> text=Day'); await A.click('summary:has-text("Matches")'); await A.waitForSelector('text=Smashers');                              // match list shows the team name
+  await A.click('.seg >> text=Day'); await A.click('summary:has-text("Matches")'); await A.waitForSelector('.mrow');                                        // the match list opens
   await A.screenshot({ path: require('os').tmpdir() + '/board2.png', fullPage: true });
   // ---- admin resets the answers for the coming play date
   await A.click('nav >> text=Play'); await A.click('text=Start next match day'); await A.waitForSelector('text=Reset answers');

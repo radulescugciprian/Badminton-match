@@ -24,7 +24,7 @@ let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-ma
 const DB_VERSION = 20261106; // bump together with db_version() in the newest migration
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
-let boardKind = 'doubles', boardOpen = null, memFilter = 'all', memSort = 'name', memOpen = null, adminPage = '', admPanel = '', prevView = 'play', profPanel = '', usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, lineupOpen = false, moreOpen = false, lastRec = 0, bgLoaded = false, rsvps = [], reactions = [], tn = { 1: '', 2: '' }, statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
+let boardKind = 'doubles', boardOpen = null, memFilter = 'all', memSort = 'name', memOpen = null, adminPage = '', admPanel = '', prevView = 'play', profPanel = '', usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, lineupOpen = false, moreOpen = false, lastRec = 0, bgLoaded = false, rsvps = [], reactions = [], statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
 let view = 'play', tab = 'rating', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0, manualLogout = false, lostSession = false, asMember = false;   // asMember: an admin previewing the app as a normal member
 // the sign-in is kept on the phone (localStorage) and renewed automatically, so people stay logged in until they log out
 const sb = window.supabase && CONFIG.url && !CONFIG.url.includes('YOUR-')
@@ -367,7 +367,6 @@ bgpick.onchange = async () => {
   act(async () => { ok(await sb.storage.from('photos').upload(BG, blob, { upsert: true, contentType: 'image/jpeg' })); await loadBg(); });
 };
 const resetBg = () => act(async () => { ok(await sb.storage.from('photos').remove([BG])); await loadBg(); });
-const nameTeam = n => { const v = prompt(t('Name for team {n}', { n }), tn[n]); if (v !== null) { tn[n] = v.trim().slice(0, 24); render(); } };
 // the next match of a day: the fixed rotation for 4 or 5 players, "winner stays" for 3 (player ids, not slots)
 function nextTeams(d) {
   const ms = d.matches.slice(d.rotFrom || 0); // the rotation restarts whenever someone leaves or joins
@@ -389,10 +388,9 @@ const recordWin = team => {
   if (performance.now() - lastWin < 700) return; lastWin = performance.now(); // a double tap must not record two matches
   primeAudio();
   const d = cur(), { t1, t2, rest } = nextTeams(d);
-  const names = { ...(tn[1] && { team1_name: tn[1] }), ...(tn[2] && { team2_name: tn[2] }) }; // only sent when set
-  const row = { day_id: d.id, n: d.matches.length + 1, t1, t2, rest: rest || null, win: team, ...names };
+  const row = { day_id: d.id, n: d.matches.length + 1, t1, t2, rest: rest || null, win: team };
   return act(async () => ok(await sb.from('matches').insert(row)), () => {
-    d.matches.push({ ...row, id: null, created_at: new Date().toISOString() }); tn = { 1: '', 2: '' }; celebrate(); const at = lastRec = Date.now(); setTimeout(() => lastRec === at && view === 'play' && render(), 5100); // the "recorded" note with its undo goes away after 5 s (only redraw the play screen, never a half-filled form)
+    d.matches.push({ ...row, id: null, created_at: new Date().toISOString() }); celebrate(); const at = lastRec = Date.now(); setTimeout(() => lastRec === at && view === 'play' && render(), 5100); // the "recorded" note with its undo goes away after 5 s (only redraw the play screen, never a half-filled form)
   });
 };
 

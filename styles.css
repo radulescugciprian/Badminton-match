@@ -246,5 +246,5 @@
   .stage .rest{display:flex;align-items:center;justify-content:center;gap:6px;padding:4px;margin:0 0 6px;background:none;border:0;font-size:var(--fs-sm)}
   .upnext{font-size:var(--fs-sm);color:var(--mut);text-align:center;margin:4px 0 10px}
   .stage .actions{margin-top:10px} .pmore{margin:4px 0 0;text-align:center} .pmore .actions{margin-top:0} .pmore .lineup{text-align:left}
-  .toast{position:fixed;left:16px;right:16px;max-width:448px;margin:auto;bottom:calc(96px + env(safe-area-inset-bottom));z-index:20;background:var(--bg);border:1px solid var(--acc);border-radius:14px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;box-shadow:0 6px 20px rgba(0,0,0,.45)}
+  .toast{margin:0 0 8px;background:var(--bg);border:1px solid var(--acc);border-radius:14px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px}
   :root[data-theme=light] .stage{background:rgba(var(--ovc),.8)}
