@@ -33,5 +33,10 @@ run('leave early, join late', async h => {
   await win(A, 1); await until(() => st.matches.length === 9, 'match 9');
   const games = id => st.matches.slice(0, 8).filter(m => [...m.t1, ...m.t2].includes(id)).length, m6 = st.matches[8];
   assert(m6.rest !== gone && [m6.t1[0], m6.t2[0], m6.rest].every(x => games(m6.rest) >= games(x)), 'whoever played most rests first');
+  // reset and undo must not leave a stale rotation start behind (it made a new day repeat match 1)
+  await A.click('text=Undo last'); await until(() => st.matches.length === 8, 'undo');
+  await A.click('text=Undo last');   // back past the late arrival
+  await until(() => st.matches.length === 7 && day().rot_from === 7, 'undo before a line-up change moves the rotation start back');
+  await h.more(A); await A.click('text=Reset day'); await until(() => !day().started && day().rot_from === 0, 'reset clears the rotation start');
   assert(A.errs.length === 0, A.errs.join());
 });

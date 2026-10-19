@@ -600,20 +600,22 @@ async function shareCard(dayId) {
   if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: t('Badminton night') }).catch(() => {});
   else saveFile(blob, file.name);
 }
-const undo = () => { const d = cur(), last = d.matches[d.matches.length - 1];   // by day and number: the last match may not have reached the server yet
-  return act(async () => ok(await sb.from('matches').delete().eq('day_id', d.id).eq('n', last.n)), () => d.matches.pop()); };
+const undo = () => { const d = cur(), last = d.matches[d.matches.length - 1], n = d.matches.length - 1;   // by day and number: the last match may not have reached the server yet
+  const back = d.rotFrom > n; // undoing the match before a line-up change: the new rotation starts one match earlier
+  return act(async () => { ok(await sb.from('matches').delete().eq('day_id', d.id).eq('n', last.n)); if (back) await patchDay(d.id, { rot_from: n })(); },
+    () => { d.matches.pop(); if (back) d.rotFrom = n; }); };
 const closeDay = () => { const d = cur(); return confirm(t('Close the day? No more matches can be added.')) && act(patchDay(d.id, { closed: true }), () => { d.closed = true; }); };
 const reopenDay = () => { const d = cur(); return act(patchDay(d.id, { closed: false }), () => { d.closed = false; }); };
 const dropPhotos = async paths => { paths = paths.filter(Boolean); if (paths.length) ok(await sb.storage.from('photos').remove(paths)); };
 const resetDay = () => confirm(t('Reset today? This deletes all matches of this day and goes back to player order.')) && act(async () => {
   const d = cur();
   ok(await sb.from('matches').delete().eq('day_id', d.id));
-  await patchDay(d.id, { started: false, closed: false, photo_path: null })();
+  await patchDay(d.id, { started: false, closed: false, photo_path: null, rot_from: 0 })();
   await dropPhotos([d.photo]);
 });
 const newDayBtn = () => act(async () => {
   if (cur().matches.length) ok(await sb.from('days').insert(dayRow(cur())));
-  else await patchDay(cur().id, { started: false })();
+  else await patchDay(cur().id, { started: false, rot_from: 0 })();
 });
 const eraseAll = () => confirm(t('Reset ALL scores? This deletes every day, match and group photo for everyone. Players and accounts are kept. This cannot be undone.')) && act(async () => {
   await dropPhotos(db.days.map(d => d.photo));
