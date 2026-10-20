@@ -575,7 +575,7 @@ function render() {
   let cf = document.querySelector('.cform');   // made once, outside #app: redraws never interrupt typing
   if (!cf && session) { cf = document.createElement('form'); cf.className = 'cform'; cf.onsubmit = sendChat; document.body.append(cf); }
   if (cf) {
-    if (cf.dataset.lang !== lang) { cf.dataset.lang = lang; cf.innerHTML = `<input name="body" maxlength="1000" autocomplete="off" placeholder="${t('Message')}"><button class="primary" type="submit" aria-label="${t('Send')}">➤</button>`; }
+    if (cf.dataset.lang !== lang) { cf.dataset.lang = lang; cf.innerHTML = `<input type="text" name="body" maxlength="1000" autocomplete="off" placeholder="${t('Message')}"><button class="primary" type="submit" aria-label="${t('Send')}">➤</button>`; }
     cf.hidden = !(session && view === 'chat');
   }
   if (view === 'chat' && (nearEnd || chatJump)) { chatJump = false; scrollTo(0, document.body.scrollHeight); }   // follow new messages unless reading older ones
