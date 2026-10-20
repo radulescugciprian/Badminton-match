@@ -1,6 +1,7 @@
 // Sends the play-day notifications. Called every 5 minutes by pg_cron (see migrations/20261107120000_push_reminders.sql);
 // the database decides who gets what and when (claim_reminders), so calling it more often never sends twice.
 // POST {"test": true} with a user's login token sends a test notification to that user's phones.
+// POST {"chat": id} (from the chat_ping trigger) tells everyone who wants it about a new chat message, once (claim_chat).
 import webpush from "npm:web-push@3.6.7";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -23,12 +24,13 @@ async function keys() {   // created once, on the first run
   webpush.setVapidDetails("https://github.com/radulescugciprian/Badminton-match", data.public, data.private);
 }
 
-async function send(rows: { endpoint: string; p256dh: string; auth: string; kind: string; play?: string; lang?: string }[]) {
+type Row = { endpoint: string; p256dh: string; auth: string; kind: string; play?: string; lang?: string; title?: string; body?: string };
+async function send(rows: Row[]) {
   let sent = 0;
   for (const r of rows) {
-    const body = (TEXT[r.lang || "en"] || TEXT.en)[r.kind].replace("{time}", r.play || "");
+    const body = r.body ?? (TEXT[r.lang || "en"] || TEXT.en)[r.kind].replace("{time}", r.play || "");
     try {
-      await webpush.sendNotification({ endpoint: r.endpoint, keys: { p256dh: r.p256dh, auth: r.auth } }, JSON.stringify({ title: "Badminton", body, kind: r.kind }));
+      await webpush.sendNotification({ endpoint: r.endpoint, keys: { p256dh: r.p256dh, auth: r.auth } }, JSON.stringify({ title: r.title || "Badminton", body, kind: r.kind }));
       sent++;
     } catch (e) {   // the phone unsubscribed or the app was uninstalled: forget it
       if ([404, 410].includes((e as { statusCode?: number }).statusCode ?? 0)) await sb.from("push_subs").delete().eq("endpoint", r.endpoint);
@@ -50,6 +52,11 @@ Deno.serve(async (req) => {
       sb.from("profiles").select("lang").eq("id", user.id).maybeSingle()]);
     const sent = await send((subs || []).map((s) => ({ ...s, kind: "test", lang: prof?.lang })));
     return Response.json({ sent }, { headers: cors });
+  }
+  if (body.chat) {
+    const { data, error } = await sb.rpc("claim_chat", { msg: body.chat });
+    if (error) return new Response(error.message, { status: 500 });
+    return Response.json({ sent: await send((data || []).map((r: Row) => ({ ...r, title: "💬 " + r.title, kind: "chat" }))) });
   }
   const { data, error } = await sb.rpc("claim_reminders");
   if (error) return new Response(error.message, { status: 500 });

@@ -21,7 +21,7 @@ let db = { players: [], days: [] }, members = [], me = {}, session = null, loade
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
-const DB_VERSION = 20261107; // bump together with db_version() in the newest migration
+const DB_VERSION = 20261108; // bump together with db_version() in the newest migration
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
 let boardKind = 'doubles', boardOpen = null, memFilter = 'all', memSort = 'name', memOpen = null, adminPage = '', admPanel = '', prevView = 'play', profPanel = '', usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, lineupOpen = false, moreOpen = false, dayMore = false, lastRec = 0, bgLoaded = false, rsvps = [], reactions = [], statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
@@ -59,7 +59,7 @@ const canSee = pid => isAdmin() || player(pid).user === session.user.id || shari
 async function refresh() {
   if (!session) return;
   const seq = changeSeq;
-  const [p, d, m, sc, rs, rx, sd, pd, rc] = await Promise.all([
+  const [p, d, m, sc, rs, rx, sd, pd, rc, ch, cr] = await Promise.all([
     sb.from('players').select('*').order('id'),
     sb.from('days').select('*, matches(*)').order('id'),
     sb.from('profiles').select('*').order('name'),
@@ -69,11 +69,14 @@ async function refresh() {
     sb.rpc('standings'),
     sb.from('play_dates').select('*'),
     sb.from('receipts').select('*').order('id', { ascending: false }),
+    sb.from('chat').select('*').order('id', { ascending: false }).limit(200),
+    sb.from('chat_reactions').select('*'),
   ]);
   if (pending > 0 || seq !== changeSeq) return; // taps happened while this was loading: its answer is out of date, the next re-fetch will show the truth
   std = sd.error ? null : sd.data; receipts = rc.error ? [] : rc.data; playDates = pd.error ? [] : pd.data;
   sched = !sc.error && sc.data[0] ? sc.data[0] : null;
   rsvps = rs.error ? [] : rs.data; reactions = rx.error ? [] : rx.data; // empty until the migration has been applied
+  chat = ch.error ? [] : ch.data.reverse(); chatRx = cr.error ? [] : cr.data;
   db.players = ok(p).map(x => ({ id: x.id, name: x.name, avatar: x.avatar, removed: !x.active, user: x.user_id, by: x.created_by, at: x.created_at }));
   db.days = ok(d).sort((a, b) => a.closed === b.closed ? (a.closed ? (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) : 0) : a.closed ? -1 : 1).map(x => ({ id: x.id, date: x.date, order: x.player_order, mode: x.mode, rotFrom: x.rot_from || 0, started: x.started, closed: x.closed,
     photo: x.photo_path, matches: x.matches.sort((a, b) => a.n - b.n) }));
@@ -98,6 +101,7 @@ async function refresh() {
   }
   loaded = true; render();
   if (pushOn === null) pushReady();
+  if (!deepDone && new URLSearchParams(location.search).has('chat')) { deepDone = true; history.replaceState(null, '', location.pathname); go('chat'); }   // tapped a chat notification
   if (deepLink && !deepDone) { deepDone = true; history.replaceState(null, '', location.pathname); view = 'play'; render();
     const el = document.querySelector(`.invite[data-day="${deepLink}"], .rsvp[data-day="${deepLink}"]`) || document.querySelector('.rsvp');
     if (el) { el.scrollIntoView({ block: 'center' }); el.classList.add('flash'); } }
@@ -244,7 +248,7 @@ function showHelp() {
 }
 
 // ---- actions
-const go = v => { if (v !== view && view !== 'profile') prevView = view; view = v; render(); };
+const go = v => { if (v !== view && view !== 'profile') prevView = view; if (v === 'chat') chatJump = true; view = v; render(); };
 // usage counters for the admins (which tab, which action); errors are ignored so the app never waits on this
 const track = v => { try { sb.rpc('track', { v }).then(() => {}, () => {}); } catch {} };
 // a guest (no account) who has not played for 8 weeks stops joining new days; they can be brought back from the setup screen
@@ -590,6 +594,27 @@ const pushToggle = () => act(async () => {
   ok(await sb.rpc('save_push', { endpoint: j.endpoint, p256dh: j.keys.p256dh, auth_key: j.keys.auth })); pushOn = true;
 });
 const pushTest = () => act(async () => { const r = await sb.functions.invoke('remind', { body: { test: true } }); if (r.error || !r.data.sent) alert(t('The test notification could not be sent.')); });
+// ---- group chat (newest 200 messages); "seen" is remembered per phone
+let chat = [], chatRx = [], chatOpen = null, chatJump = false;
+const chatSeen = () => { try { return +localStorage.getItem('chatSeen') || 0; } catch { return 0; } };
+const chatUnread = () => chat.filter(m => m.body && m.id > chatSeen() && m.user_id !== session.user.id).length;
+const markChatSeen = () => { const last = chat.length ? chat[chat.length - 1].id : 0; if (last > chatSeen()) try { localStorage.setItem('chatSeen', last); } catch {} };
+const sendChat = e => {   // the message box lives outside the redrawn screen (see render), so live updates never touch what is being typed
+  e.preventDefault(); const box = document.querySelector('.cform input'), body = box.value.trim(); if (!body) return;
+  box.value = ''; chatJump = true;
+  act(async () => ok(await sb.from('chat').insert({ body })), () => chat.push({ id: Infinity, user_id: session.user.id, body, created_at: new Date().toISOString() }));
+};
+const delChat = id => confirm(t('Delete this message?')) && act(async () => ok(await sb.from('chat').delete().eq('id', id)), () => { chat = chat.filter(m => m.id !== id); chatOpen = null; });
+const reactChat = (id, emoji) => {
+  const mine = chatRx.find(x => x.msg_id === id && x.user_id === session.user.id && x.emoji === emoji);
+  act(async () => ok(mine ? await sb.from('chat_reactions').delete().eq('msg_id', id).eq('user_id', session.user.id).eq('emoji', emoji) : await sb.from('chat_reactions').insert({ msg_id: id, emoji })),
+    () => { chatRx = mine ? chatRx.filter(x => x !== mine) : [...chatRx, { msg_id: id, user_id: session.user.id, emoji }]; chatOpen = null; });
+};
+const chatPush = on => act(async () => ok(await sb.from('profiles').update({ chat_push: on }).eq('id', me.id)), () => { me.chat_push = on; });
+// the app's own notes in the chat, in each reader's language
+const evText = e => e.type === 'extra' ? t('{who} added an extra game on {date} at {time}', { who: e.who, date: niceDate(e.date, { weekday: 'short', day: 'numeric', month: 'short' }), time: e.time })
+  : e.type === 'rsvp' ? (e.status === 'in' ? t('{who} is in for {date}', { who: e.who, date: niceDate(e.date, { weekday: 'short', day: 'numeric', month: 'short' }) }) : t('{who} is out for {date}', { who: e.who, date: niceDate(e.date, { weekday: 'short', day: 'numeric', month: 'short' }) }))
+  : e.type === 'closed' ? (e.top ? t('Day closed: {n} matches, most wins: {top}', { n: e.n, top: e.top }) : t('Day closed: {n} matches', { n: e.n })) : '';
 const remindMe = () => { const s = sched || { tz: 'Europe/Berlin', dow: 4, play_time: '18:30', rsvp_until_minutes: 120 };
   saveFile(calendarFile(s, nextPlayDate(), location.href, t('Badminton: answer if you are coming'),
     t('Open the app and tap I\'m in or I\'m out before {time}.', { time: hhmm(+s.play_time.slice(0, 2) * 60 + +s.play_time.slice(3, 5) - s.rsvp_until_minutes) })), 'badminton.ics'); };

@@ -249,3 +249,15 @@
   .toast{margin:0 0 8px;background:var(--bg);border:1px solid var(--acc);border-radius:14px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px}
   :root[data-theme=light] .stage{background:rgba(var(--ovc),.8)}
   .pbtns{display:flex;gap:10px;margin-top:12px} .pbtns button{flex:1;padding:14px 8px;font-size:var(--fs-md);font-weight:700;background:var(--card);color:var(--text);border:1.5px solid var(--line);border-radius:14px} .pbtns button:disabled{opacity:.45}
+  /* chat */
+  .chatbtn{position:relative} .cbadge{position:absolute;top:0;right:-2px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--danger);color:#fff;font:700 11px/16px system-ui;font-style:normal;text-shadow:none}
+  .chat{display:flex;flex-direction:column;gap:8px;padding-bottom:70px}
+  .cmsg{display:flex;align-items:flex-end;gap:6px;max-width:85%} .cmsg.me{align-self:flex-end;flex-direction:row-reverse}
+  .cb{background:var(--card);border:1px solid var(--line);border-radius:14px 14px 14px 4px;padding:6px 10px;cursor:pointer;overflow-wrap:anywhere} .cb>div:first-of-type{white-space:pre-wrap}
+  .cmsg.me .cb{border-radius:14px 14px 4px 14px;border-color:var(--acc)} .cb small{display:block;color:var(--mut);font-size:var(--fs-xs)}
+  .cev{align-self:center;text-align:center;font-size:var(--fs-xs);color:var(--mut);background:var(--chip);border-radius:999px;padding:3px 10px;max-width:92%}
+  .crx,.ctools{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px} .crx button,.ctools button{padding:2px 8px;border-radius:999px;font-size:var(--fs-sm);background:var(--chip);border:1px solid var(--line)} .crx button.on{border-color:var(--acc)}
+  .cform{position:fixed;left:0;right:0;bottom:calc(76px + env(safe-area-inset-bottom));display:flex;gap:8px;max-width:480px;margin:auto;padding:8px 16px;background:var(--nav);z-index:5}
+  .cform input{flex:1;min-width:0} .cform button{width:52px;padding:0}
+  :root[data-theme=light] :is(.cb,.cev,.cform){--text:#10231a;--mut:#3d5a4c;color:var(--text)}
+  .cform[hidden]{display:none}

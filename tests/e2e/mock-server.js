@@ -1,5 +1,5 @@
 // Fake Supabase server (in memory) mirroring the rules in supabase/migrations that the screens depend on.
-const st = { players: ['Vali','Dani','Costi','Zjepko','Ciprian'].map((name,i)=>({id:i+1,name,avatar:null,active:true,user_id:null})), days: [], matches: [], profiles: [], receipts: [], usage: [], rsvps: [], reactions: [], play_dates: [], log: [], attempts: {}, schedule: [{ id: true, tz: 'Europe/Berlin', dow: 4, play_time: '18:30:00', opens_minutes: 60, rsvp_until_minutes: 120, rsvp_hide_minutes: 90 }], now: null, users: {}, files: {}, seq: { p: 5, d: 0, m: 0 } };
+const st = { players: ['Vali','Dani','Costi','Zjepko','Ciprian'].map((name,i)=>({id:i+1,name,avatar:null,active:true,user_id:null})), days: [], matches: [], profiles: [], receipts: [], usage: [], rsvps: [], reactions: [], play_dates: [], chat: [], chat_reactions: [], log: [], attempts: {}, schedule: [{ id: true, tz: 'Europe/Berlin', dow: 4, play_time: '18:30:00', opens_minutes: 60, rsvp_until_minutes: 120, rsvp_hide_minutes: 90 }], now: null, users: {}, files: {}, seq: { p: 5, d: 0, m: 0 } };
 const pages = [];
 const emit = () => pages.forEach(p => p.evaluate(() => window.__emit && window.__emit()).catch(() => {}));
 const isAdmin = u => (st.profiles.find(p => p.id === u) || {}).is_admin;
@@ -21,11 +21,11 @@ function canStart() {
 }
 function rpc(u, r) {
   if (!u && r.op !== 'rpc') return err('not logged in'); // the username lookup is public (anon)
-  const T = { players: st.players, days: st.days, matches: st.matches, profiles: st.profiles, schedule: st.schedule, receipts: st.receipts, usage: st.usage, rsvps: st.rsvps, reactions: st.reactions, admin_log: st.log, play_dates: st.play_dates }[r.table];
+  const T = { players: st.players, days: st.days, matches: st.matches, profiles: st.profiles, schedule: st.schedule, receipts: st.receipts, usage: st.usage, rsvps: st.rsvps, reactions: st.reactions, admin_log: st.log, play_dates: st.play_dates, chat: st.chat, chat_reactions: st.chat_reactions }[r.table];
   const match = row => r.f.every(([op, c, v]) => op === 'eq' ? row[c] === v : op === 'gte' ? row[c] >= v : row[c] > v);
   switch (r.op) {
     case 'rpc': {
-      if (r.name === 'db_version') return { data: st.dbVersion ?? 20261107 };
+      if (r.name === 'db_version') return { data: st.dbVersion ?? 20261108 };
       if (r.name === 'track') {
         if (!u) return { data: null };
         const f = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(st.now || Date.now())), g = x => f.find(p => p.type === x).value;
@@ -79,6 +79,7 @@ function rpc(u, r) {
       if (!pl || (pl.user_id !== u && !isAdmin(u))) return err('new row violates row-level security policy for table "rsvps"');
       if (!isAdmin(u) && !rsvpOpen(r.payload.day_date)) return err('Answers are closed');
       const old = st.rsvps.find(x => x.day_date === r.payload.day_date && x.player_id === r.payload.player_id);
+      if (!old || old.status !== r.payload.status) st.chat.push({ id: st.chat.length + 1, user_id: u, body: null, event: { type: 'rsvp', who: pl.name, date: r.payload.day_date, status: r.payload.status }, created_at: new Date().toISOString() });   // like the database trigger
       old ? Object.assign(old, r.payload) : st.rsvps.push({ ...r.payload }); emit(); return { data: [] };
     }
     case 'insert': {
@@ -89,6 +90,8 @@ function rpc(u, r) {
       if (r.table === 'play_dates') { if (!isAdmin(u) && (r.payload.kind !== 'extra' || r.payload.created_by !== u || !r.payload.play_time || !r.payload.answer_by || new Date(r.payload.day + 'T12:00:00Z').getUTCDay() === st.schedule[0].dow)) return err('new row violates row-level security policy for table "play_dates"'); if (st.play_dates.some(x => x.day === r.payload.day)) return err('duplicate key', '23505'); logAct(u, 'mark_play_date', { date: r.payload.day, kind: r.payload.kind }); }
       if (r.table === 'receipts') { if (r.payload.created_by !== u) return err('new row violates row-level security policy for table "receipts"'); row.id = (st.receipts.length ? Math.max(...st.receipts.map(x => x.id)) : 0) + 1; row.created_at = new Date(st.now || Date.now()).toISOString(); }
       if (r.table === 'players') { if (!isAdmin(u) && r.payload.user_id) return err('new row violates row-level security policy'); row.id = ++st.seq.p; row.active = true; row.avatar = null; row.user_id = null; row.created_by = u; row.created_at = new Date(st.now || Date.now()).toISOString(); }
+      if (r.table === 'chat') { if (!String(row.body || '').trim()) return err('violates check constraint'); Object.assign(row, { id: st.chat.length + 1, user_id: u, event: null, created_at: new Date().toISOString() }); }
+      if (r.table === 'chat_reactions') { row.user_id = u; if (st.chat_reactions.some(x => x.msg_id === row.msg_id && x.user_id === u && x.emoji === row.emoji)) return err('duplicate key', '23505'); }
       if (r.table === 'days') { row.id = ++st.seq.d; Object.assign(row, { started: isAdmin(u) && !!r.payload.started, closed: false, photo_path: (isAdmin(u) && r.payload.photo_path) || null }); }
       if (r.table === 'matches') {
         const d = st.days.find(d => d.id === row.day_id);
@@ -109,7 +112,7 @@ function rpc(u, r) {
         if (r.table === 'players' && r.payload.avatar !== undefined && row.user_id !== u) return err('Only the player can change their own avatar');
         if (r.table === 'profiles' && !isAdmin(u)) { // members may change only their own language / sharing choice
           if (row.id !== u) continue;
-          if (!Object.keys(r.payload).every(k => ['lang', 'share_stats'].includes(k))) return err('Admins only');
+          if (!Object.keys(r.payload).every(k => ['lang', 'share_stats', 'chat_push'].includes(k))) return err('Admins only');
         }
         if (r.table === 'schedule') {
           if (!isAdmin(u)) continue;
@@ -132,6 +135,8 @@ function rpc(u, r) {
       for (const row of hit) {
         if (r.table === 'days' && !isAdmin(u)) continue;
         if (r.table === 'receipts' && !isAdmin(u) && row.created_by !== u) continue;
+        if (r.table === 'chat' && !isAdmin(u) && row.user_id !== u) continue;
+        if (r.table === 'chat_reactions' && row.user_id !== u) continue;
         if (r.table === 'matches' && !isAdmin(u)) {
           const last = Math.max(...st.matches.filter(m => m.day_id === row.day_id).map(m => m.n));
           if (row.n !== last || st.days.find(d => d.id === row.day_id).closed) continue;

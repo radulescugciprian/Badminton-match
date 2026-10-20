@@ -220,6 +220,32 @@ select check_that((select count(*) from claim_reminders('2099-01-01 14:05+00')) 
 set role authenticated; select as_user((select m1 from ids)); select drop_push('https://push/e1'); reset role;
 select check_that((select count(*) from push_subs) = 1, 'members remove their own phone');
 
+-- chat: members write as themselves, the app adds its own notes, own messages (or admins) can be removed, notifications go out once
+set role authenticated; select as_user((select m1 from ids));
+insert into chat (body) values ('hi all');
+select must_fail($$insert into chat (user_id, body) values ((select adm from ids), 'fake')$$, 'row-level security');
+select must_fail($$insert into chat (event) values ('{"type":"closed"}')$$, 'row-level security');
+select must_fail($$insert into chat (body) values ('   ')$$, 'check constraint');
+insert into chat_reactions (msg_id, emoji) select id, '👍' from chat where body = 'hi all';
+select must_fail($$insert into chat_reactions (msg_id, user_id, emoji) select id, (select adm from ids), '👍' from chat where body = 'hi all'$$, 'row-level security');
+insert into rsvps (day_date, player_id, status) values ('2099-01-08', 2, 'in');
+select check_that((select event->>'who' from chat where event->>'type' = 'rsvp' order by id desc limit 1) = 'Dani2', 'an answer shows up in the chat');
+select check_that(exists (select 1 from chat where event->>'type' = 'closed') and exists (select 1 from chat where event->>'type' = 'extra'), 'closed days and extra games show up too');
+select as_user((select adm from ids));
+select check_that(rows_changed($$update profiles set chat_push = true where id = auth.uid()$$) = 1, 'everyone switches chat notifications themselves');
+reset role;
+select check_that((select count(*) from claim_chat((select id from chat where body = 'hi all'))) = 1, 'the admin''s phone hears about member1''s message');
+select check_that((select count(*) from claim_chat((select id from chat where body = 'hi all'))) = 0, 'only once');
+set role authenticated; select as_user((select adm from ids));
+insert into chat (body) values ('admin here');
+select as_user((select m1 from ids));
+select check_that(rows_changed($$delete from chat where body = 'admin here'$$) = 0, 'members cannot delete other people''s messages');
+select check_that(rows_changed($$delete from chat where body = 'hi all'$$) = 1, 'members delete their own');
+select must_fail($$select * from claim_chat(1)$$, 'permission denied');
+select as_user((select adm from ids));
+select check_that(rows_changed($$delete from chat where body = 'admin here'$$) = 1, 'admins delete any message');
+reset role;
+
 -- ================= logged out (anon) =================
 reset role; set role anon;
 select check_that((select count(*) from players) = 0 and (select count(*) from profiles) = 0 and (select count(*) from matches) = 0, 'nothing readable when logged out');

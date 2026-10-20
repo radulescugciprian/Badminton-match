@@ -229,6 +229,22 @@ function play() {
 
 // Board: Day / Month / All time with arrows, a podium, ranked rows (record, form, rank change), a minimum of 3 games
 // for Month and All time, your own row highlighted, and a mini profile on tap
+// Chat: messages (yours on the right), the app's own notes in the middle, tap a message to react or delete it
+function chatView() {
+  const uid = session.user.id, pidOf = u => (db.players.find(p => p.user === u) || {}).id, nameOf = u => { const p = pidOf(u); return p ? name(p) : esc((members.find(x => x.id === u) || {}).username || '?'); };
+  const when = m => new Date(m.created_at).toLocaleString(LOCALE[lang], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+  const rx = m => { const g = {}; chatRx.filter(x => x.msg_id === m.id).forEach(x => { g[x.emoji] = g[x.emoji] || []; g[x.emoji].push(x.user_id); });
+    return Object.keys(g).length ? `<div class="crx">${Object.entries(g).map(([e, us]) => `<button class="${us.includes(uid) ? 'on' : ''}" onclick="event.stopPropagation();reactChat(${m.id},'${e}')">${e} ${us.length}</button>`).join('')}</div>` : ''; };
+  const msg = m => m.event ? `<div class="cev">${esc(evText(m.event))} · ${when(m)}</div>`
+    : `<div class="cmsg ${m.user_id === uid ? 'me' : ''}">${m.user_id !== uid && pidOf(m.user_id) ? av(pidOf(m.user_id), 30) : ''}<div class="cb" onclick="chatOpen=chatOpen===${m.id}?null:${m.id};render()">
+        <small>${m.user_id === uid ? '' : nameOf(m.user_id) + ' · '}${when(m)}</small><div>${esc(m.body)}</div>${rx(m)}
+        ${chatOpen === m.id ? `<div class="ctools">${['👍', '😂', '🔥', '❤️', '🏸'].map(e => `<button onclick="event.stopPropagation();reactChat(${m.id},'${e}')">${e}</button>`).join('')}${m.user_id === uid || isAdmin() ? `<button class="danger" onclick="event.stopPropagation();delChat(${m.id})" aria-label="${t('Delete this message?')}">✕</button>` : ''}</div>` : ''}</div></div>`;
+  const bell = pushOn ? `<button class="link" onclick="chatPush(${!me.chat_push})">🔔 ${me.chat_push ? t('New-message notifications: on') : t('New-message notifications: off')}</button>`
+    : pushOn === false ? `<button class="link" onclick="pushToggle()">🔔 ${t('Turn on notifications to hear about new messages')}</button>` : '';
+  return `<h1>💬 ${t('Chat')}</h1><div class="actions" style="margin:0 0 8px">${bell}</div>
+    <div class="chat">${chat.length ? chat.map(msg).join('') : `<p class="mut" style="text-align:center">${t('No messages yet. Say hi!')}</p>`}</div>`;
+}
+
 function board() {
   const days = db.days.filter(d => d.matches.length), si = Math.max(0, days.findIndex(d => d.id === selId)), sel = days.find(d => d.id === selId) || days[days.length - 1];
   const ym = lbMonth || tzParts().date.slice(0, 7), champ = monthChamps().find(c => c.ym === ym), min = tab === 'day' ? 1 : 3;
@@ -536,6 +552,7 @@ const NAV = { play: () => ICON('play') + '<span>' + t('Play') + (session && load
 function render() {
   if (session && loaded && view !== lastTracked) { lastTracked = view; track(view); }
   if (view === 'admin' && !isAdmin()) view = 'play';
+  if (view === 'chat' && session && loaded) markChatSeen();
   document.documentElement.style.setProperty('--dim', dim() / 100);
   document.body.classList.toggle('out', !session);
   document.body.dataset.view = session ? view : '';
@@ -547,13 +564,21 @@ function render() {
   if (!loaded) { app.innerHTML = `<p class="mut">${t('Loading…')}</p>`; return; }
   const mp = db.players.find(p => p.user === session.user.id);
   const top = `<div class="top"><button class="me" onclick="go('profile')" aria-label="${t('Profile')}">${mp ? av(mp.id, 44) : '👤'}<span class="col"><span class="n">${esc(me.username || '')}</span></span></button>
-    <span class="bar">${me.is_admin && !asMember ? `<button class="link ico" onclick="toggleView()" aria-label="${t('View as member')}" title="${t('View as member')}">👁</button>` : ''}<button class="link ico" id="helpbtn" onclick="showHelp()" aria-label="${t('How it works')}" title="${t('How it works')}">${topIcon('help')}</button><button class="link" onclick="go('members')">${topIcon('members')}${t('Members')}</button>${isAdmin() ? `<button class="link" onclick="adminPage='';admPanel='';go('admin')" aria-label="${t('Admin tools')}" title="${t('Admin tools')}">${topIcon('admin')}${t('admin')}</button>` : ''}<button class="link" onclick="logout()">${topIcon('logout')}${t('Log out')}</button></span></div>`;
+    <span class="bar">${me.is_admin && !asMember ? `<button class="link ico" onclick="toggleView()" aria-label="${t('View as member')}" title="${t('View as member')}">👁</button>` : ''}<button class="link ico chatbtn" onclick="go('chat')" aria-label="${t('Chat')}" title="${t('Chat')}">💬${chatUnread() ? `<i class="cbadge">${chatUnread()}</i>` : ''}</button><button class="link ico" id="helpbtn" onclick="showHelp()" aria-label="${t('How it works')}" title="${t('How it works')}">${topIcon('help')}</button><button class="link" onclick="go('members')">${topIcon('members')}${t('Members')}</button>${isAdmin() ? `<button class="link" onclick="adminPage='';admPanel='';go('admin')" aria-label="${t('Admin tools')}" title="${t('Admin tools')}">${topIcon('admin')}${t('admin')}</button>` : ''}<button class="link" onclick="logout()">${topIcon('logout')}${t('Log out')}</button></span></div>`;
   const behind = isAdmin() && dbBehind ? `<div class="strip"><span>⚠️ ${t('The database is missing updates, so some buttons may fail. Apply the newest migrations in Supabase (see SETUP.md).')}</span></div>` : '';
   const strip = behind + (me.is_admin && asMember ? `<div class="strip"><span>👁 ${t('You are viewing the app as a member. Admin tools are hidden.')}</span><button onclick="toggleView()">${t('Back to admin')}</button></div>` : '');
-  app.innerHTML = top + strip + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'admin' && isAdmin() ? adminView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : view === 'backfill' && bf ? backfillView() : `<h1>${t('Photos')}</h1><div class="seg" style="margin-bottom:12px"><button class="${photosTab === 'photos' ? 'on' : ''}" onclick="photosTab='photos';render()">📷 ${t('Photos')}</button><button class="${photosTab === 'receipts' ? 'on' : ''}" onclick="photosTab='receipts';render()">🧾 ${t('Receipts')}</button></div><div id="gal"></div>`);
+  const nearEnd = view === 'chat' && innerHeight + scrollY >= document.body.scrollHeight - 120;   // reading older messages: do not jump
+  app.innerHTML = top + strip + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'admin' && isAdmin() ? adminView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : view === 'chat' ? chatView() : view === 'backfill' && bf ? backfillView() : `<h1>${t('Photos')}</h1><div class="seg" style="margin-bottom:12px"><button class="${photosTab === 'photos' ? 'on' : ''}" onclick="photosTab='photos';render()">📷 ${t('Photos')}</button><button class="${photosTab === 'receipts' ? 'on' : ''}" onclick="photosTab='receipts';render()">🧾 ${t('Receipts')}</button></div><div id="gal"></div>`);
   drawReactions();
   const sl = document.querySelector('.slides'); shownSlide = slideIdx; if (sl && slideIdx) sl.scrollLeft = slideIdx * sl.clientWidth;
   minimalize(app);
+  let cf = document.querySelector('.cform');   // made once, outside #app: redraws never interrupt typing
+  if (!cf && session) { cf = document.createElement('form'); cf.className = 'cform'; cf.onsubmit = sendChat; document.body.append(cf); }
+  if (cf) {
+    if (cf.dataset.lang !== lang) { cf.dataset.lang = lang; cf.innerHTML = `<input name="body" maxlength="1000" autocomplete="off" placeholder="${t('Message')}"><button class="primary" type="submit" aria-label="${t('Send')}">➤</button>`; }
+    cf.hidden = !(session && view === 'chat');
+  }
+  if (view === 'chat' && (nearEnd || chatJump)) { chatJump = false; scrollTo(0, document.body.scrollHeight); }   // follow new messages unless reading older ones
   if (view === 'photos') gallery().catch(e => { gal.innerHTML = `<p class="msg">${esc(friendly(e))}</p>`; });
 }
 
