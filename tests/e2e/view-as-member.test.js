@@ -20,7 +20,7 @@ run('admin views the app as a member', async h => {
   assert.equal(await A.locator('button:has-text("Start playing")').count(), 0, 'hidden outside the play day, like for a member');
   assert.equal(await A.locator('.top [aria-label="Admin tools"]').count(), 0, 'the top bar shows no admin tag');
   assert.equal(await A.locator('[aria-label="View as member"]').count(), 0);
-  await A.click('text=Members'); await A.waitForSelector('text=Accounts');
+  await A.click('nav [data-v=group]'); await A.click('.seg >> text=Members'); await A.waitForSelector('text=Accounts');
   assert.equal(await A.locator('text=Make admin').count() + await A.locator('text=Activity log').count() + await A.locator('[aria-label^="Remove account"]').count(), 0, 'Members page without admin tools');
   await A.click('[aria-label=Calendar]').catch(() => {});
   await A.evaluate(() => go('calendar')); await A.waitForSelector('text=Calendar');

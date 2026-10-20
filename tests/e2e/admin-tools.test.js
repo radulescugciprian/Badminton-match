@@ -27,7 +27,7 @@ run('admin tools', async h => {
   assert(log.includes('Bob') && log.includes('removed match 3'), 'the undo is attributed to Bob');
   assert(log.includes('Anna') && log.includes('closed the day') && /deleted the day .* with 2 matches/.test(log), 'closing and deleting are attributed to Anna');
   assert.deepEqual(st.log.map(x => x.action), ['delete_match', 'close_day', 'delete_day']);
-  await B.click('text=Members'); await B.waitForSelector('text=Accounts');
+  await B.click('nav [data-v=group]'); await B.click('.seg >> text=Members'); await B.waitForSelector('text=Accounts');
   assert(!(await B.textContent('#app')).includes('Activity log'), 'members cannot see the log');
   // an out-of-date database is shown to admins only
   st.dbVersion = 1; await A.reload(); await A.waitForSelector('text=The database is missing updates');
@@ -50,8 +50,8 @@ run('admin tools', async h => {
   const ut = await A.textContent('.usage'); assert(ut.includes('Most used') && ut.includes('Bob') && ut.includes('last seen'), ut.slice(0, 200));
   // icons: an admin switches everyone to the minimal line icons
   await A.click('text=← Admin tools'); await A.click('[data-adm=icons]'); await A.click('.seg >> text=Minimal'); await h.until(() => st.schedule[0].icon_set === 'minimal', 'icon set saved');
-  await A.waitForFunction(() => document.querySelectorAll('nav svg.lic').length === 4 && document.querySelectorAll('.top svg.lic').length >= 3);
-  await B.reload(); await B.waitForFunction(() => document.querySelectorAll('nav svg.lic').length === 4);
+  await A.waitForFunction(() => document.querySelectorAll('nav svg.lic').length === 5 && document.querySelectorAll('.top svg.lic').length >= 3);
+  await B.reload(); await B.waitForFunction(() => document.querySelectorAll('nav svg.lic').length === 5);
   // photo dimming: the admin's slider is saved for everyone, members have no slider
   assert.equal(await B.locator('input[type=range]').count(), 0, 'members cannot set the dimming');
   await A.click('[data-adm=bg]');
@@ -67,7 +67,7 @@ run('admin tools', async h => {
   await B.waitForSelector('#gal .member'); await B.click('[aria-label="Delete this receipt?"]');
   await h.until(() => st.receipts.length === 0, 'receipt deleted by the member who added it');
   // Members: one row per person, filters, a mini profile on tap, and an invite to share
-  await B.click('text=Members'); await B.waitForSelector('.mrow2');
+  await B.click('nav [data-v=group]'); await B.click('.seg >> text=Members'); await B.waitForSelector('.mrow2');
   const everyone = await B.locator('.mrow2').count(); await B.click('.chip >> text=Guests');
   assert(await B.locator('.mrow2').count() < everyone && await B.locator('.mrow2 .tag').count() === await B.locator('.mrow2').count(), 'only guests');
   await B.click('.chip >> text=All'); await B.click('.mrow2 >> nth=0'); await B.waitForSelector('.spanel');

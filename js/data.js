@@ -248,7 +248,7 @@ function showHelp() {
 }
 
 // ---- actions
-const go = v => { if (v !== view && view !== 'profile') prevView = view; if (v === 'chat' && view !== 'chat') { chatJump = true; chatMark = chatSeen(); } view = v; render(); };
+const go = v => { if (v !== view && view !== 'profile') prevView = view; if (v === 'chat' && view !== 'chat') { chatJump = true; chatMark = chatSeen(); } if (v === 'chat' || v === 'members') groupTab = v; view = v; render(); };
 // usage counters for the admins (which tab, which action); errors are ignored so the app never waits on this
 const track = v => { try { sb.rpc('track', { v }).then(() => {}, () => {}); } catch {} };
 // a guest (no account) who has not played for 8 weeks stops joining new days; they can be brought back from the setup screen
@@ -595,7 +595,7 @@ const pushToggle = () => act(async () => {
 });
 const pushTest = () => act(async () => { const r = await sb.functions.invoke('remind', { body: { test: true } }); if (r.error || !r.data.sent) alert(t('The test notification could not be sent.')); });
 // ---- group chat (newest 200 messages); "seen" is remembered per phone
-let chat = [], chatRx = [], chatOpen = null, chatJump = false, chatMark = 0;   // chatMark: the last message read before opening the chat
+let chat = [], chatRx = [], chatOpen = null, chatJump = false, chatMark = 0, groupTab = 'chat';   // groupTab: the Group tab remembers Chat or Members   // chatMark: the last message read before opening the chat
 const chatSeen = () => { try { return +localStorage.getItem('chatSeen') || 0; } catch { return 0; } };
 const chatUnread = () => chat.filter(m => m.body && m.id > chatSeen() && m.user_id !== session.user.id).length;
 const markChatSeen = () => { const last = chat.length ? chat[chat.length - 1].id : 0; if (last > chatSeen()) try { localStorage.setItem('chatSeen', last); } catch {} };

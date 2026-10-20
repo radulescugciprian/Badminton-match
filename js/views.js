@@ -230,6 +230,7 @@ function play() {
 // Board: Day / Month / All time with arrows, a podium, ranked rows (record, form, rank change), a minimum of 3 games
 // for Month and All time, your own row highlighted, and a mini profile on tap
 // Chat: messages (yours on the right), the app's own notes in the middle, tap a message to react or delete it
+const groupSeg = () => `<div class="seg" style="margin:0 0 12px"><button class="${view === 'chat' ? 'on' : ''}" onclick="go('chat')">💬 ${t('Chat')}</button><button class="${view === 'members' ? 'on' : ''}" onclick="go('members')">👥 ${t('Members')}</button></div>`;
 function chatView() {
   const uid = session.user.id, pidOf = u => (db.players.find(p => p.user === u) || {}).id, nameOf = u => { const p = pidOf(u); return p ? name(p) : esc((members.find(x => x.id === u) || {}).username || '?'); };
   const when = m => new Date(m.created_at).toLocaleString(LOCALE[lang], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
@@ -242,7 +243,7 @@ function chatView() {
   const bell = pushOn ? `<button class="link" onclick="chatPush(${!me.chat_push})">🔔 ${me.chat_push ? t('New-message notifications: on') : t('New-message notifications: off')}</button>`
     : pushOn === false ? `<button class="link" onclick="pushToggle()">🔔 ${t('Turn on notifications to hear about new messages')}</button>` : '';
   const firstNew = chat.find(m => m.body && m.id > chatMark && m.user_id !== uid);
-  return `<h1>💬 ${t('Chat')}</h1><div class="actions" style="margin:0 0 8px">${bell}</div>
+  return `${groupSeg()}<div class="actions" style="margin:0 0 8px">${bell}</div>
     <div class="chat">${chat.length ? chat.map(m => (m === firstNew ? `<div class="cnew">${t('New messages')}</div>` : '') + msg(m)).join('') : `<p class="mut" style="text-align:center">${t('No messages yet. Say hi!')}</p>`}</div>`;
 }
 
@@ -353,7 +354,7 @@ function membersView() {
     : memSort === 'last' ? (a, b) => lastPlayed(b.id).localeCompare(lastPlayed(a.id)) : (a, b) => a.name.localeCompare(b.name));
   const all = db.players.filter(p => !p.removed), cnt = k => all.filter(p => (ans(p.id) || 'none') === k).length;
   const detail = miniProfile;
-  return `<div class="top"><button class="link" onclick="go(prevView)">← ${t('Back')}</button></div><h1>${t('Members')}</h1>
+  return `${groupSeg()}
     <div class="card astatus one"><span>👥 ${all.length} ${t('players')} · ${members.length} ${t('accounts')}</span><span>📅 ${esc(niceDate(date))}</span>
       <span>✅ ${cnt('in')} ${t('in')} · ❌ ${cnt('out')} ${t('out')} · ⏳ ${cnt('none')} ${t('no answer')}</span></div>
     <div class="chips" style="margin:8px 0">${[['all', t('All')], ['acct', t('With account')], ['guest', t('Guests')]].map(([k, l]) => `<button class="chip ${memFilter === k ? 'in' : ''}" onclick="memFilter='${k}';render()">${l}</button>`).join('')}
@@ -416,8 +417,8 @@ function adminView() {
 
 // admins only: how the app is used (last 30 days): who is active, which tabs, what people do, and when
 function usageCard() {
-  const today = tzParts().date, tabs = ['play', 'board', 'photos', 'stats', 'profile', 'members', 'calendar', 'admin'];
-  const label = { play: t('Play'), board: t('Board'), photos: t('Photos'), stats: t('Stats'), profile: t('Profile'), members: t('Members'), calendar: t('Calendar'), admin: t('Admin tools') };
+  const today = tzParts().date, tabs = ['play', 'board', 'chat', 'photos', 'stats', 'profile', 'members', 'calendar', 'admin'];
+  const label = { play: t('Play'), board: t('Board'), chat: t('Chat'), photos: t('Photos'), stats: t('Stats'), profile: t('Profile'), members: t('Members'), calendar: t('Calendar'), admin: t('Admin tools') };
   const sum = rows => rows.reduce((x, r) => x + r.n, 0), views = usage.filter(r => tabs.includes(r.what));
   const active = days => new Set(usage.filter(r => r.day > addDays(today, -days)).map(r => r.user_id)).size;
   const pct = rows => { const tot = sum(rows); return tabs.map(k => [k, sum(rows.filter(r => r.what === k))]).filter(([, n]) => n).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${label[k]} ${Math.round(100 * n / tot)}%`).join(' · '); };
@@ -548,7 +549,8 @@ const svgIcon = (k, cls = '') => `<svg class="lic ${cls}" viewBox="0 0 24 24" fi
 const ICON = k => iconSet() === 'minimal' ? svgIcon(k) : `<img class="on" src="ic-${k}-on.png" alt=""><img class="off" src="ic-${k}-off.png" alt="">`;
 const TOPIMG = { members: 'tm-members.png', admin: 'tm-adminkey.png', logout: 'tm-logout.png', help: 'tm-help.png' };
 const topIcon = k => iconSet() === 'minimal' ? svgIcon(k) : `<img src="${TOPIMG[k]}" alt="">`;
-const NAV = { play: () => ICON('play') + '<span>' + t('Play') + (session && loaded && invites().length ? ' •' : '') + '</span>', board: () => ICON('board') + '<span>' + t('Board') + '</span>', photos: () => ICON('photos') + '<span>' + t('Photos') + '</span>', stats: () => ICON('stats') + '<span>' + t('Stats') + '</span>' };
+const NAV = { play: () => ICON('play') + '<span>' + t('Play') + (session && loaded && invites().length ? ' •' : '') + '</span>', board: () => ICON('board') + '<span>' + t('Board') + '</span>',
+  group: () => (iconSet() === 'minimal' ? svgIcon('chat') : '<img class="on" src="tm-members.png" alt=""><img class="off dimmed" src="tm-members.png" alt="">') + '<span>' + t('Group') + '</span>' + (session && loaded && chatUnread() ? `<i class="cbadge">${chatUnread()}</i>` : ''), photos: () => ICON('photos') + '<span>' + t('Photos') + '</span>', stats: () => ICON('stats') + '<span>' + t('Stats') + '</span>' };
 
 function render() {
   if (session && loaded && view !== lastTracked) { lastTracked = view; track(view); }
@@ -558,14 +560,14 @@ function render() {
   document.body.classList.toggle('out', !session);
   document.body.dataset.view = session ? view : '';
   document.documentElement.lang = lang;
-  document.querySelectorAll('nav button').forEach(b => { b.innerHTML = NAV[b.dataset.v](); b.setAttribute('aria-current', b.dataset.v === view ? 'page' : ''); });
+  document.querySelectorAll('nav button').forEach(b => { b.innerHTML = NAV[b.dataset.v](); b.setAttribute('aria-current', b.dataset.v === view || (b.dataset.v === 'group' && (view === 'chat' || view === 'members')) ? 'page' : ''); });
   if (!sb) { app.innerHTML = `<h1>${t('Almost there')}</h1><p class="mut">${t('Add your Supabase URL and key to config.js (see SETUP.md).')}</p>`; return; }
   if (!authReady) { app.innerHTML = `<p class="mut">${t('Loading…')}</p>`; return; }
   if (!session) { app.innerHTML = login_(); return; }
   if (!loaded) { app.innerHTML = `<p class="mut">${t('Loading…')}</p>`; return; }
   const mp = db.players.find(p => p.user === session.user.id);
   const top = `<div class="top"><button class="me" onclick="go('profile')" aria-label="${t('Profile')}">${mp ? av(mp.id, 44) : '👤'}<span class="col"><span class="n">${esc(me.username || '')}</span></span></button>
-    <span class="bar">${me.is_admin && !asMember ? `<button class="link ico" onclick="toggleView()" aria-label="${t('View as member')}" title="${t('View as member')}">👁</button>` : ''}<button class="link ico chatbtn" onclick="go('chat')" aria-label="${t('Chat')}" title="${t('Chat')}">💬${chatUnread() ? `<i class="cbadge">${chatUnread()}</i>` : ''}</button><button class="link ico" id="helpbtn" onclick="showHelp()" aria-label="${t('How it works')}" title="${t('How it works')}">${topIcon('help')}</button><button class="link" onclick="go('members')">${topIcon('members')}${t('Members')}</button>${isAdmin() ? `<button class="link" onclick="adminPage='';admPanel='';go('admin')" aria-label="${t('Admin tools')}" title="${t('Admin tools')}">${topIcon('admin')}${t('admin')}</button>` : ''}<button class="link" onclick="logout()">${topIcon('logout')}${t('Log out')}</button></span></div>`;
+    <span class="bar">${me.is_admin && !asMember ? `<button class="link ico" onclick="toggleView()" aria-label="${t('View as member')}" title="${t('View as member')}">👁</button>` : ''}<button class="link ico" id="helpbtn" onclick="showHelp()" aria-label="${t('How it works')}" title="${t('How it works')}">${topIcon('help')}</button>${isAdmin() ? `<button class="link" onclick="adminPage='';admPanel='';go('admin')" aria-label="${t('Admin tools')}" title="${t('Admin tools')}">${topIcon('admin')}${t('admin')}</button>` : ''}<button class="link" onclick="logout()">${topIcon('logout')}${t('Log out')}</button></span></div>`;
   const behind = isAdmin() && dbBehind ? `<div class="strip"><span>⚠️ ${t('The database is missing updates, so some buttons may fail. Apply the newest migrations in Supabase (see SETUP.md).')}</span></div>` : '';
   const strip = behind + (me.is_admin && asMember ? `<div class="strip"><span>👁 ${t('You are viewing the app as a member. Admin tools are hidden.')}</span><button onclick="toggleView()">${t('Back to admin')}</button></div>` : '');
   const nearEnd = view === 'chat' && innerHeight + scrollY >= document.body.scrollHeight - 120;   // reading older messages: do not jump
@@ -593,6 +595,7 @@ const TOUR = () => [
   ['.startbar', '▶️ ' + t('Start playing'), t('It opens shortly before play time. Who plays with whom shows 15 minutes before.')],
   ['.teams', '🏆 ' + t('Record the winner'), t('After every match tap the team that won. Everyone sees the scores live.')],
   ['nav [data-v=board]', '🏆 ' + t('Board'), t('Leaderboards for the day, the month and all time, plus everyone\'s rating.')],
+  ['nav [data-v=group]', '💬 ' + t('Group'), t('Chat with the group, and see everyone: who is coming, ratings and guests.')],
   ['nav [data-v=photos]', '📷 ' + t('Photos'), t('The group photo of each day, and receipts for extra courts or shuttles.')],
   ['nav [data-v=stats]', '📊 ' + t('Stats'), t('Your rating over time, badges, best partners and head-to-head records.')],
   ['.top .me', '🙂 ' + t('Your profile'), t('Tap your photo for your profile: picture, language, light or dark theme and privacy.')],

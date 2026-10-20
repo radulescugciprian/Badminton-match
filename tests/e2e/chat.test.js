@@ -4,10 +4,10 @@ run('chat', async h => {
   const { mk, signup, st, assert, until } = h;
   const A = await mk(); await signup(A, 'Anna', 'a@x.com', '1');
   const B = await mk(); await signup(B, 'Bob', 'b@x.com', '2');
-  await A.click('.chatbtn'); await A.waitForSelector('text=No messages yet');
+  await A.click('nav [data-v=group]'); await A.waitForSelector('text=No messages yet');
   await A.fill('.cform input', 'Who brings shuttles?'); await A.click('.cform button'); await until(() => st.chat.some(m => m.body === 'Who brings shuttles?'), 'message saved');
   await B.waitForSelector('.cbadge:has-text("1")');                                                  // unread badge on the other phone
-  await B.click('.chatbtn'); await B.waitForSelector('text=Who brings shuttles?');
+  await B.click('nav [data-v=group]'); await B.waitForSelector('text=Who brings shuttles?');
   assert.equal(await B.locator('.cbadge').count(), 0, 'opening the chat marks it read');
   assert.equal(await B.locator('.cnew + .cmsg:has-text("Who brings shuttles?")').count(), 1, 'a "New messages" line marks where the unread ones start');
   assert.equal(await A.locator('.cnew').count(), 0, 'your own messages are never "new"');

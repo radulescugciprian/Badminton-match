@@ -69,7 +69,7 @@ run('help, plain errors, languages, privacy and the schedule editor', async h =>
   // ---- admin edits the schedule in the app
   await A.click('[aria-label="Admin tools"]'); await A.click('[data-adm=schedule]'); await A.waitForSelector('[name=dow]');
   assert((await B.locator('text=Play schedule').count()) === 0);
-  await B.click('text=Members'); await B.waitForSelector('text=Accounts'); assert((await B.locator('form >> text=Save schedule').count()) === 0, 'members have no schedule form');
+  await B.click('nav [data-v=group]'); await B.click('.seg >> text=Members'); await B.waitForSelector('text=Accounts'); assert((await B.locator('form >> text=Save schedule').count()) === 0, 'members have no schedule form');
   await A.fill('[name=tz]', 'Mars/Olympus'); await A.click('text=Save schedule'); await A.waitForSelector('text=Unknown time zone');
   assert(st.schedule[0].tz === 'Europe/Berlin', 'invalid zone refused');
   await A.selectOption('[name=dow]', '5'); await A.selectOption('[name=timeh]', '19'); await A.selectOption('[name=timem]', '0'); await A.fill('[name=tz]', 'Europe/Zagreb');

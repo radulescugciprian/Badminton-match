@@ -250,7 +250,7 @@
   :root[data-theme=light] .stage{background:rgba(var(--ovc),.8)}
   .pbtns{display:flex;gap:10px;margin-top:12px} .pbtns button{flex:1;padding:14px 8px;font-size:var(--fs-md);font-weight:700;background:var(--card);color:var(--text);border:1.5px solid var(--line);border-radius:14px} .pbtns button:disabled{opacity:.45}
   /* chat */
-  .chatbtn{position:relative} .cbadge{position:absolute;top:0;right:-2px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--danger);color:#fff;font:700 11px/16px system-ui;font-style:normal;text-shadow:none}
+  .cbadge{position:absolute;top:0;right:-2px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--danger);color:#fff;font:700 11px/16px system-ui;font-style:normal;text-shadow:none}
   .chat{display:flex;flex-direction:column;gap:8px;padding-bottom:70px}
   .cmsg{display:flex;align-items:flex-end;gap:6px;max-width:85%} .cmsg.me{align-self:flex-end;flex-direction:row-reverse}
   .cb{background:var(--card);border:1px solid var(--line);border-radius:14px 14px 14px 4px;padding:6px 10px;cursor:pointer;overflow-wrap:anywhere} .cb>div:first-of-type{white-space:pre-wrap}
@@ -262,3 +262,4 @@
   :root[data-theme=light] :is(.cb,.cev,.cform){--text:#10231a;--mut:#3d5a4c;color:var(--text)}
   .cform[hidden]{display:none}
   .cnew{display:flex;align-items:center;gap:8px;color:var(--danger);font-size:var(--fs-xs);font-weight:700;text-transform:uppercase;letter-spacing:.06em} .cnew::before,.cnew::after{content:'';flex:1;border-top:1.5px solid var(--danger)}
+  nav button{position:relative} nav .cbadge{top:2px;right:calc(50% - 26px)} nav img.dimmed{opacity:.55;filter:grayscale(.7)}

@@ -78,14 +78,14 @@ run('sign-in, rights, photos and the play schedule', async h => {
   // admin tools: guests are marked, accounts can be removed, scores can be reset
   await A.click('nav >> text=Play'); await A.waitForSelector('text=Next match day');
   assert((await A.locator('.row .tag').count()) === 3, 'three players have no account (Costi, Zjepko, Ciprian)');
-  await A.click('text=Members'); await A.waitForSelector('text=Accounts');
+  await A.click('nav [data-v=group]'); await A.click('.seg >> text=Members'); await A.waitForSelector('text=Accounts');
   assert((await A.locator('.card .tag').count()) === 3, 'guests marked in the Members list too');
   await A.click('[aria-label="Admin tools"]'); await A.click('[data-adm=accounts]'); await A.waitForSelector('[aria-label^="Remove account"]');
   assert((await B.locator('[aria-label^="Remove account"]').count()) === 0, 'member has no remove-account button');
   await A.click('[aria-label="Remove account bob"], [aria-label="Remove account Bob"]');
   await B.waitForSelector('text=Log in to see the scores');                       // removed account is signed out
   assert(!st.profiles.some(p => p.username === 'Bob') && st.players.find(p => p.name === 'Dani').user_id === null, 'Bob gone, Dani kept as guest');
-  await A.click('text=Members'); await A.waitForFunction(() => document.querySelectorAll('.card .tag').length === 4);
+  await A.click('nav [data-v=group]'); await A.click('.seg >> text=Members'); await A.waitForFunction(() => document.querySelectorAll('.card .tag').length === 4);
   // reset all scores
   await A.click('nav >> text=Play'); await A.click('text=Start playing'); await win(A, 1);
   await A.click('[aria-label="Admin tools"]'); await A.click('[data-adm=danger]'); await A.click('button.danger:has-text("Reset all scores")');
