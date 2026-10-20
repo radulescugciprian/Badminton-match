@@ -34,6 +34,9 @@ run('sign-up list, ratings, badges, result card and reactions', async h => {
   const [dl] = await Promise.all([A.waitForEvent('download'), A.click('text=Remind me every Thursday')]);
   const ics = fs.readFileSync(await dl.path(), 'utf8');
   assert(ics.includes('RRULE:FREQ=WEEKLY;BYDAY=TH') && ics.includes('DTSTART;TZID=Europe/Berlin:20261015T173000') && ics.includes('TRIGGER:PT0M') && ics.includes('TZID:Europe/Berlin'), 'ics content');
+  // phones that can get notifications see a switch instead of the calendar file (the test browser has none, so pretend)
+  await A.evaluate(() => { pushOn = false; render(); }); await A.waitForSelector('text=Notify me on play days');
+  await A.evaluate(() => { pushOn = true; render(); }); await A.waitForSelector('text=Send a test'); await A.evaluate(() => { pushOn = null; render(); });
   
   // ---- play: celebration
   await A.click('text=Start playing'); await A.waitForSelector('text=Match 1');

@@ -21,7 +21,7 @@ let db = { players: [], days: [] }, members = [], me = {}, session = null, loade
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
-const DB_VERSION = 20261106; // bump together with db_version() in the newest migration
+const DB_VERSION = 20261107; // bump together with db_version() in the newest migration
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
 let boardKind = 'doubles', boardOpen = null, memFilter = 'all', memSort = 'name', memOpen = null, adminPage = '', admPanel = '', prevView = 'play', profPanel = '', usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, lineupOpen = false, moreOpen = false, dayMore = false, lastRec = 0, bgLoaded = false, rsvps = [], reactions = [], statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
@@ -97,6 +97,7 @@ async function refresh() {
     if (order.join() !== day.order.join() || mode !== day.mode) { await patchDay(day.id, { player_order: order, mode })(); return refresh(); }
   }
   loaded = true; render();
+  if (pushOn === null) pushReady();
   if (deepLink && !deepDone) { deepDone = true; history.replaceState(null, '', location.pathname); view = 'play'; render();
     const el = document.querySelector(`.invite[data-day="${deepLink}"], .rsvp[data-day="${deepLink}"]`) || document.querySelector('.rsvp');
     if (el) { el.scrollIntoView({ block: 'center' }); el.classList.add('flash'); } }
@@ -572,6 +573,23 @@ const setRsvp = (id, status, date = nextPlayDate()) => {
 const resetRsvps = (date = nextPlayDate()) => {
   if (confirm(t('Clear everyone\'s answers for {date}? Everybody will show as "no answer" again.', { date: niceDate(date) }))) act(async () => ok(await sb.from('rsvps').delete().eq('day_date', date))); };
 const cycleRsvp = (id, date = nextPlayDate()) => setRsvp(id, { in: 'out', out: null }[answerOf(id, date)] ?? 'in', date); // admins: in -> out -> no answer
+// ---- play-day notifications (Web Push; the server side is supabase/functions/remind). iPhones need the app on the Home Screen first.
+let pushOn = null;   // null: this browser cannot, false: off, true: on
+const pushReady = async () => {
+  if (!('PushManager' in window) || !navigator.serviceWorker) return;
+  pushOn = !!(await (await navigator.serviceWorker.ready).pushManager.getSubscription()); render();
+};
+const b64 = s => Uint8Array.from(atob((s + '='.repeat((4 - s.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+const pushToggle = () => act(async () => {
+  const reg = await navigator.serviceWorker.ready, old = await reg.pushManager.getSubscription();
+  if (pushOn) { if (old) { ok(await sb.rpc('drop_push', { endpoint: old.endpoint })); await old.unsubscribe(); } pushOn = false; return; }
+  if (await Notification.requestPermission() !== 'granted') return alert(t('Notifications are blocked for this app. Allow them in the phone settings, then try again.'));
+  const key = ok(await sb.rpc('push_public_key'));
+  if (!key) return alert(t('Notifications are not set up on the server yet. Ask an admin.'));
+  const j = (old || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(key) })).toJSON();
+  ok(await sb.rpc('save_push', { endpoint: j.endpoint, p256dh: j.keys.p256dh, auth_key: j.keys.auth })); pushOn = true;
+});
+const pushTest = () => act(async () => { const r = await sb.functions.invoke('remind', { body: { test: true } }); if (r.error || !r.data.sent) alert(t('The test notification could not be sent.')); });
 const remindMe = () => { const s = sched || { tz: 'Europe/Berlin', dow: 4, play_time: '18:30', rsvp_until_minutes: 120 };
   saveFile(calendarFile(s, nextPlayDate(), location.href, t('Badminton: answer if you are coming'),
     t('Open the app and tap I\'m in or I\'m out before {time}.', { time: hhmm(+s.play_time.slice(0, 2) * 60 + +s.play_time.slice(3, 5) - s.rsvp_until_minutes) })), 'badminton.ics'); };
@@ -649,7 +667,7 @@ function saveSchedule(e) { // admins only; the database also refuses unknown tim
   }
   if (f.has('mins')) {
     if (+f.get('hide') > +f.get('until')) return showMsg(t('The sign-up section cannot be hidden before the answers close.'));
-    Object.assign(row, { opens_minutes: +f.get('mins'), rsvp_until_minutes: +f.get('until'), rsvp_hide_minutes: +f.get('hide') });
+    Object.assign(row, { opens_minutes: +f.get('mins'), rsvp_until_minutes: +f.get('until'), rsvp_hide_minutes: +f.get('hide'), remind_minutes: +f.get('remind') });
   }
   act(async () => {
     ok(await sb.from('schedule').update(row).eq('id', true));

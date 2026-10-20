@@ -73,7 +73,9 @@ function rsvpCard(date = nextPlayDate(), first = true) {
       : `<span class="chip ${ans(p.id) || ''}">${av(p.id, 22)} ${esc(p.name)} ${icon(p.id)}</span>`).join('')}</div>
     <p class="mut" style="margin:6px 0 0">${by && !locked ? t('Answer before {time}.', { time: by }) + ' ' : ''}${t('The list below fills itself: players who are in first.')}${admin ? ' ' + t('Admins can tap a name to answer for them.') : ''}</p>
     ${admin && rsvps.some(x => x.day_date === date) ? `<button class="link danger" onclick="resetRsvps('${date}')">↺ ${t('Reset answers')}</button>` : ''}
-    <button class="link" onclick="remindMe()">🔔 ${t('Remind me every {day}', { day: dayName(sched ? sched.dow : 4) })}</button>` : ''}</div>`;
+    ${pushOn ? `<div><span class="mut">🔔 ${t('Notifications on')}</span> <button class="link" onclick="pushTest()">${t('Send a test')}</button> <button class="link" onclick="pushToggle()">${t('Turn off')}</button></div>`
+      : pushOn === false ? `<button class="link" onclick="pushToggle()">🔔 ${t('Notify me on play days')}</button>`
+      : `<button class="link" onclick="remindMe()">🔔 ${t('Remind me every {day}', { day: dayName(sched ? sched.dow : 4) })}</button>${/iPhone|iPad/.test(navigator.userAgent) && !navigator.standalone ? `<p class="mut" style="margin:4px 0 0">${t('On iPhone: Share → Add to Home Screen, then open the app from there to get notifications.')}</p>` : ''}`}` : ''}</div>`;
 }
 
 // the play days in the swipe cards (a member no longer sees today's card once the sign-up is hidden)
@@ -380,6 +382,7 @@ function adminView() {
         <label class="field">${t('Members can press Start playing this many minutes before play time')}<input type="number" name="mins" min="0" max="720" value="${sched.opens_minutes}" required></label>
         <label class="field">${t('Answers (in / out) close this many minutes before play time')}<input type="number" name="until" min="0" max="1440" value="${sched.rsvp_until_minutes}" required></label>
         <label class="field">${t('The sign-up section is hidden this many minutes before play time')}<input type="number" name="hide" min="0" max="1440" value="${sched.rsvp_hide_minutes}" required></label>
+        <label class="field">${t('Play-day notification to people who have not answered, this many minutes before play time (0 = off)')}<input type="number" name="remind" min="0" max="1440" value="${sched.remind_minutes ?? 240}" required></label>
         <p class="msg" role="alert"></p><button class="primary" type="submit">${t('Save schedule')}</button></form>`) : ''}
       <button class="srow" onclick="go('calendar')"><span>📅 ${t('Calendar')}</span><span class="mut">${t('extra days, cancelled days, old days')} ›</span></button></div>
     <h2 class="sgroup">${t('Look')}</h2><div class="card slist">

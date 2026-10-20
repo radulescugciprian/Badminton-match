@@ -198,6 +198,28 @@ delete from play_dates where day = '2026-10-22';
 select check_that((select count(*) from admin_log where action = 'clear_play_date') = 2, 'clearing logged (the member''s own extra game and the admin''s)');
 select must_fail($$insert into play_dates values ('2026-10-24', 'party')$$, 'check constraint');
 
+-- play-day notifications: members register their phone, only the server hands out reminders, once per kind, to people who have not answered
+select as_user((select m1 from ids)); select save_push('https://push/e1', 'k1', 'a1');
+select as_user((select adm from ids)); select save_push('https://push/e2', 'k2', 'a2');
+select drop_push('https://push/e1');                                                                   -- not the admin's phone: nothing happens
+select check_that((select count(*) from push_subs) = 0, 'members cannot read the subscriptions');
+select must_fail($$select * from claim_reminders()$$, 'permission denied');
+reset role;
+select check_that((select count(*) from push_subs) = 2, 'both phones registered');
+update schedule set tz = 'UTC', dow = 4, play_time = '18:00', rsvp_until_minutes = 120, remind_minutes = 240;   -- 2099-01-01 is a Thursday
+insert into rsvps (day_date, player_id, status) select '2099-01-01', id, 'in' from players where user_id = (select adm from ids);   -- the admin already answered
+select check_that((select count(*) from claim_reminders('2099-01-01 13:55+00')) = 0, 'nothing before 14:00');
+select check_that((select string_agg(endpoint || ' ' || kind || ' ' || play, ',') from claim_reminders('2099-01-01 14:05+00')) = 'https://push/e1 day 18:00', 'at 14:00 the people without an answer get the play-day reminder');
+select check_that((select count(*) from claim_reminders('2099-01-01 14:10+00')) = 0, 'only once');
+select check_that((select string_agg(kind, ',') from claim_reminders('2099-01-01 15:35+00')) = 'last', 'last call 30 minutes before the answers close');
+delete from push_sent;
+select check_that((select count(*) from claim_reminders('2099-01-01 16:05+00')) = 0, 'nothing once the answers are closed');
+select check_that((select count(*) from claim_reminders('2099-01-02 14:05+00')) = 0, 'nothing on other days');
+update schedule set remind_minutes = 0;
+select check_that((select count(*) from claim_reminders('2099-01-01 14:05+00')) = 0, 'reminders can be turned off');
+set role authenticated; select as_user((select m1 from ids)); select drop_push('https://push/e1'); reset role;
+select check_that((select count(*) from push_subs) = 1, 'members remove their own phone');
+
 -- ================= logged out (anon) =================
 reset role; set role anon;
 select check_that((select count(*) from players) = 0 and (select count(*) from profiles) = 0 and (select count(*) from matches) = 0, 'nothing readable when logged out');

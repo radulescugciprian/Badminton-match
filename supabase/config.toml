@@ -1,2 +1,6 @@
 # Minimal config so the Supabase GitHub integration can find this folder.
 project_id = "lhpfiyvsgibxkayepxml"
+
+# play-day notifications; called by pg_cron without a login, and checks the login itself for test sends
+[functions.remind]
+verify_jwt = false

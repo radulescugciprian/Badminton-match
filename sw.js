@@ -11,3 +11,15 @@ self.addEventListener('fetch', e => {
     return r;
   }).catch(() => caches.match(e.request)));
 });
+// play-day notifications (sent by supabase/functions/remind); a tap opens the app on the sign-up card
+self.addEventListener('push', e => {
+  const m = e.data ? e.data.json() : {};
+  e.waitUntil(self.registration.showNotification(m.title || 'Badminton', { body: m.body, icon: 'icon-192.png', badge: 'icon-192.png', tag: 'badminton-' + (m.kind || '') }));
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(ws => {
+    const w = ws.find(x => x.url.startsWith(self.registration.scope));
+    return w ? w.focus() : clients.openWindow(self.registration.scope);
+  }));
+});

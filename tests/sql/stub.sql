@@ -1,6 +1,7 @@
 -- The few pieces of Supabase that the migrations rely on, so they can be tested on a plain PostgreSQL.
 do $$ begin create role anon nologin; exception when duplicate_object then null; end $$;
 do $$ begin create role authenticated nologin; exception when duplicate_object then null; end $$;
+do $$ begin create role service_role nologin bypassrls; exception when duplicate_object then null; end $$;
 create schema auth; create schema storage; create schema extensions;
 create extension pgcrypto with schema extensions;
 create table auth.users (id uuid primary key default gen_random_uuid(), email text, encrypted_password text, raw_user_meta_data jsonb);
