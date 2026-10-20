@@ -160,7 +160,7 @@
   :root[data-theme=light] nav img,:root[data-theme=light] .top img:not(.av){filter:brightness(.55) saturate(1.8) contrast(1.15)}
   /* light theme, photo shown as it is: text straight on the photo is white; light surfaces (cards, buttons, bars) keep dark text */
   :root[data-theme=light] body:is(.out,[data-view=play],[data-view=board],[data-view=photos],[data-view=stats]){--text:#fff;--mut:#eaf2ed;--ts:rgba(0,0,0,.8);--line-t:#c4d8cd}
-  :root[data-theme=light] :is(.card,.stage,.toast,button:not(.link,.primary),select,input,.row,.team,.rest,.seg,.tile,.badge,.cal .d,.top,nav,.rsvp,.rx){--text:#10231a;--mut:#3d5a4c;--ts:rgba(255,255,255,.95);color:var(--text)}
+  :root[data-theme=light] :is(.card,.stage,.toast,#tour .tip,button:not(.link,.primary),select,input,.row,.team,.rest,.seg,.tile,.badge,.cal .d,.top,nav,.rsvp,.rx){--text:#10231a;--mut:#3d5a4c;--ts:rgba(255,255,255,.95);color:var(--text)}
   .field select{width:100%;margin-top:6px}
   .next{margin:12px 0;padding:12px;border-radius:14px;background:var(--card);border:1px solid var(--line);text-align:center}
   .next small{display:block;color:var(--mut);font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:8px}

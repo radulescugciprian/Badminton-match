@@ -160,7 +160,7 @@ function setup(d) {
   // who plays with whom is shown from 15 minutes before play time (and on the match screen once started)
   // the sign-ups fill the list and decide 4 or 5 players; the date is today's. Only when nobody has answered can an admin pick 4 or 5 by hand.
   return `${calledOffCards()}${inviteCards()}<div class="dayzone ${dayTint(sel)}">${rsvpSlides()}${sel !== date ? laterList(sel) : `${rsvps.some(x => x.day_date === date) && ins < 3 ? `<p class="mut">${t('Only {n} confirmed so far, you need at least 3.', { n: ins })}</p>` : ''}
-      ${auto ? '' : `<div class="seg" style="margin:0 0 12px"><button class="${m === 3 ? 'on' : ''}" onclick="setMode(3)" ${o.length < 3 ? 'disabled' : ''}>${t('3 players')}</button><button class="${m === 4 ? 'on' : ''}" onclick="setMode(4)">${t('4 players')}</button>
+      ${auto ? '' : `<div class="seg pcount" style="margin:0 0 12px"><button class="${m === 3 ? 'on' : ''}" onclick="setMode(3)" ${o.length < 3 ? 'disabled' : ''}>${t('3 players')}</button><button class="${m === 4 ? 'on' : ''}" onclick="setMode(4)">${t('4 players')}</button>
         <button class="${m === 5 ? 'on' : ''}" onclick="setMode(5)" ${o.length < 5 ? 'disabled' : ''}>${t('5 players')}</button></div>`}
       <ol>${o.slice(0, m).map((id, i) => rowOf(id, i)).join('')}</ol>
       ${!sched || minsUntilPlay(date) <= 15 ? `<div class="next"><small>${t('Match {n}', { n: 1 })}</small>
@@ -591,15 +591,19 @@ function render() {
 // ---- guided tour: a spotlight on each part of the app with a short explanation (first run, and from the help screen)
 const TOUR = () => [
   ['.invite, .rsvp', '👋 ' + t('Welcome!'), t('Before each play day tap “I\'m in” or “I\'m out” here. The player list fills itself from the answers.')],
-  ['#app ol .row', '👥 ' + t('The players'), t('The first 5 (or 4) in the list play, the others sit out. Move people with ▲ ▼ and pick 4 or 5 players above the list.')],
-  ['.startbar', '▶️ ' + t('Start playing'), t('It opens shortly before play time. Who plays with whom shows 15 minutes before.')],
-  ['.teams', '🏆 ' + t('Record the winner'), t('After every match tap the team that won. Everyone sees the scores live.')],
-  ['nav [data-v=board]', '🏆 ' + t('Board'), t('Leaderboards for the day, the month and all time, plus everyone\'s rating.')],
-  ['nav [data-v=group]', '💬 ' + t('Group'), t('Chat with the group, and see everyone: who is coming, ratings and guests.')],
+  ['.rsvp [aria-expanded]', '🔔 ' + t('Details and reminders'), t('Tap Details to see everyone\'s answers and turn on notifications: on play days your phone reminds you if you have not answered yet.')],
+  ['.rsvp [aria-label="Share on WhatsApp"]', '💬 ' + t('WhatsApp'), t('Send the sign-up to your WhatsApp group with one tap.')],
+  ['.rsvp [aria-label="Calendar"]', '📅 ' + t('Extra games'), t('Open the calendar to add an extra game on another day, with its time and answer deadline. Everyone gets asked if they join.')],
+  ['.pcount, #app ol', '🔢 ' + t('3, 4 or 5 players'), t('5 players: new teams every match, one rests. 4 players: the same teams play best of 3, then change. 3 players: singles, the winner stays on, at most 3 games in a row.')],
+  ['#app ol .row', '👥 ' + t('The players'), t('The first ones in the list play, the others sit out. Move people with ▲ ▼.')],
+  ['.startbar, [onclick="start()"], #app ol .row', '▶️ ' + t('Start playing'), t('It opens shortly before play time. Then tap a team to record its win. Someone leaving early or arriving late? Use ⋯ More during play.')],
+  ['.teams', '🏆 ' + t('Record the winner'), t('Tap the team that won. Everyone sees the scores live, and Undo fixes a wrong tap.')],
+  ['nav [data-v=board]', '🏆 ' + t('Board'), t('Everyone\'s rating first, then the day, the month and all time. Tap a player for their stats.')],
+  ['nav [data-v=group]', '💬 ' + t('Group'), t('Chat with the group: messages, reactions and notes from the app (who is in, extra games, results). Members shows everyone and who is coming.')],
   ['nav [data-v=photos]', '📷 ' + t('Photos'), t('The group photo of each day, and receipts for extra courts or shuttles.')],
   ['nav [data-v=stats]', '📊 ' + t('Stats'), t('Your rating over time, badges, best partners and head-to-head records.')],
   ['.top .me', '🙂 ' + t('Your profile'), t('Tap your photo for your profile: picture, language, light or dark theme and privacy.')],
-  ['[aria-label="Admin tools"]', '🔑 ' + t('Admin tools'), t('Players, accounts, the play schedule, the background and the activity log.')],
+  ['[aria-label="Admin tools"]', '🔑 ' + t('Admin tools'), t('Players, accounts, the play schedule and times, reminders, the background, icons and the activity log.')],
   ['#helpbtn', '❔ ' + t('Help'), t('Badminton rules, the rotation and this tour are always here.')],
 ];
 function startTour() {
