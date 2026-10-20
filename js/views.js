@@ -241,8 +241,9 @@ function chatView() {
         ${chatOpen === m.id ? `<div class="ctools">${['👍', '😂', '🔥', '❤️', '🏸'].map(e => `<button onclick="event.stopPropagation();reactChat(${m.id},'${e}')">${e}</button>`).join('')}${m.user_id === uid || isAdmin() ? `<button class="danger" onclick="event.stopPropagation();delChat(${m.id})" aria-label="${t('Delete this message?')}">✕</button>` : ''}</div>` : ''}</div></div>`;
   const bell = pushOn ? `<button class="link" onclick="chatPush(${!me.chat_push})">🔔 ${me.chat_push ? t('New-message notifications: on') : t('New-message notifications: off')}</button>`
     : pushOn === false ? `<button class="link" onclick="pushToggle()">🔔 ${t('Turn on notifications to hear about new messages')}</button>` : '';
+  const firstNew = chat.find(m => m.body && m.id > chatMark && m.user_id !== uid);
   return `<h1>💬 ${t('Chat')}</h1><div class="actions" style="margin:0 0 8px">${bell}</div>
-    <div class="chat">${chat.length ? chat.map(msg).join('') : `<p class="mut" style="text-align:center">${t('No messages yet. Say hi!')}</p>`}</div>`;
+    <div class="chat">${chat.length ? chat.map(m => (m === firstNew ? `<div class="cnew">${t('New messages')}</div>` : '') + msg(m)).join('') : `<p class="mut" style="text-align:center">${t('No messages yet. Say hi!')}</p>`}</div>`;
 }
 
 function board() {
@@ -578,7 +579,10 @@ function render() {
     if (cf.dataset.lang !== lang) { cf.dataset.lang = lang; cf.innerHTML = `<input type="text" name="body" maxlength="1000" autocomplete="off" placeholder="${t('Message')}"><button class="primary" type="submit" aria-label="${t('Send')}">➤</button>`; }
     cf.hidden = !(session && view === 'chat');
   }
-  if (view === 'chat' && (nearEnd || chatJump)) { chatJump = false; scrollTo(0, document.body.scrollHeight); }   // follow new messages unless reading older ones
+  if (view === 'chat' && (nearEnd || chatJump)) {   // opening: start at the first unread message; later: follow new messages unless reading older ones
+    const mark = chatJump && app.querySelector('.cnew'); chatJump = false;
+    mark ? mark.scrollIntoView({ block: 'center' }) : scrollTo(0, document.body.scrollHeight);
+  }
   if (view === 'photos') gallery().catch(e => { gal.innerHTML = `<p class="msg">${esc(friendly(e))}</p>`; });
 }
 

@@ -261,3 +261,4 @@
   .cform input{flex:1;min-width:0;margin:0;padding:12px} .cform button{width:52px;padding:0}
   :root[data-theme=light] :is(.cb,.cev,.cform){--text:#10231a;--mut:#3d5a4c;color:var(--text)}
   .cform[hidden]{display:none}
+  .cnew{display:flex;align-items:center;gap:8px;color:var(--danger);font-size:var(--fs-xs);font-weight:700;text-transform:uppercase;letter-spacing:.06em} .cnew::before,.cnew::after{content:'';flex:1;border-top:1.5px solid var(--danger)}

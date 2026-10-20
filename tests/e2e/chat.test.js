@@ -9,6 +9,8 @@ run('chat', async h => {
   await B.waitForSelector('.cbadge:has-text("1")');                                                  // unread badge on the other phone
   await B.click('.chatbtn'); await B.waitForSelector('text=Who brings shuttles?');
   assert.equal(await B.locator('.cbadge').count(), 0, 'opening the chat marks it read');
+  assert.equal(await B.locator('.cnew + .cmsg:has-text("Who brings shuttles?")').count(), 1, 'a "New messages" line marks where the unread ones start');
+  assert.equal(await A.locator('.cnew').count(), 0, 'your own messages are never "new"');
   await B.fill('.cform input', 'half-typed');
   await A.fill('.cform input', 'Anyone?'); await A.click('.cform button'); await B.waitForSelector('text=Anyone?');
   assert.equal(await B.inputValue('.cform input'), 'half-typed', 'a live update keeps what you are typing');
