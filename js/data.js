@@ -520,6 +520,15 @@ function extraForm(iso, old) {
     ${old && canCallOff(iso) ? `<button class="link" type="button" id="xoff">${old.called_off ? '↺ ' + t('Bring the game back') : '🚫 ' + t('Cancel the game (keep the booking)')}</button>` : ''}
     ${old ? `<button class="link danger" type="button" id="xdel">${t('Remove extra game')}</button>` : ''}<button class="link" type="button" id="xcancel">${t('Cancel')}</button></form>`;
   document.body.append(el); minimalize(el);
+  // the deadline follows the game (its usual time before play) until someone sets the deadline by hand
+  const fm = el.querySelector('form'), sel = n => fm.querySelector(`[name=${n}]`);
+  let byHand = !!old;
+  fm.addEventListener('change', e => {
+    if (['bd', 'bh', 'bm'].includes(e.target.name)) return void (byHand = true);
+    if (byHand) return;
+    const at = new Date(Date.parse(sel('day').value + 'T00:00:00Z') + ((+sel('th').value * 60 + +sel('tm').value) - sched.rsvp_until_minutes) * 6e4), d = at.toISOString().slice(0, 10);
+    sel('bd').value = d < today ? today : d; sel('bh').value = at.getUTCHours(); sel('bm').value = at.getUTCMinutes() - at.getUTCMinutes() % 5;
+  });
   el.querySelector('#xcancel').onclick = () => el.remove();
   if (old && el.querySelector('#xoff')) el.querySelector('#xoff').onclick = () => { el.remove(); callOff(iso, !old.called_off); };
   if (old) el.querySelector('#xdel').onclick = () => { el.remove(); act(async () => ok(await sb.from('play_dates').delete().eq('day', iso)), () => { playDates = playDates.filter(x => x.day !== iso); }); };

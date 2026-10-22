@@ -73,7 +73,10 @@ run('compact sign-up card and play calendar', async h => {
   assert(h.rpc('u2', { table: 'play_dates', op: 'upsert', payload: { day: '2026-11-05', kind: 'cancelled' } }).error, 'members cannot cancel a play day');
   // a member adds an extra game on Saturday 31 Oct; the admin is invited on the Play tab and joins
   await B.evaluate(() => go('calendar')); await B.click('.cal button[aria-label*="31 October"]');
-  await B.selectOption('#xform [name=th]', '19'); await B.selectOption('#xform [name=tm]', '15'); await B.selectOption('#xform [name=bh]', '20'); await B.selectOption('#xform [name=bm]', '0'); await B.click('#xform button[type=submit]');
+  await B.selectOption('#xform [name=th]', '19'); await B.selectOption('#xform [name=tm]', '15');
+  assert.deepEqual(await B.evaluate(() => ['bd', 'bh', 'bm'].map(n => document.querySelector(`#xform [name=${n}]`).value)), ['2026-10-31', '17', '15'], 'the deadline follows the start time (2 hours before)');
+  await B.selectOption('#xform [name=th]', '10'); assert.equal(await B.inputValue('#xform [name=bh]'), '8', 'and keeps following it');
+  await B.selectOption('#xform [name=th]', '19'); await B.selectOption('#xform [name=bh]', '20'); await B.selectOption('#xform [name=bm]', '0'); await B.click('#xform button[type=submit]');
   assert((await B.textContent('#xform .msg')).includes('before the game'), 'the deadline must be before the game');
   await B.selectOption('#xform [name=bh]', '12'); await B.selectOption('#xform [name=bm]', '0'); await B.click('#xform button[type=submit]');
   await until(() => st.play_dates.some(x => x.day === '2026-10-31' && x.kind === 'extra' && x.play_time === '19:15' && x.answer_by), 'the extra game saved with its time and deadline');
