@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0f2a22"/><stop offset="1" stop-color="#0b1220"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.46" r="0.5">
+      <stop offset="0" stop-color="#bef264" stop-opacity=".22"/><stop offset="1" stop-color="#bef264" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="skirt" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#dfe9e3"/>
+    </linearGradient>
+    <radialGradient id="cork" cx="0.4" cy="0.35" r="0.7">
+      <stop offset="0" stop-color="#fff7e6"/><stop offset="1" stop-color="#e8c58f"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <!-- court lines in perspective -->
+  <g fill="none" stroke="#ffffff" stroke-opacity=".13" stroke-width="6">
+    <path d="M96 512 L176 300 L336 300 L416 512"/>
+    <path d="M136 512 L196 300 M376 512 L316 300"/>
+    <path d="M150 370 L362 370"/>
+  </g>
+  <path d="M60 300 H452" stroke="#ffffff" stroke-opacity=".28" stroke-width="5" stroke-dasharray="14 9"/>
+  <circle cx="300" cy="200" r="210" fill="url(#glow)"/>
+  <g transform="translate(256 256) scale(.86) translate(-250 -262)">
+  <!-- motion trail -->
+  <path d="M112 410 Q134 362 168 340" fill="none" stroke="#bef264" stroke-width="11" stroke-linecap="round" stroke-opacity=".85"/>
+  <path d="M150 428 Q180 392 210 376" fill="none" stroke="#bef264" stroke-width="7" stroke-linecap="round" stroke-opacity=".45"/>
+  <path d="M98 366 Q114 334 138 318" fill="none" stroke="#bef264" stroke-width="6" stroke-linecap="round" stroke-opacity=".4"/>
+  <!-- shuttlecock, drawn upright then tilted -->
+  <g transform="translate(268 236) rotate(-135)">
+    <path d="M-38 58 L-104 -118 Q-78 -134 -52 -122 Q-26 -138 0 -124 Q26 -138 52 -122 Q78 -134 104 -118 L38 58 Z" fill="url(#skirt)"/>
+    <g stroke="#9fb3a8" stroke-width="4" stroke-linecap="round">
+      <path d="M-26 56 L-66 -122"/><path d="M-9 56 L-22 -126"/><path d="M9 56 L22 -126"/><path d="M26 56 L66 -122"/>
+    </g>
+    <path d="M-78 -46 Q0 -30 78 -46" fill="none" stroke="#bef264" stroke-width="9" stroke-linecap="round"/>
+    <path d="M-52 20 Q0 32 52 20" fill="none" stroke="#bef264" stroke-width="7" stroke-linecap="round"/>
+    <path d="M-42 56 H42 V64 H-42 Z" fill="#3a7d0a"/>
+    <path d="M-44 64 H44 A44 44 0 0 1 -44 64 Z" fill="url(#cork)"/>
+  </g>
+  </g>
+</svg>
