@@ -48,6 +48,7 @@ run('sign-up list, ratings, badges, result card and reactions', async h => {
   
   // ---- close day: player of the night, awards, result card
   await h.more(A); await A.click('text=Close day'); await A.waitForSelector('text=Player of the night');
+  await A.click('summary:has-text("Matches (4)")'); assert.equal(await A.locator('.mrow').count(), 4, 'the closed day lists every match');
   assert((await A.textContent('.potn')).includes('Vali'), 'Vali won everything');
   assert((await A.textContent('#app')).includes('Perfect night'), 'perfect night award');
   const [card] = await Promise.all([A.waitForEvent('download'), A.click('text=Share result card')]);

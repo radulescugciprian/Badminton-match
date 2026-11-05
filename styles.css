@@ -279,3 +279,4 @@
   .news{list-style:none;padding:0;margin:0 0 12px;display:flex;flex-direction:column;gap:10px} .news li{display:flex;gap:10px;line-height:1.4} .news li span:first-child{font-size:22px;flex:none;width:28px;text-align:center}
   #news .add{margin:0 0 10px}
   :root[data-theme=light] #news .card{--text:#10231a;--mut:#3d5a4c;color:var(--text)}
+  .mrow{align-items:center} .mrow .kind{flex:none;margin:0}
