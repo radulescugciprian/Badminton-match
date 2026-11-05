@@ -16,8 +16,8 @@ async function run(name, body) {
   await new Promise(r => web.listen(0, r));
   const base = `http://localhost:${web.address().port}`, browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined });
   const { st, pages } = server, h = { ...server, assert, fs, sleep, S: FIXTURES, base, defaultNow: null, calls: [] };   // calls: what the app asked the server, in order
-  // a new phone (isolated browser context). opts: seenHelp (default true: skip the first-run help), now (pretend it is this time)
-  h.mk = async ({ seenHelp = true, now = h.defaultNow } = {}) => {
+  // a new phone (isolated browser context). opts: seenHelp (default true: skip the first-run help), seenNews (default true: skip "What's new"), now (pretend it is this time)
+  h.mk = async ({ seenHelp = true, seenNews = true, now = h.defaultNow } = {}) => {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 800 }, serviceWorkers: 'block', acceptDownloads: true }), p = await ctx.newPage();
     p.errs = []; p.alerts = [];
     p.on('pageerror', e => p.errs.push(e.message));
@@ -27,12 +27,13 @@ async function run(name, body) {
     await p.route('**/supabase.js', r => r.fulfill({ contentType: 'text/javascript', body: fs.readFileSync(path.join(__dirname, 'mock-client.js')) }));
     await p.route('**/config.js', r => r.fulfill({ contentType: 'text/javascript', body: "window.CONFIG={url:'https://x.supabase.co',key:'k'}" }));
     await p.route('http://localhost:8766/**', r => { const f = st.files[r.request().url().replace('http://localhost:8766/', '')]; return f ? r.fulfill({ contentType: 'image/png', body: Buffer.from(f) }) : r.fulfill({ status: 404 }); });
-    await p.addInitScript(({ seen, t0 }) => {
+    await p.addInitScript(({ seen, news, t0 }) => {
       if (seen) localStorage.setItem('seenHelp', '1');
+      if (seen && news && !localStorage.getItem('seenNews')) localStorage.setItem('seenNews', '9999');
       window.open = u => { window.__wa = u; return null; };   // WhatsApp links are only recorded
       const R = Date; window.__t = t0;                                   // lets a test move the app's clock: window.__t = timestamp
       window.Date = class extends R { constructor(...a) { a.length === 0 && window.__t ? super(window.__t) : super(...a); } static now() { return window.__t || R.now(); } };
-    }, { seen: seenHelp, t0: now });
+    }, { seen: seenHelp, news: seenNews, t0: now });
     pages.push(p); await p.goto(base + '/index.html'); return p;
   };
   h.signup = async (p, name, email, player = '', wait = 'text=Next match day') => {

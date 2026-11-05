@@ -274,3 +274,8 @@
   .rcard .re{font-size:64px;line-height:1} .rcard h2{margin:0;font-size:var(--fs-xl)} .rcard p{margin:0;font-size:var(--fs-lg);line-height:1.4} .rcard .primary{width:auto;padding:14px 22px}
   .rhint{text-align:center;margin:6px 0 12px}
   :root[data-theme=light] #recap{--text:#10231a;--mut:#3d5a4c}
+  /* what's new */
+  #news{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.75);overflow:auto;padding:16px} #news .card{max-width:480px;margin:0 auto;background:var(--bg);box-shadow:0 0 0 1px var(--line)}
+  .news{list-style:none;padding:0;margin:0 0 12px;display:flex;flex-direction:column;gap:10px} .news li{display:flex;gap:10px;line-height:1.4} .news li span:first-child{font-size:22px;flex:none;width:28px;text-align:center}
+  #news .add{margin:0 0 10px}
+  :root[data-theme=light] #news .card{--text:#10231a;--mut:#3d5a4c;color:var(--text)}

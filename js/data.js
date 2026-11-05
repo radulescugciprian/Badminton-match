@@ -107,7 +107,8 @@ async function refresh() {
     const el = document.querySelector(`.invite[data-day="${deepLink}"], .rsvp[data-day="${deepLink}"]`) || document.querySelector('.rsvp');
     if (el) { el.scrollIntoView({ block: 'center' }); el.classList.add('flash'); } }
   if (!bgLoaded) { bgLoaded = true; loadBg(); }
-  if (!helpShown && !helpSeen()) { helpShown = true; setTimeout(startTour, 300); } // first run: show people around once
+  if (!helpShown && !helpSeen()) { helpShown = true; markNews(); setTimeout(startTour, 300); } // first run: show people around once (the tour covers what is new)
+  else if (!helpShown && newsSeen() < NEWS()[0].id) { helpShown = true; setTimeout(showNews, 400); } // after an update: what is new, once
 }
 // Every write goes through act(). `optimistic` changes the screen immediately; the server calls then run one after the other,
 // and a single re-fetch at the end shows the server's truth (which also undoes the change if a call failed).
@@ -225,11 +226,35 @@ const rulesHtml = () => `<h2 class="sec">${t('Badminton rules')}</h2>
     <ul class="rules"><li>${t('Rallies use the full width (6.10 m), but the serve must land in the shorter service court, which ends at the second line from the back (0.76 m inside the back line).')}</li>
       <li>${t('When your side wins a rally while serving, the same player serves again from the other court and the two partners swap sides.')}</li>
       <li>${t('During a rally either partner may hit the shuttle. Only the serve and the return of serve are fixed by the diagonal.')}</li></ul></details>`;
+// ---- release notes, newest first. A new id shows "What's new" once to everyone who used the app before (new people get the tour instead).
+const NEWS = () => [{ id: '2026-11-05', items: [
+  ['💬', t('Group tab: chat with everyone, react to messages and see notes from the app (who is in, extra games, results). Members moved here too.')],
+  ['🔔', t('Notifications: a reminder on play days if you have not answered yet, and if you like, for new chat messages. Turn them on under Details on the sign-up card.')],
+  ['🎁', t('Monthly recap on the Stats tab: your month, the duo of the month, the biggest upset and more. Share it on WhatsApp.')],
+  ['🙈', t('Hide my rating (Profile): play without a rating number or rank. Badges and results stay.')],
+  ['🗓', t('New badges for showing up: nights in a row, matches played, played with everyone, never missed a month, early bird.')],
+  ['🏸', t('A clearer Play screen: tap a team to record its win, see who plays next, and big Undo and Close day buttons.')],
+  ['🔢', t('4 players play best of 3 before changing teams. Someone leaving early or arriving late? ⋯ More during play, down to 2 players.')],
+  ['🎨', t('A new app icon. To see it on your home screen, remove the app and add it again.')],
+] }];
+const newsSeen = () => { try { return localStorage.getItem('seenNews') || ''; } catch { return '9999'; } };
+const markNews = () => { try { localStorage.setItem('seenNews', NEWS()[0].id); } catch {} };
+const newsText = () => { const r = NEWS()[0]; return `🏸 ${t("What's new in our badminton app")} (${niceDate(r.id, { day: 'numeric', month: 'long', year: 'numeric' })})\n\n` + r.items.map(([e, x]) => `${e} ${x}`).join('\n') + '\n\n' + appLink(); };
+function showNews() {
+  document.getElementById('news')?.remove(); markNews();
+  const el = document.createElement('div'); el.id = 'news'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
+  el.innerHTML = `<div class="card"><h1>🆕 ${t("What's new")}</h1>${NEWS().map(r => `<h2 class="sec">${esc(niceDate(r.id, { day: 'numeric', month: 'long', year: 'numeric' }))}</h2>
+      <ul class="news">${r.items.map(([e, x]) => `<li><span>${e}</span><span>${esc(x)}</span></li>`).join('')}</ul>`).join('')}
+    <button class="add" id="newsshare">💬 ${t('Share on WhatsApp')}</button><button class="primary" id="newsok">${t('Got it')}</button></div>`;
+  document.body.append(el); minimalize(el);
+  el.querySelector('#newsshare').onclick = () => waShare(newsText());
+  el.querySelector('#newsok').onclick = () => el.remove();
+}
 function showHelp() {
   const rows = C5.map(([a, b, r], i) => `<tr><td>${i + 1}</td><td>${a.join(' + ')} ${t('vs')} ${b.join(' + ')}</td><td>${r}</td></tr>`).join('');
   const el = document.createElement('div'); el.id = 'help'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
   el.innerHTML = `<div class="card"><h1>${t('How it works')}</h1>
-    <button class="add" id="tourbtn">▶ ${t('Show me around')}</button>
+    <button class="add" id="tourbtn">▶ ${t('Show me around')}</button><button class="add" id="newsbtn">🆕 ${t("What's new")}</button>
     <ol class="steps"><li>${t('Before play day tap “I\'m in” or “I\'m out”. The player list fills itself from the answers.')}</li>
       <li>${t('Start playing opens shortly before play time. The first 5 (or 4) players in the list play, the others sit out.')}</li>
       <li>${t('After every match tap the winning team. The leaderboards and ratings update for everyone.')}</li>
@@ -246,6 +271,7 @@ function showHelp() {
     <button class="primary" id="gotit">${t('Got it')}</button></div>`;
   document.body.append(el); minimalize(el);
   el.querySelector('#tourbtn').onclick = () => { el.remove(); startTour(); };
+  el.querySelector('#newsbtn').onclick = () => { el.remove(); showNews(); };
   el.querySelector('#gotit').onclick = () => { try { localStorage.setItem('seenHelp', '1'); } catch {} el.remove(); };
 }
 
