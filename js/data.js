@@ -21,7 +21,7 @@ let db = { players: [], days: [] }, members = [], me = {}, session = null, loade
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
-const DB_VERSION = 20261109; // bump together with db_version() in the newest migration
+const DB_VERSION = 20261110; // bump together with db_version() in the newest migration
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
 let boardKind = 'doubles', boardOpen = null, memFilter = 'all', memSort = 'name', memOpen = null, adminPage = '', admPanel = '', prevView = 'play', profPanel = '', usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, lineupOpen = false, moreOpen = false, dayMore = false, lastRec = 0, bgLoaded = false, rsvps = [], reactions = [], statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
@@ -53,6 +53,7 @@ const toggleView = () => { asMember = !asMember; if (asMember && (view === 'memb
 // ---- who may see whose rating and stats: players decide for themselves, admins see everything. Guests (no account) are shared.
 const profileOf = pid => { const u = player(pid).user; return u && members.find(m => m.id === u); };
 const sharing = pid => { const pr = profileOf(pid); return !pr || pr.share_stats !== false; };
+const ratingHidden = pid => (profileOf(pid) || {}).hide_rating === true;   // "hide my rating": no number or rank for anyone, the person included
 const canSee = pid => isAdmin() || player(pid).user === session.user.id || sharing(pid);
 
 // ---- loading + live updates
@@ -188,6 +189,7 @@ const setLang = l => { // saved on this phone and, when logged in, on the accoun
   if (session && me.id) sb.from('profiles').update({ lang }).eq('id', me.id).then(() => {});
 };
 const setShare = on => act(async () => ok(await sb.from('profiles').update({ share_stats: on }).eq('id', me.id)));
+const setHideRating = on => act(async () => ok(await sb.from('profiles').update({ hide_rating: on }).eq('id', me.id)), () => { me.hide_rating = on; });
 
 // ---- first-run help
 const helpSeen = () => { try { return localStorage.getItem('seenHelp') === '1'; } catch { return true; } };
@@ -624,6 +626,46 @@ const chatPush = on => act(async () => ok(await sb.from('profiles').update({ cha
 const evText = e => e.type === 'extra' ? t('{who} added an extra game on {date} at {time}', { who: e.who, date: niceDate(e.date, { weekday: 'short', day: 'numeric', month: 'short' }), time: e.time })
   : e.type === 'rsvp' ? (e.status === 'in' ? t('{who} is in for {date}', { who: e.who, date: niceDate(e.date, { weekday: 'short', day: 'numeric', month: 'short' }) }) : t('{who} is out for {date}', { who: e.who, date: niceDate(e.date, { weekday: 'short', day: 'numeric', month: 'short' }) }))
   : e.type === 'closed' ? (e.top ? t('Day closed: {n} matches, most wins: {top}', { n: e.n, top: e.top }) : t('Day closed: {n} matches', { n: e.n })) : '';
+// early bird: how often a player was the first to answer "I'm in" for a play day
+const earlyBird = pid => { const first = new Map(); rsvps.filter(r => r.status === 'in' && r.updated_at).forEach(r => { const f = first.get(r.day_date); if (!f || r.updated_at < f.updated_at) first.set(r.day_date, r); });
+  return [...first.values()].filter(r => r.player_id === pid).length; };
+
+// ---- monthly recap: swipeable cards for a month, for the group and for you (numbers from recap() in analytics.js)
+const monthLabel = ym => new Date(ym + '-15T12:00:00Z').toLocaleDateString(LOCALE[lang], { month: 'long', year: 'numeric', timeZone: 'UTC' });
+const recapMonths = () => [...new Set(db.days.filter(d => d.matches.length).map(d => d.date.slice(0, 7)))].sort();
+const recapDefault = () => { const ms = recapMonths(), now = tzParts().date.slice(0, 7); return ms.filter(m => m < now).pop() || ms.pop(); };   // the last finished month
+function recapCards(ym) {
+  const mine = db.players.find(p => p.user === session.user.id), r = recap(db.days, db.players, ym, mine && mine.id, ids => ids.every(canSee));
+  if (!r) return [];
+  const nm = id => player(id).name, day = d => niceDate(d, { weekday: 'short', day: 'numeric', month: 'short' }), m = r.me;
+  return [
+    ['🎁', t('{month} in review', { month: monthLabel(ym) }), t('{nights} nights, {matches} matches for the group.', { nights: r.nights, matches: r.matches })],
+    m && ['🏸', t('Your month'), t('You played {p} matches on {nights} nights and won {w}.', m)],
+    m && m.partner && ['🤝', t('Your partner in crime'), t('Mostly with {name}: {g} matches together, {w} won.', { name: nm(m.partner.id), g: m.partner.g, w: m.partner.w })],
+    m && m.best && m.best.w && ['⭐', t('Your best night'), t('{date}: {w} of {p} won.', { date: day(m.best.date), w: m.best.w, p: m.best.p })],
+    m && !ratingHidden(mine.id) && Math.round(m.delta) !== 0 && (m.delta > 0 ? ['📈', t('Rating'), t('Your rating went up by {n}.', { n: Math.round(m.delta) })] : ['📉', t('Rating'), t('Your rating went down by {n}. Next month!', { n: Math.round(-m.delta) })]),
+    ['🔋', t('Ever-present'), t('{name} played the most: {n} matches.', { name: nm(r.most.id), n: r.most.n })],
+    r.streak && ['🔥', t('Longest run'), t('{name} won {n} in a row.', { name: nm(r.streak.id), n: r.streak.n })],
+    r.duo && ['💞', t('Duo of the month'), t('{names}: {w} wins in {g} matches together.', { names: plain(r.duo.ids), w: r.duo.w, g: r.duo.g })],
+    r.upset && ['😱', t('Upset of the month'), t('{won} beat {lost} with only a {pct}% chance.', { won: plain(r.upset.won), lost: plain(r.upset.lost), pct: Math.round(100 * r.upset.chance) })],
+    ['🎉', t('Biggest night'), t('{date}: {players} players, {n} matches.', { date: day(r.bigNight.date), players: r.bigNight.players, n: r.bigNight.n })],
+  ].filter(Boolean);
+}
+let recapYm = null;
+const openRecap = (ym = recapDefault()) => {
+  recapYm = ym; document.getElementById('recap')?.remove();
+  const ms = recapMonths(), i = ms.indexOf(ym), cards = recapCards(ym), el = document.createElement('div');
+  el.id = 'recap'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', t('{month} recap', { month: monthLabel(ym) }));
+  el.innerHTML = `<div class="rtop"><button class="link" ${i > 0 ? '' : 'disabled'} data-ym="${ms[i - 1] || ''}" aria-label="${t('Previous month')}">‹</button><b>${esc(monthLabel(ym))}</b>
+      <button class="link" ${i < ms.length - 1 ? '' : 'disabled'} data-ym="${ms[i + 1] || ''}" aria-label="${t('Next month')}">›</button><button class="link" id="rclose" aria-label="${t('Close')}">✕</button></div>
+    <div class="rcards">${cards.map(([e, h, line], k) => `<div class="rcard"><div class="re">${e}</div><h2>${esc(h)}</h2><p>${esc(line)}</p><small class="mut">${k + 1} / ${cards.length + 1}</small></div>`).join('')}
+      <div class="rcard"><div class="re">📤</div><h2>${t('Share it')}</h2><button class="primary" id="rshare">💬 ${t('Share on WhatsApp')}</button><small class="mut">${cards.length + 1} / ${cards.length + 1}</small></div></div>
+    <p class="mut rhint">${t('Swipe for more')} →</p>`;
+  document.body.append(el); minimalize(el);
+  el.querySelectorAll('[data-ym]').forEach(b => b.onclick = () => b.dataset.ym && openRecap(b.dataset.ym));
+  el.querySelector('#rclose').onclick = () => el.remove();
+  el.querySelector('#rshare').onclick = () => waShare(cards.map(([e, h, line]) => `${e} ${h}: ${line}`).join('\n') + '\n' + appLink());
+};
 const remindMe = () => { const s = sched || { tz: 'Europe/Berlin', dow: 4, play_time: '18:30', rsvp_until_minutes: 120 };
   saveFile(calendarFile(s, nextPlayDate(), location.href, t('Badminton: answer if you are coming'),
     t('Open the app and tap I\'m in or I\'m out before {time}.', { time: hhmm(+s.play_time.slice(0, 2) * 60 + +s.play_time.slice(3, 5) - s.rsvp_until_minutes) })), 'badminton.ics'); };
@@ -647,7 +689,7 @@ async function shareCard(dayId) {
   const rows = await Promise.all(stats(d.matches).slice(0, 3).map(r => person(r.id, tp('{n} wins', r.w))));
   const blob = await drawCard({ title: t('Badminton night'), subtitle: `${niceDate(d.date, { weekday: 'long', day: 'numeric', month: 'long' })} · ${tp('{n} matches', d.matches.length)}`,
     rows, bg, potnTitle: t('Player of the night'), footer: t('Badminton Thursdays'),
-    potn: top && await person(top.id, canSee(top.id) ? `${player(top.id).name}  ·  +${Math.round(top.delta)} ${t('rating')}` : player(top.id).name) });
+    potn: top && await person(top.id, canSee(top.id) && !ratingHidden(top.id) ? `${player(top.id).name}  ·  +${Math.round(top.delta)} ${t('rating')}` : player(top.id).name) });
   const file = new File([blob], `badminton-${d.date}.png`, { type: 'image/png' });
   if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: t('Badminton night') }).catch(() => {});
   else saveFile(blob, file.name);

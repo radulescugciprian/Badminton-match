@@ -80,4 +80,29 @@ assert(ratingChart([1000, 1032, 1010]).includes('1032'));
   assert(Math.abs(sgl - dbl / 2) < 1e-9, 'singles count half: ' + sgl + ' vs ' + dbl);
 }
 
+// showing-up badges and the monthly recap
+{
+  const { analyse, recap } = require('../analytics.js');
+  const P = [1, 2, 3, 4, 5].map(id => ({ id }));
+  const night = (id, date, ms) => ({ id, date, matches: ms.map(([t1, t2, win], i) => ({ n: i + 1, t1, t2, win })) });
+  const R = [[[1, 2], [3, 4], 1], [[1, 3], [2, 4], 1], [[1, 4], [2, 3], 1]];   // 1 partners 2, 3 and 4 and wins every time
+  const days = [night(1, '2026-01-08', R), night(2, '2026-02-05', R), night(3, '2026-03-05', R), night(4, '2026-03-12', [[[2, 3], [4, 5], 2]])];
+  const b = analyse(days, P).badges;
+  assert.equal(b.get(1).nightsRun, 3, 'three nights in a row, then missed one');
+  assert.equal(b.get(2).nightsRun, 4);
+  assert(b.get(1).everyone, 'partnered every regular');
+  assert(!b.get(5).everyone, 'not a regular');
+  assert(b.get(1).everyMonth && b.get(4).everyMonth && !b.get(5).everyMonth, 'every month since the first one, at least 3');
+  const r = recap(days, P, '2026-03', 1);
+  assert.equal(r.nights, 2); assert.equal(r.matches, 4);
+  assert.equal(r.most.id, 2, 'played every match of the month');
+  assert.deepEqual(r.me && [r.me.p, r.me.w, r.me.nights], [3, 3, 1]);
+  assert(r.me.delta > 0, 'rating went up');
+  assert.equal(r.streak.id, 1); assert.equal(r.streak.n, 3);
+  assert.equal(recap(days, P, '2026-03', 5).me.p, 1);
+  assert.equal(recap(days, P, '2026-04', 1), null, 'nothing played');
+  const up = recap([night(9, '2026-05-01', [1, 1, 1, 1, 2].map(w => [[1, 2], [3, 4], w]))], P, '2026-05', null);
+  assert.deepEqual(up.upset.won, [3, 4], 'the favourites lost the last one');
+}
+
 console.log('analytics tests passed');

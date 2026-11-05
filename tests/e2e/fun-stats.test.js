@@ -1,0 +1,26 @@
+const { run } = require('./harness');
+// Less pressure on points: hide your rating, badges for showing up, and a monthly recap you can share.
+run('hide rating, showing-up badges, monthly recap', async h => {
+  const { mk, signup, st, assert, until } = h;
+  ['2026-09-10', '2026-09-17', '2026-10-01', '2026-10-08', '2026-10-15'].forEach((date, i) => {   // Vali plays 5 nights in a row
+    st.days.push({ id: 90 + i, date, player_order: [1, 2, 3, 4, 5], mode: 5, started: true, closed: true, photo_path: null, rot_from: 0 });
+    [[[1, 2], [3, 4], 5, 1], [[2, 3], [4, 5], 1, 1], [[3, 5], [1, 4], 2, 2]].forEach(([t1, t2, rest, win], n) => st.matches.push({ id: 900 + i * 10 + n, day_id: 90 + i, n: n + 1, t1, t2, rest, win, created_at: date + 'T17:00:00Z' }));
+  });
+  const A = await mk(); await signup(A, 'Anna', 'a@x.com', '1');
+  await A.click('nav >> text=Stats'); await A.waitForSelector('.badge:has-text("5 nights in a row")');
+  // the recap of the last finished month, with your own cards, and a WhatsApp share
+  await A.click('.recapbtn'); await A.waitForSelector('#recap .rcard');
+  const txt = await A.textContent('#recap');
+  assert(txt.includes('October 2026') && txt.includes('You played 6 matches on 3 nights') && txt.includes('Ever-present'), txt.slice(0, 300));
+  await A.click('#recap [aria-label="Previous month"]'); await A.waitForSelector('#recap >> text=September 2026');
+  await A.click('#rshare'); assert(decodeURIComponent(await A.evaluate(() => window.__wa || '')).includes('September 2026'), 'shared to WhatsApp');
+  await A.click('#rclose'); assert.equal(await A.locator('#recap').count(), 0);
+  // hide my rating: no number and no rank, but the badges stay
+  await A.click('.top .me'); await A.click('[data-row=hiderating]'); await A.click('text=Hide my rating number and rank');
+  await until(() => st.profiles.find(p => p.username === 'Anna').hide_rating === true, 'saved');
+  await A.click('nav >> text=Board'); await A.waitForSelector('.rank:has-text("Vali") >> text=just playing');
+  assert.equal(await A.locator('.podium >> text=Vali').count(), 0, 'not on the podium');
+  await A.click('nav >> text=Stats'); await A.waitForSelector('.badge:has-text("5 nights in a row")');
+  assert(!(await A.textContent('#app')).includes('Rating over time'), 'no rating chart');
+  assert(A.errs.length === 0, A.errs.join());
+});

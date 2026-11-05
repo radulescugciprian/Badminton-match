@@ -35,7 +35,7 @@ function profileView() {
     ${mine ? `<div class="card" style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:14px">${av(mine.id, 64)}
       <div style="flex:1;min-width:0"><b style="font-size:var(--fs-lg)">${esc(mine.name)}</b><div class="mut" style="margin:0">@${esc(me.username || '')} · ${isAdmin() ? t('admin') : t('Member')}</div></div>
       <button onclick="avatar(${mine.id})" aria-label="${t('Change photo')}">📷 ${t('Change photo')}</button></div>
-      ${pst ? `<div class="tiles" style="margin-top:12px"><div class="tile"><b>${Math.round(pst.rating)}</b>${t('Rating')}</div><div class="tile"><b>${pst.p}</b>${t('matches')}</div><div class="tile"><b>${pst.p ? Math.round(100 * pst.w / pst.p) : 0}%</b>${t('win rate')}</div></div>` : ''}
+      ${pst ? `<div class="tiles" style="margin-top:12px"><div class="tile"><b>${ratingHidden(mine.id) ? '🙈' : Math.round(pst.rating)}</b>${t('Rating')}</div><div class="tile"><b>${pst.p}</b>${t('matches')}</div><div class="tile"><b>${pst.p ? Math.round(100 * pst.w / pst.p) : 0}%</b>${t('win rate')}</div></div>` : ''}
       <div class="quick"><button onclick="statsId=${mine.id};go('stats')">📊 ${t('My stats')}</button><button onclick="profPanel=profPanel==='games'?'':'games';render()">📅 ${t('My next games')}</button><button onclick="photosTab='receipts';go('photos')">🧾 ${t('Receipts')}</button></div>
       ${profPanel === 'games' ? `<div class="spanel" style="margin-top:10px">${games}</div>` : ''}</div>` : ''}
     <h2 class="sgroup">${t('Appearance')}</h2><div class="card slist">
@@ -44,6 +44,8 @@ function profileView() {
     <h2 class="sgroup">${t('Privacy and fun')}</h2><div class="card slist">
       ${row('share', '🔓', t('Share my stats'), me.share_stats !== false ? t('On') : t('Off'))}${panel('share', `<label class="check"><input type="checkbox" ${me.share_stats !== false ? 'checked' : ''} onchange="setShare(this.checked)">
         <span>${t('Share my rating and stats with the others')}<br><small class="mut">${t('The leaderboards always show results.')}</small></span></label>`)}
+      ${row('hiderating', '🙈', t('Hide my rating'), me.hide_rating ? t('On') : t('Off'))}${panel('hiderating', `<label class="check"><input type="checkbox" ${me.hide_rating ? 'checked' : ''} onchange="setHideRating(this.checked)">
+        <span>${t('Hide my rating number and rank, also from me')}<br><small class="mut">${t('Badges, results and the fun stats stay. Turn it off any time.')}</small></span></label>`)}
       ${row('fx', '🎉', t('Confetti and sound'), fxOn() ? t('On') : t('Off'))}${panel('fx', `<label class="check"><input type="checkbox" ${fxOn() ? 'checked' : ''} onchange="setFx(this.checked);render()">
         <span>${t('Confetti and sound when a match is recorded')}</span></label>`)}</div>
     <h2 class="sgroup">${t('Account')}</h2><div class="card slist">
@@ -180,7 +182,7 @@ function closedExtras(d) {
   const an = analyse(db.days, db.players), top = playerOfNight(an, d.id);
   if (!top) return '';
   return `<div class="card potn">${av(top.id, 56)}<div><div class="mut">⭐ ${t('Player of the night')}</div><b style="font-size:var(--fs-lg)">${name(top.id)}</b>
-      <div class="mut">${canSee(top.id) ? `${top.delta >= 0 ? '+' : ''}${Math.round(top.delta)} ${t('rating')} · ` : ''}${t('{w} of {p} won', { w: top.w, p: top.p })}</div></div></div>
+      <div class="mut">${canSee(top.id) && !ratingHidden(top.id) ? `${top.delta >= 0 ? '+' : ''}${Math.round(top.delta)} ${t('rating')} · ` : ''}${t('{w} of {p} won', { w: top.w, p: top.p })}</div></div></div>
     ${nightAwards(an, d.id).map(x => `<span class="badge">${name(x.id)}: ${AWARD[x.kind]()}</span>`).join('')}<div style="height:10px"></div>`;
 }
 
@@ -294,14 +296,15 @@ function ratingList() {
   const an = analyse(db.days, db.players), lastDay = [...an.night.keys()].pop(), ranked = db.players.filter(p => an.hist.get(p.id).length)
     .sort((x, y) => an.rating.get(y.id) - an.rating.get(x.id));
   if (!ranked.length) return `<div class="empty">${t('No matches yet.')}<br>${t('Ratings start at 1000 and move with every result.')}</div>`;
-  const shown = ranked.filter(p => canSee(p.id)), hidden = ranked.filter(p => !canSee(p.id));
+  const shown = ranked.filter(p => canSee(p.id) && !ratingHidden(p.id)), hidden = ranked.filter(p => !canSee(p.id) && !ratingHidden(p.id)), relaxed = ranked.filter(p => ratingHidden(p.id));
   const pod = [[0, '🥇', '#facc15', 120], [1, '🥈', '#cbd5e1', 90], [2, '🥉', '#d97706', 64]].map(([i, medal, c, h]) => shown[i] ? `<div class="pod" onclick="openStats(${shown[i].id})"><div class="medal">${medal}</div>${av(shown[i].id)}<div class="pn">${esc(shown[i].name)}</div>
     <div class="pw">${Math.round(an.rating.get(shown[i].id))}</div><div class="bar" style="--c:${c};--h:${h}px">${i + 1}</div></div>` : '<div class="pod"></div>');
   return `<div class="podium">${pod[1]}${pod[0]}${pod[2]}</div><p class="mut">${t('Everyone starts at 1000. Beat a stronger team and you gain more.')}</p><div class="card" style="padding:4px 16px">${shown.map((p, i) => {
     const dl = (an.night.get(lastDay).get(p.id) || {}).delta;
     return `<div class="rank tap" role="button" tabindex="0" onclick="openStats(${p.id})" onkeydown="if(event.key==='Enter')openStats(${p.id})"><span class="r">${i + 1}</span>${av(p.id, 32)}<b>${esc(p.name)}${sharing(p.id) ? '' : ' 🔒'}</b>
       <span class="mut" style="margin:0">${dl === undefined ? '' : (dl >= 0 ? '▲' : '▼') + Math.abs(Math.round(dl))}</span><b>${Math.round(an.rating.get(p.id))}</b></div>`; }).join('')}
-    ${hidden.map(p => `<div class="rank" style="opacity:.6"><span class="r">–</span>${av(p.id, 32)}<b>${esc(p.name)}</b><span class="mut" style="margin:0">🔒 ${t('private')}</span><span></span></div>`).join('')}</div>`;
+    ${hidden.map(p => `<div class="rank" style="opacity:.6"><span class="r">–</span>${av(p.id, 32)}<b>${esc(p.name)}</b><span class="mut" style="margin:0">🔒 ${t('private')}</span><span></span></div>`).join('')}
+    ${relaxed.map(p => `<div class="rank" style="opacity:.6"><span class="r">–</span>${av(p.id, 32)}<b>${esc(p.name)}</b><span class="mut" style="margin:0">🙈 ${t('just playing')}</span><span></span></div>`).join('')}</div>`;
 }
 
 function statsView() {
@@ -315,15 +318,19 @@ function statsView() {
   const none = `<span class="mut">${t('none yet')}</span>`;
   const crowns = monthChamps().filter(c => c.id === id).length;
   const badges = [crowns && `👑 ${t('Champion of the month')} ×${crowns}`, b.potn && `⭐ ${t('Player of the night')} ×${b.potn}`, b.perfect && `💯 ${t('Perfect night')} ×${b.perfect}`, b.fire && `🔥 ${t('5 in a row')} ×${b.fire}`,
-    b.comeback && `🔄 ${t('Comeback')} ×${b.comeback}`, b.improved && `📈 ${t('Most improved')}`].filter(Boolean);
-  return `<h1>${t('Stats')}</h1>
+    b.comeback && `🔄 ${t('Comeback')} ×${b.comeback}`, b.improved && `📈 ${t('Most improved')}`,
+    // showing up counts too
+    b.nightsRun >= 5 && `🗓 ${t('{n} nights in a row', { n: b.nightsRun })}`, me_.p >= 50 && `🎖 ${t('{n} matches played', { n: [250, 100, 50].find(x => me_.p >= x) })}`,
+    b.everyone && `🤝 ${t('Played with everyone')}`, b.everyMonth && `📆 ${t('Never missed a month')}`, earlyBird(id) && `🐦 ${t('Early bird')} ×${earlyBird(id)}`].filter(Boolean);
+  const rm = recapDefault();
+  return `<h1>${t('Stats')}</h1>${rm ? `<button class="add recapbtn" onclick="openRecap()">🎁 ${t('{month} recap', { month: monthLabel(rm) })}</button>` : ''}
     <select onchange="statsId=+this.value;render()" aria-label="${t('Player')}">${played.map(p => `<option value="${p.id}" ${p.id === id ? 'selected' : ''}>${esc(p.name)}${sharing(p.id) ? '' : ' 🔒'}</option>`).join('')}</select>
     ${sharing(id) ? '' : `<p class="mut" role="status">🔒 ${t('{name} keeps these stats private. You can see them because you are an admin or it is you.', { name: esc(player(id).name) })}</p>`}
     <div class="card" style="display:flex;align-items:center;gap:14px;margin:12px 0">${av(id, 64)}<div style="flex:1"><b style="font-size:var(--fs-lg)">${name(id)}</b>
-      <div class="mut" style="margin:0">${t('Rating')}</div></div><b style="font-size:var(--fs-2xl)">${Math.round(an.rating.get(id))}</b></div>
+      <div class="mut" style="margin:0">${t('Rating')}</div></div><b style="font-size:var(--fs-2xl)">${ratingHidden(id) ? '🙈' : Math.round(an.rating.get(id))}</b></div>
     <div class="tiles"><div class="tile"><b>${me_.p}</b>${t('matches')}</div><div class="tile"><b>${Math.round(100 * pct(me_))}%</b>${t('win rate')}</div><div class="tile"><b>${b.bestStreak}</b>${t('best streak')}</div></div>
-    <h2 class="sec">${t('Badges')}</h2>${badges.map(x => `<span class="badge">${x}</span>`).join('') || `<p class="mut">${t('None yet. Win 5 in a row or finish a night unbeaten.')}</p>`}
-    <h2 class="sec">${t('Rating over time')}</h2><div class="card" style="color:var(--mut)">${ratingChart(h.map(x => x.r), 320, 150, t('Rating over time')) || `<p class="mut" style="margin:0">${t('Play a few more matches to see the chart.')}</p>`}</div>
+    <h2 class="sec">${t('Badges')}</h2>${badges.map(x => `<span class="badge">${x}</span>`).join('') || `<p class="mut">${t('None yet. They come for wins, streaks and simply showing up.')}</p>`}
+    ${ratingHidden(id) ? '' : `<h2 class="sec">${t('Rating over time')}</h2><div class="card" style="color:var(--mut)">${ratingChart(h.map(x => x.r), 320, 150, t('Rating over time')) || `<p class="mut" style="margin:0">${t('Play a few more matches to see the chart.')}</p>`}</div>`}
     <h2 class="sec">${t('Partners')}</h2><div class="card" style="padding:4px 16px">${mates.map(x => `<div class="member"><span>${line(x)}</span></div>`).join('') || `<p class="mut">${t('No partners yet.')}</p>`}</div>
     <h2 class="sec">${t('Rivals')}</h2><div class="card" style="padding:4px 16px">
       <div class="member"><span>😈 ${t('Nemesis')}</span><span>${nemesis && rate(nemesis[1]) < 50 ? line(nemesis) : none}</span></div>
@@ -338,7 +345,7 @@ function miniProfile(p) {
   const an = analyse(db.days, db.players), mine = db.players.find(x => x.user === session.user.id), rel = mine ? relations(db.days, mine.id) : null;
   const lp = (db.days.filter(d => d.matches.some(m => m.t1.includes(p.id) || m.t2.includes(p.id))).pop() || {}).date || '';
   const ms = stats(db.days.flatMap(d => d.matches)).find(r => r.id === p.id), seen = canSee(p.id), wl = x => x ? `${x.w}-${x.g - x.w}` : '–';
-  return `<div class="spanel">${seen && ms ? `<div class="tiles"><div class="tile"><b>${Math.round(an.rating.get(p.id))}</b>${t('Rating')}</div><div class="tile"><b>${ms.p}</b>${t('matches')}</div><div class="tile"><b>${Math.round(100 * pct(ms))}%</b>${t('win rate')}</div></div>
+  return `<div class="spanel">${seen && ms ? `<div class="tiles"><div class="tile"><b>${ratingHidden(p.id) ? '🙈' : Math.round(an.rating.get(p.id))}</b>${t('Rating')}</div><div class="tile"><b>${ms.p}</b>${t('matches')}</div><div class="tile"><b>${Math.round(100 * pct(ms))}%</b>${t('win rate')}</div></div>
     <p class="mut" style="margin:8px 0 0">${t('Last played')}: ${lp ? esc(niceDate(lp)) : '–'}${rel && mine.id !== p.id ? ` · ${t('Together')}: ${wl(rel.mate.get(p.id))} · ${t('Against')}: ${wl(rel.foe.get(p.id))}` : ''}</p>
     <button class="add" style="margin:10px 0 0" onclick="statsId=${p.id};go('stats')">📊 ${t('View full stats')}</button>`
     : `<p class="mut" style="margin:0">${seen ? t('No matches yet.') : '🔒 ' + t('{name} keeps these stats private.', { name: esc(p.name) })}</p>`}</div>`;
@@ -350,7 +357,7 @@ function membersView() {
   const lastPlayed = id => (db.days.filter(d => d.matches.some(m => m.t1.includes(id) || m.t2.includes(id))).pop() || {}).date || '';
   const acct = p => members.find(m => m.id === p.user), ans = id => answerOf(id, date), icon = id => ({ in: '✅', out: '❌' }[ans(id)] || '⏳');
   let ps = db.players.filter(p => !p.removed).filter(p => memFilter === 'acct' ? p.user : memFilter === 'guest' ? !p.user : true);
-  ps = ps.sort(memSort === 'rating' ? (a, b) => (canSee(b.id) ? an.rating.get(b.id) : 0) - (canSee(a.id) ? an.rating.get(a.id) : 0)
+  ps = ps.sort(memSort === 'rating' ? (a, b) => (canSee(b.id) && !ratingHidden(b.id) ? an.rating.get(b.id) : 0) - (canSee(a.id) && !ratingHidden(a.id) ? an.rating.get(a.id) : 0)
     : memSort === 'last' ? (a, b) => lastPlayed(b.id).localeCompare(lastPlayed(a.id)) : (a, b) => a.name.localeCompare(b.name));
   const all = db.players.filter(p => !p.removed), cnt = k => all.filter(p => (ans(p.id) || 'none') === k).length;
   const detail = miniProfile;
