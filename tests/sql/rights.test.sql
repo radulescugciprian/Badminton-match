@@ -246,6 +246,26 @@ select as_user((select adm from ids));
 select check_that(rows_changed($$delete from chat where body = 'admin here'$$) = 1, 'admins delete any message');
 reset role;
 
+-- merging two players who are the same person (a new account instead of the old player): admins only, all history moves over
+reset role;
+insert into days (date, player_order, mode, started, closed) values ('2099-02-01', '{4,3,1,2,9}', 5, true, true), ('2099-02-08', '{6,3,1,2,9}', 5, true, true);
+insert into matches (day_id, n, t1, t2, rest, win) select id, 1, '{4,3}', '{1,2}', 9, 1 from days where date = '2099-02-01';
+insert into matches (day_id, n, t1, t2, rest, win) select id, 1, '{6,3}', '{1,2}', 9, 2 from days where date = '2099-02-08';
+insert into rsvps (day_date, player_id, status) values ('2099-02-15', 6, 'in');
+set role authenticated; select as_user((select m1 from ids));
+select must_fail($$select merge_players(4, 6)$$, 'admins only');
+select as_user((select adm from ids));
+select must_fail($$select merge_players(1, 2)$$, 'both players have an account');
+select must_fail($$select merge_players(4, 9)$$, 'same match');
+select merge_players(4, 6);
+select check_that(not exists (select 1 from players where id = 6), 'the duplicate is gone');
+select check_that((select user_id from players where id = 4) = '00000000-0000-0000-0000-00000000000d', 'the account moved to the old player');
+select check_that((select count(*) from matches where 4 = any(t1) or 4 = any(t2)) = 2 and not exists (select 1 from matches where 6 = any(t1 || t2) or rest = 6), 'both matches are now the old player''s');
+select check_that((select player_order from days where date = '2099-02-08') = '{4,3,1,2,9}', 'line-ups follow');
+select check_that((select player_id from rsvps where day_date = '2099-02-15') = 4, 'answers follow');
+select check_that(exists (select 1 from admin_log where action = 'merge_players'), 'the merge is in the activity log');
+reset role;
+
 -- ================= logged out (anon) =================
 reset role; set role anon;
 select check_that((select count(*) from players) = 0 and (select count(*) from profiles) = 0 and (select count(*) from matches) = 0, 'nothing readable when logged out');

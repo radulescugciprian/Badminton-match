@@ -21,7 +21,7 @@ let db = { players: [], days: [] }, members = [], me = {}, session = null, loade
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
-const DB_VERSION = 20261108; // bump together with db_version() in the newest migration
+const DB_VERSION = 20261109; // bump together with db_version() in the newest migration
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
 let boardKind = 'doubles', boardOpen = null, memFilter = 'all', memSort = 'name', memOpen = null, adminPage = '', admPanel = '', prevView = 'play', profPanel = '', usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, lineupOpen = false, moreOpen = false, dayMore = false, lastRec = 0, bgLoaded = false, rsvps = [], reactions = [], statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
@@ -689,6 +689,14 @@ const deleteDay = id => { dayMore = false;
 const removePhoto = id => {
   const d = db.days.find(x => x.id === id);
   if (d && confirm(t('Delete this photo for everyone?'))) act(async () => { await patchDay(id, { photo_path: null })(); await dropPhotos([d.photo]); });
+};
+// admins: two players who are the same person become one (the database moves everything; see merge_players)
+const mergePlayers = e => {
+  e.preventDefault(); const f = new FormData(e.target), keep = +f.get('keep'), dup = +f.get('dup');
+  if (keep === dup) return showMsg(t('Pick two different players.'));
+  const v = { keep: player(keep).name, dup: player(dup).name };
+  if (!confirm(t('Merge {dup} into {keep}? All matches, answers and the account of {dup} move to {keep}, and {dup} disappears. This cannot be undone.', v))) return;
+  act(async () => { ok(await sb.rpc('merge_players', { keep, dup })); alert(t('{dup} is now part of {keep}.', v)); });
 };
 const toggleAdmin = (id, v) => act(async () => ok(await sb.from('profiles').update({ is_admin: v }).eq('id', id)));
 function saveSchedule(e) { // admins only; the database also refuses unknown time zones

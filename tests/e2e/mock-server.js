@@ -25,12 +25,26 @@ function rpc(u, r) {
   const match = row => r.f.every(([op, c, v]) => op === 'eq' ? row[c] === v : op === 'gte' ? row[c] >= v : row[c] > v);
   switch (r.op) {
     case 'rpc': {
-      if (r.name === 'db_version') return { data: st.dbVersion ?? 20261108 };
+      if (r.name === 'db_version') return { data: st.dbVersion ?? 20261109 };
       if (r.name === 'track') {
         if (!u) return { data: null };
         const f = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(st.now || Date.now())), g = x => f.find(p => p.type === x).value;
         const key = { user_id: u, day: `${g('year')}-${g('month')}-${g('day')}`, hour: +g('hour'), what: r.args.v }, row = st.usage.find(x => ['user_id', 'day', 'hour', 'what'].every(k => x[k] === key[k]));
         row ? row.n++ : st.usage.push({ ...key, n: 1 }); return { data: null };
+      }
+      if (r.name === 'merge_players') {   // same rules as the database function
+        if (!isAdmin(u)) return err('Admins only');
+        const k = st.players.find(p => p.id === r.args.keep), d = st.players.find(p => p.id === r.args.dup);
+        if (!k || !d || k === d) return err('Pick two different players');
+        if (k.user_id && d.user_id) return err('Both players have an account. Remove one of the accounts first.');
+        const inM = (m, id) => m.t1.includes(id) || m.t2.includes(id) || m.rest === id;
+        if (st.matches.some(m => inM(m, k.id) && inM(m, d.id))) return err('They played in the same match, so they cannot be the same person');
+        const sw = id => id === d.id ? k.id : id;
+        st.matches.forEach(m => { m.t1 = m.t1.map(sw); m.t2 = m.t2.map(sw); m.rest = m.rest === d.id ? k.id : m.rest; });
+        st.days.forEach(x => { x.player_order = x.player_order.includes(k.id) ? x.player_order.filter(i => i !== d.id) : x.player_order.map(sw); });
+        st.rsvps = st.rsvps.filter(x => !(x.player_id === d.id && st.rsvps.some(y => y.player_id === k.id && y.day_date === x.day_date))); st.rsvps.forEach(x => { x.player_id = sw(x.player_id); });
+        k.user_id = k.user_id || d.user_id; k.active = true; st.players.splice(st.players.indexOf(d), 1);
+        logAct(u, 'merge_players', { kept: k.name, merged: d.name }); emit(); return { data: null };
       }
       if (r.name === 'delete_account') {
         if (!isAdmin(u)) return err('Admins only'); if (r.args.uid === u) return err('You cannot remove your own account');

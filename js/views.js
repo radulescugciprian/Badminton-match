@@ -373,7 +373,13 @@ function adminView() {
   const d = cur(), o = d.order, own = id => db.players.find(p => p.user === id), back = `<div class="top"><button class="link" onclick="adminPage='';render()">← ${t('Admin tools')}</button></div>`;
   if (adminPage === 'players') return back + `<h1>${t('Players')}</h1><div class="card" style="padding:4px 16px">${db.players.filter(p => !p.removed).map(p => `<div class="member"><span>${av(p.id, 28)} ${esc(p.name)} ${p.user ? '' : `<span class="tag">${t('no account')}</span>`}</span>
       ${d.started || !o.includes(p.id) ? '' : `<button class="link danger" onclick="removePlayer(${p.id})" aria-label="${t('Remove {name}', { name: esc(p.name) })}">✕</button>`}</div>`).join('')}
-      <button class="add" style="margin:8px 0" onclick="addPlayers()">+ ${t('Add players without an account')}</button></div>`;
+      <button class="add" style="margin:8px 0" onclick="addPlayers()">+ ${t('Add players without an account')}</button></div>
+    <h2 class="sgroup">🔗 ${t('Merge two players')}</h2><form class="card" onsubmit="mergePlayers(event)">
+      <p class="mut" style="margin:0 0 8px">${t('The same person twice, for example a new account instead of the old player? Keep the player with the old results; the other one\'s matches, answers and account move to it.')}</p>
+      ${['keep', 'dup'].map(k => `<label class="field">${k === 'keep' ? t('Keep (the old results)') : t('Merge into it and remove')}<select name="${k}" required><option value="">—</option>${[...db.players].sort((a, b) => a.name.localeCompare(b.name)).map(p => {
+        const acc = members.find(m => m.id === p.user), n = db.days.reduce((x, d) => x + d.matches.filter(m => m.t1.includes(p.id) || m.t2.includes(p.id)).length, 0);
+        return `<option value="${p.id}">${esc(p.name)}${acc ? ' · @' + esc(acc.username) : ''} · ${tp('{n} matches', n)}${p.removed ? ' · ' + t('removed') : ''}</option>`; }).join('')}</select></label>`).join('')}
+      <p class="msg" role="alert"></p><button class="primary" type="submit">🔗 ${t('Merge')}</button></form>`;
   if (adminPage === 'accounts') return back + `<h1>${t('Accounts ({n})', { n: members.length })}</h1>
     <div class="card" style="padding:4px 16px">${members.map(a => `<div class="member"><span>${own(a.id) ? av(own(a.id).id, 28) + ' ' : ''}${esc(a.username)}${a.is_admin ? ` · <b>${t('admin')}</b>` : ''}</span>
       ${a.id !== me.id ? `<span><button class="link" onclick="toggleAdmin('${a.id}',${!a.is_admin})">${a.is_admin ? t('Remove admin') : t('Make admin')}</button>
@@ -452,7 +458,7 @@ const LOG = {
   mark_play_date: d => d.kind === 'extra' ? t('added an extra play day on {date}', d) : t('cancelled the play day {date}', d), clear_play_date: d => t('cleared the mark on {date}', d), call_off_extra: d => t('cancelled the extra game on {date}', d), restore_extra: d => t('brought back the extra game on {date}', d),
   delete_photo: d => t('deleted the photo of {date}', d), remove_player: d => t('removed the player {name}', d),
   make_admin: d => t('made {name} an admin', { name: d.username }), remove_admin: d => t('removed admin rights from {name}', { name: d.username }),
-  remove_account: d => t('removed the account of {name}', { name: d.username }), edit_schedule: () => t('changed the play schedule'),
+  remove_account: d => t('removed the account of {name}', { name: d.username }), merge_players: d => t('merged {merged} into {kept}', d), edit_schedule: () => t('changed the play schedule'),
 };
 function logCard() {
   if (!isAdmin()) return '';
