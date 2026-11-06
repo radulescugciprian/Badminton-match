@@ -21,7 +21,7 @@ let db = { players: [], days: [] }, members = [], me = {}, session = null, loade
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
-const DB_VERSION = 20261110; // bump together with db_version() in the newest migration
+const DB_VERSION = 20261111; // bump together with db_version() in the newest migration
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
 let boardKind = 'doubles', boardOpen = null, memFilter = 'all', memSort = 'name', memOpen = null, adminPage = '', admPanel = '', prevView = 'play', profPanel = '', usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, lineupOpen = false, moreOpen = false, dayMore = false, matchesOpen = {}, lastRec = 0, bgLoaded = false, rsvps = [], reactions = [], statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
@@ -60,7 +60,7 @@ const canSee = pid => isAdmin() || player(pid).user === session.user.id || shari
 async function refresh() {
   if (!session) return;
   const seq = changeSeq;
-  const [p, d, m, sc, rs, rx, sd, pd, rc, ch, cr] = await Promise.all([
+  const [p, d, m, sc, rs, rx, sd, pd, rc, ch, cr, tg] = await Promise.all([
     sb.from('players').select('*').order('id'),
     sb.from('days').select('*, matches(*)').order('id'),
     sb.from('profiles').select('*').order('name'),
@@ -72,12 +72,13 @@ async function refresh() {
     sb.from('receipts').select('*').order('id', { ascending: false }),
     sb.from('chat').select('*').order('id', { ascending: false }).limit(200),
     sb.from('chat_reactions').select('*'),
+    sb.from('tips').select('*').order('id', { ascending: false }),
   ]);
   if (pending > 0 || seq !== changeSeq) return; // taps happened while this was loading: its answer is out of date, the next re-fetch will show the truth
   std = sd.error ? null : sd.data; receipts = rc.error ? [] : rc.data; playDates = pd.error ? [] : pd.data;
   sched = !sc.error && sc.data[0] ? sc.data[0] : null;
   rsvps = rs.error ? [] : rs.data; reactions = rx.error ? [] : rx.data; // empty until the migration has been applied
-  chat = ch.error ? [] : ch.data.reverse(); chatRx = cr.error ? [] : cr.data;
+  chat = ch.error ? [] : ch.data.reverse(); chatRx = cr.error ? [] : cr.data; tips = tg.error ? [] : tg.data;
   db.players = ok(p).map(x => ({ id: x.id, name: x.name, avatar: x.avatar, removed: !x.active, user: x.user_id, by: x.created_by, at: x.created_at }));
   db.days = ok(d).sort((a, b) => a.closed === b.closed ? (a.closed ? (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) : 0) : a.closed ? -1 : 1).map(x => ({ id: x.id, date: x.date, order: x.player_order, mode: x.mode, rotFrom: x.rot_from || 0, started: x.started, closed: x.closed,
     photo: x.photo_path, matches: x.matches.sort((a, b) => a.n - b.n) }));
@@ -227,7 +228,10 @@ const rulesHtml = () => `<h2 class="sec">${t('Badminton rules')}</h2>
       <li>${t('When your side wins a rally while serving, the same player serves again from the other court and the two partners swap sides.')}</li>
       <li>${t('During a rally either partner may hit the shuttle. Only the serve and the return of serve are fixed by the diagonal.')}</li></ul></details>`;
 // ---- release notes, newest first. A new id shows "What's new" once to everyone who used the app before (new people get the tour instead).
-const NEWS = () => [{ id: '2026-11-05', items: [
+const NEWS = () => [{ id: '2026-11-06', items: [
+  ['🎬', t('Video tips: Photos → Tips has short videos to get better (serve, smash, footwork…). Tap one to watch it in the app.')],
+  ['📋', t('Every match of the night: open Matches on the closed-day screen, or any day later under Board → Day.')],
+] }, { id: '2026-11-05', items: [
   ['💬', t('Group tab: chat with everyone, react to messages and see notes from the app (who is in, extra games, results). Members moved here too.')],
   ['🔔', t('Notifications: a reminder on play days if you have not answered yet, and if you like, for new chat messages. Turn them on under Details on the sign-up card.')],
   ['🎁', t('Monthly recap on the Stats tab: your month, the duo of the month, the biggest upset and more. Share it on WhatsApp.')],
@@ -691,6 +695,56 @@ const openRecap = (ym = recapDefault()) => {
   el.querySelectorAll('[data-ym]').forEach(b => b.onclick = () => b.dataset.ym && openRecap(b.dataset.ym));
   el.querySelector('#rclose').onclick = () => el.remove();
   el.querySelector('#rshare').onclick = () => waShare(cards.map(([e, h, line]) => `${e} ${h}: ${line}`).join('\n') + '\n' + appLink());
+};
+// ---- video tips (Photos → Tips): links shared by admins; YouTube plays in the app, other sites open in their own app
+let tips = [], tipTopic = 'all';
+const TOPICS = () => ({ serve: '🎯 ' + t('Serve'), smash: '💥 ' + t('Smash and clear'), net: '🕸 ' + t('Net play'), footwork: '👟 ' + t('Footwork'), defence: '🛡 ' + t('Defence'), doubles: '👥 ' + t('Doubles tactics'), singles: '👤 ' + t('Singles'), other: '💡 ' + t('Other') });
+const ytId = url => { const m = String(url).match(/^https:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([\w-]{11})/); return m ? m[1] : null; };
+// the form is a layer above the app (like the extra-game form), so live updates never wipe what is being typed
+const tipForm = () => {
+  document.getElementById('xform')?.remove(); const T = TOPICS();
+  const el = document.createElement('div'); el.id = 'xform'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
+  el.innerHTML = `<form class="card"><h2 style="margin:0 0 12px">🎬 ${t('Add a video tip')}</h2>
+      <input type="url" name="url" placeholder="${t('Link to the video (YouTube, Instagram, TikTok…)')}" inputmode="url" autocapitalize="none">
+      <label class="field clip">📱 ${t('…or a short video from your phone (up to 50 MB)')}<input type="file" name="clip" accept="video/*"></label>
+      <input type="text" name="title" required maxlength="120" placeholder="${t('Title, e.g. How to hold the racket')}">
+      <label class="field">${t('Topic')}<select name="topic">${Object.entries(T).map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select></label>
+      <textarea name="note" maxlength="500" rows="2" placeholder="${t('What to look at (optional)')}"></textarea>
+      <p class="msg" role="alert"></p><button class="primary" type="submit">${t('Share with everyone')}</button><button class="link" type="button" id="tcancel">${t('Cancel')}</button></form>`;
+  document.body.append(el); minimalize(el);
+  el.querySelector('#tcancel').onclick = () => el.remove();
+  el.querySelector('form').onsubmit = addTip;
+};
+const MAX_CLIP = 50 * 1024 * 1024;   // Supabase free plan: at most 50 MB per file
+const addTip = async e => {
+  e.preventDefault(); const form = e.target, f = new FormData(form), url = f.get('url').trim(), title = f.get('title').trim(), file = f.get('clip'), showMsg = m => { form.querySelector('.msg').textContent = m; };
+  const clip = file && file.size ? file : null;
+  if (!clip && !/^https:\/\/\S+$/.test(url)) return showMsg(t('Paste the link of the video (it starts with https://), or pick a video from your phone.'));
+  if (clip && clip.size > MAX_CLIP) return showMsg(t('That video is {mb} MB; the limit is 50 MB (about 30 to 60 seconds). Shorten it, or upload it to YouTube as Unlisted and paste the link.', { mb: Math.round(clip.size / 1048576) }));
+  const row = { url: clip ? null : url, title, topic: f.get('topic'), note: f.get('note').trim() || null };
+  if (clip) {   // uploads can take a while on mobile data: keep the form until it is stored
+    const btn = form.querySelector('[type=submit]'); btn.disabled = true; showMsg(t('Uploading the video… keep the app open.'));
+    const path = `tips/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${(clip.name.split('.').pop() || 'mp4').toLowerCase()}`;
+    const up = await sb.storage.from('photos').upload(path, clip, { contentType: clip.type || 'video/mp4' });
+    btn.disabled = false; if (up.error) return showMsg(friendly(up.error));
+    row.video_path = path; showMsg('');
+  }
+  document.getElementById('xform')?.remove(); act(async () => ok(await sb.from('tips').insert(row)), () => { tips = [{ ...row, id: Infinity, created_by: session.user.id, created_at: new Date().toISOString() }, ...tips]; });
+};
+const delTip = id => { const x = tips.find(v => v.id === id); if (!confirm(t('Remove this video tip?'))) return;
+  act(async () => { ok(await sb.from('tips').delete().eq('id', id)); if (x && x.video_path) await dropPhotos([x.video_path]); }, () => { tips = tips.filter(v => v.id !== id); }); };
+// YouTube plays in a layer above the app, so live updates (which redraw the screen) never stop the video
+const playTip = async id => {
+  const x = tips.find(v => v.id === id), y = x && x.url && ytId(x.url); if (!x || (!y && !x.video_path)) return;
+  const src = x.video_path && ok(await sb.storage.from('photos').createSignedUrls([x.video_path], 3600))[0].signedUrl;
+  document.getElementById('player')?.remove();
+  const el = document.createElement('div'); el.id = 'player'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
+  el.innerHTML = `<div class="pbox"><div class="ptop"><b>${esc(x.title)}</b><button class="link" aria-label="${t('Close')}">✕</button></div>
+    <div class="pvid">${y ? `<iframe src="https://www.youtube-nocookie.com/embed/${y}?autoplay=1&rel=0&playsinline=1" title="${esc(x.title)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`
+      : `<video src="${esc(src)}" controls autoplay playsinline></video>`}</div>
+    ${x.note ? `<p>${esc(x.note)}</p>` : ''}${y ? `<a class="link" href="${esc(x.url)}" target="_blank" rel="noopener">↗ ${t('Open in YouTube')}</a>` : '<div style="height:12px"></div>'}</div>`;
+  el.querySelector('.ptop button').onclick = () => el.remove(); el.onclick = ev => { if (ev.target === el) el.remove(); };
+  document.body.append(el);
 };
 const remindMe = () => { const s = sched || { tz: 'Europe/Berlin', dow: 4, play_time: '18:30', rsvp_until_minutes: 120 };
   saveFile(calendarFile(s, nextPlayDate(), location.href, t('Badminton: answer if you are coming'),

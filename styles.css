@@ -280,3 +280,16 @@
   #news .add{margin:0 0 10px}
   :root[data-theme=light] #news .card{--text:#10231a;--mut:#3d5a4c;color:var(--text)}
   .mrow{align-items:center} .mrow .kind{flex:none;margin:0}
+  /* video tips */
+  .tips{display:flex;flex-direction:column;gap:12px} .tip{position:relative;padding:0;overflow:hidden}
+  .thumb{display:block;position:relative;width:100%;aspect-ratio:16/9;padding:0;border:0;border-radius:0;background:#000;color:#fff;text-decoration:none}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block} .thumb span{position:absolute;inset:0;margin:auto;width:58px;height:58px;border-radius:50%;background:rgba(0,0,0,.6);display:grid;place-items:center;font-size:24px;padding-left:4px;box-sizing:border-box}
+  .thumb.other{background:linear-gradient(135deg,#1f4a3b,#0b1220)} .thumb.other small{position:absolute;left:12px;bottom:10px;font-size:var(--fs-sm);opacity:.85}
+  .tbody{padding:10px 14px 12px} .tbody b{display:block;font-size:var(--fs-md)} .tbody p{margin:6px 0 0;font-size:var(--fs-sm)} .tdel{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.55);border-radius:50%;width:34px;height:34px;padding:0}
+  textarea{display:block;width:100%;box-sizing:border-box;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;font:inherit;color:inherit;resize:vertical}
+  input[type=url]{display:block;width:100%;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px;box-sizing:border-box}
+  #player{position:fixed;inset:0;z-index:36;background:rgba(0,0,0,.85);display:grid;place-items:center;padding:12px} #player .pbox{width:100%;max-width:640px;background:var(--bg);border-radius:16px;overflow:hidden;color:var(--text);text-shadow:none}
+  #player .ptop{display:flex;align-items:center;gap:8px;padding:10px 12px} #player .ptop b{flex:1} #player .pvid{aspect-ratio:16/9;background:#000} #player iframe{width:100%;height:100%;border:0;display:block}
+  #player p{margin:10px 14px 0} #player a{display:block;padding:10px 14px 14px}
+  :root[data-theme=light] :is(#player .pbox,.tip,textarea,input[type=url]){--text:#10231a;--mut:#3d5a4c;color:var(--text)}
+  .clip input{margin-top:6px;font-size:var(--fs-sm);width:100%} #player video{width:100%;height:100%;display:block;background:#000}

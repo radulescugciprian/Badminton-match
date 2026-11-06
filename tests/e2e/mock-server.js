@@ -1,5 +1,5 @@
 // Fake Supabase server (in memory) mirroring the rules in supabase/migrations that the screens depend on.
-const st = { players: ['Vali','Dani','Costi','Zjepko','Ciprian'].map((name,i)=>({id:i+1,name,avatar:null,active:true,user_id:null})), days: [], matches: [], profiles: [], receipts: [], usage: [], rsvps: [], reactions: [], play_dates: [], chat: [], chat_reactions: [], log: [], attempts: {}, schedule: [{ id: true, tz: 'Europe/Berlin', dow: 4, play_time: '18:30:00', opens_minutes: 60, rsvp_until_minutes: 120, rsvp_hide_minutes: 90 }], now: null, users: {}, files: {}, seq: { p: 5, d: 0, m: 0 } };
+const st = { players: ['Vali','Dani','Costi','Zjepko','Ciprian'].map((name,i)=>({id:i+1,name,avatar:null,active:true,user_id:null})), days: [], matches: [], profiles: [], receipts: [], usage: [], rsvps: [], reactions: [], play_dates: [], chat: [], chat_reactions: [], tips: [], log: [], attempts: {}, schedule: [{ id: true, tz: 'Europe/Berlin', dow: 4, play_time: '18:30:00', opens_minutes: 60, rsvp_until_minutes: 120, rsvp_hide_minutes: 90 }], now: null, users: {}, files: {}, seq: { p: 5, d: 0, m: 0 } };
 const pages = [];
 const emit = () => pages.forEach(p => p.evaluate(() => window.__emit && window.__emit()).catch(() => {}));
 const isAdmin = u => (st.profiles.find(p => p.id === u) || {}).is_admin;
@@ -21,11 +21,11 @@ function canStart() {
 }
 function rpc(u, r) {
   if (!u && r.op !== 'rpc') return err('not logged in'); // the username lookup is public (anon)
-  const T = { players: st.players, days: st.days, matches: st.matches, profiles: st.profiles, schedule: st.schedule, receipts: st.receipts, usage: st.usage, rsvps: st.rsvps, reactions: st.reactions, admin_log: st.log, play_dates: st.play_dates, chat: st.chat, chat_reactions: st.chat_reactions }[r.table];
+  const T = { players: st.players, days: st.days, matches: st.matches, profiles: st.profiles, schedule: st.schedule, receipts: st.receipts, usage: st.usage, rsvps: st.rsvps, reactions: st.reactions, admin_log: st.log, play_dates: st.play_dates, chat: st.chat, chat_reactions: st.chat_reactions, tips: st.tips }[r.table];
   const match = row => r.f.every(([op, c, v]) => op === 'eq' ? row[c] === v : op === 'gte' ? row[c] >= v : row[c] > v);
   switch (r.op) {
     case 'rpc': {
-      if (r.name === 'db_version') return { data: st.dbVersion ?? 20261110 };
+      if (r.name === 'db_version') return { data: st.dbVersion ?? 20261111 };
       if (r.name === 'track') {
         if (!u) return { data: null };
         const f = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(st.now || Date.now())), g = x => f.find(p => p.type === x).value;
@@ -104,6 +104,7 @@ function rpc(u, r) {
       if (r.table === 'play_dates') { if (!isAdmin(u) && (r.payload.kind !== 'extra' || r.payload.created_by !== u || !r.payload.play_time || !r.payload.answer_by || new Date(r.payload.day + 'T12:00:00Z').getUTCDay() === st.schedule[0].dow)) return err('new row violates row-level security policy for table "play_dates"'); if (st.play_dates.some(x => x.day === r.payload.day)) return err('duplicate key', '23505'); logAct(u, 'mark_play_date', { date: r.payload.day, kind: r.payload.kind }); }
       if (r.table === 'receipts') { if (r.payload.created_by !== u) return err('new row violates row-level security policy for table "receipts"'); row.id = (st.receipts.length ? Math.max(...st.receipts.map(x => x.id)) : 0) + 1; row.created_at = new Date(st.now || Date.now()).toISOString(); }
       if (r.table === 'players') { if (!isAdmin(u) && r.payload.user_id) return err('new row violates row-level security policy'); row.id = ++st.seq.p; row.active = true; row.avatar = null; row.user_id = null; row.created_by = u; row.created_at = new Date(st.now || Date.now()).toISOString(); }
+      if (r.table === 'tips') { if (!isAdmin(u)) return err('new row violates row-level security policy for table "tips"'); if (row.url ? !/^https:\/\//.test(row.url) : !row.video_path) return err('violates check constraint'); Object.assign(row, { id: st.tips.length + 1, created_by: u, created_at: new Date().toISOString() }); }
       if (r.table === 'chat') { if (!String(row.body || '').trim()) return err('violates check constraint'); Object.assign(row, { id: st.chat.length + 1, user_id: u, event: null, created_at: new Date().toISOString() }); }
       if (r.table === 'chat_reactions') { row.user_id = u; if (st.chat_reactions.some(x => x.msg_id === row.msg_id && x.user_id === u && x.emoji === row.emoji)) return err('duplicate key', '23505'); }
       if (r.table === 'days') { row.id = ++st.seq.d; Object.assign(row, { started: isAdmin(u) && !!r.payload.started, closed: false, photo_path: (isAdmin(u) && r.payload.photo_path) || null }); }
@@ -150,6 +151,7 @@ function rpc(u, r) {
         if (r.table === 'days' && !isAdmin(u)) continue;
         if (r.table === 'receipts' && !isAdmin(u) && row.created_by !== u) continue;
         if (r.table === 'chat' && !isAdmin(u) && row.user_id !== u) continue;
+        if (r.table === 'tips' && !isAdmin(u)) continue;
         if (r.table === 'chat_reactions' && row.user_id !== u) continue;
         if (r.table === 'matches' && !isAdmin(u)) {
           const last = Math.max(...st.matches.filter(m => m.day_id === row.day_id).map(m => m.n));

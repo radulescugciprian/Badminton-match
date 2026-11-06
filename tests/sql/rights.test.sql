@@ -266,6 +266,19 @@ select check_that((select player_id from rsvps where day_date = '2099-02-15') = 
 select check_that(exists (select 1 from admin_log where action = 'merge_players'), 'the merge is in the activity log');
 reset role;
 
+-- video tips: everyone reads, only admins add or remove
+set role authenticated; select as_user((select adm from ids));
+insert into tips (url, title, topic) values ('https://youtu.be/abc', 'Backhand clear', 'smash');
+select must_fail($$insert into tips (url, title) values ('javascript:alert(1)', 'x')$$, 'check constraint');
+insert into tips (video_path, title) values ('tips/clip.mp4', 'Footwork drill');
+select must_fail($$insert into tips (title) values ('nothing')$$, 'check constraint');
+select as_user((select m1 from ids));
+select check_that((select count(*) from tips) = 2, 'members see the tips');
+select must_fail($$insert into storage.objects (bucket_id, name) values ('photos', 'tips/x.mp4')$$, 'row-level security');
+select must_fail($$insert into tips (url, title) values ('https://youtu.be/x', 'mine')$$, 'row-level security');
+select check_that(rows_changed($$delete from tips$$) = 0, 'members cannot remove tips');
+reset role;
+
 -- ================= logged out (anon) =================
 reset role; set role anon;
 select check_that((select count(*) from players) = 0 and (select count(*) from profiles) = 0 and (select count(*) from matches) = 0, 'nothing readable when logged out');

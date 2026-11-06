@@ -484,6 +484,7 @@ function logCard() {
 let urls = {};
 async function gallery() {
   if (photosTab === 'receipts') return receiptList();
+  if (photosTab === 'tips') return tipsList();
   const days = db.days.filter(d => d.photo).reverse();
   urls = {};
   if (days.length) for (const x of ok(await sb.storage.from('photos').createSignedUrls(days.map(d => d.photo), 3600))) urls[x.path] = x.signedUrl;
@@ -492,6 +493,19 @@ async function gallery() {
       <img src="${urls[d.photo]}" alt=""><span>${esc(d.date)} · ${tp('{n} matches', d.matches.length)}<br>🏆 ${esc((stats(d.matches)[0] || { name: '-' }).name)}${KINDS.map(([k, e]) => { const n = reactions.filter(r => r.day_id === d.id && r.kind === k).length; return n ? ` ${e}${n}` : ''; }).join('')}</span></button>
       ${isAdmin() ? `<button class="x" onclick="removePhoto(${d.id})" aria-label="${t('Delete photo of {date}', { date: esc(d.date) })}">✕</button>` : ''}</div>`).join('')}</div>`
     : `<div class="empty">${t('No photos yet.')}<br>${t('Close the day and take the group photo.')}</div>`;
+  minimalize(gal);
+}
+// video tips: topic filter, a card per video (thumbnail for YouTube), and the add form for admins
+function tipsList() {
+  const T = TOPICS(), shown = tips.filter(x => tipTopic === 'all' || x.topic === tipTopic), used = Object.keys(T).filter(k => tips.some(x => x.topic === k));
+  gal.innerHTML = (isAdmin() ? `<button class="add" onclick="tipForm()">➕ ${t('Add a video tip')}</button>` : '')
+    + (used.length > 1 ? `<div class="chips" style="margin:0 0 10px"><button class="chip ${tipTopic === 'all' ? 'in' : ''}" onclick="tipTopic='all';render()">${t('All')}</button>${used.map(k => `<button class="chip ${tipTopic === k ? 'in' : ''}" onclick="tipTopic='${k}';render()">${T[k]}</button>`).join('')}</div>` : '')
+    + (shown.length ? `<div class="tips">${shown.map(x => { const y = x.url && ytId(x.url);
+      return `<div class="tip card">${x.video_path ? `<button class="thumb other" onclick="playTip(${x.id})" aria-label="${t('Play video')}: ${esc(x.title)}"><span>▶</span><small>📱 ${t('Phone video')}</small></button>` : y ? `<button class="thumb" onclick="playTip(${x.id})" aria-label="${t('Play video')}: ${esc(x.title)}"><img src="https://i.ytimg.com/vi/${y}/mqdefault.jpg" alt="" loading="lazy"><span>▶</span></button>`
+          : `<a class="thumb other" href="${esc(x.url)}" target="_blank" rel="noopener" aria-label="${esc(x.title)}"><span>▶</span><small>${esc(new URL(x.url).hostname.replace(/^www\./, ''))}</small></a>`}
+        <div class="tbody"><b>${esc(x.title)}</b><small class="mut">${T[x.topic] || ''}</small>${x.note ? `<p>${esc(x.note)}</p>` : ''}</div>
+        ${isAdmin() ? `<button class="link danger tdel" onclick="delTip(${x.id})" aria-label="${t('Remove this video tip?')}">✕</button>` : ''}</div>`; }).join('')}</div>`
+      : `<div class="empty">${t('No video tips yet.')}${isAdmin() ? '<br>' + t('Add the first one above: paste a link to a video.') : ''}</div>`);
   minimalize(gal);
 }
 async function receiptList() {
@@ -589,7 +603,7 @@ function render() {
   const behind = isAdmin() && dbBehind ? `<div class="strip"><span>⚠️ ${t('The database is missing updates, so some buttons may fail. Apply the newest migrations in Supabase (see SETUP.md).')}</span></div>` : '';
   const strip = behind + (me.is_admin && asMember ? `<div class="strip"><span>👁 ${t('You are viewing the app as a member. Admin tools are hidden.')}</span><button onclick="toggleView()">${t('Back to admin')}</button></div>` : '');
   const nearEnd = view === 'chat' && innerHeight + scrollY >= document.body.scrollHeight - 120;   // reading older messages: do not jump
-  app.innerHTML = top + strip + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'admin' && isAdmin() ? adminView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : view === 'chat' ? chatView() : view === 'backfill' && bf ? backfillView() : `<h1>${t('Photos')}</h1><div class="seg" style="margin-bottom:12px"><button class="${photosTab === 'photos' ? 'on' : ''}" onclick="photosTab='photos';render()">📷 ${t('Photos')}</button><button class="${photosTab === 'receipts' ? 'on' : ''}" onclick="photosTab='receipts';render()">🧾 ${t('Receipts')}</button></div><div id="gal"></div>`);
+  app.innerHTML = top + strip + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'admin' && isAdmin() ? adminView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : view === 'chat' ? chatView() : view === 'backfill' && bf ? backfillView() : `<h1>${t('Photos')}</h1><div class="seg" style="margin-bottom:12px"><button class="${photosTab === 'photos' ? 'on' : ''}" onclick="photosTab='photos';render()">📷 ${t('Photos')}</button><button class="${photosTab === 'receipts' ? 'on' : ''}" onclick="photosTab='receipts';render()">🧾 ${t('Receipts')}</button><button class="${photosTab === 'tips' ? 'on' : ''}" onclick="photosTab='tips';render()">🎬 ${t('Tips')}</button></div><div id="gal"></div>`);
   drawReactions();
   const sl = document.querySelector('.slides'); shownSlide = slideIdx; if (sl && slideIdx) sl.scrollLeft = slideIdx * sl.clientWidth;
   minimalize(app);
