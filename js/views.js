@@ -240,7 +240,7 @@ function play() {
 // Board: Day / Month / All time with arrows, a podium, ranked rows (record, form, rank change), a minimum of 3 games
 // for Month and All time, your own row highlighted, and a mini profile on tap
 // Chat: messages (yours on the right), the app's own notes in the middle, tap a message to react or delete it
-const groupSeg = () => `<div class="seg" style="margin:0 0 12px"><button class="${view === 'chat' ? 'on' : ''}" onclick="go('chat')">💬 ${t('Chat')}</button><button class="${view === 'members' ? 'on' : ''}" onclick="go('members')">👥 ${t('Members')}</button></div>`;
+const groupSeg = () => `<div class="seg" style="margin:0 0 12px">${chatOn ? `<button class="${view === 'chat' ? 'on' : ''}" onclick="go('chat')">💬 ${t('Chat')}</button>` : ''}<button class="${view === 'tips' ? 'on' : ''}" onclick="go('tips')">🎬 ${t('Videos')}</button><button class="${view === 'members' ? 'on' : ''}" onclick="go('members')">👥 ${t('Members')}</button></div>`;
 function chatView() {
   const uid = session.user.id, pidOf = u => (db.players.find(p => p.user === u) || {}).id, nameOf = u => { const p = pidOf(u); return p ? name(p) : esc((members.find(x => x.id === u) || {}).username || '?'); };
   const when = m => new Date(m.created_at).toLocaleString(LOCALE[lang], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
@@ -435,8 +435,8 @@ function adminView() {
 
 // admins only: how the app is used (last 30 days): who is active, which tabs, what people do, and when
 function usageCard() {
-  const today = tzParts().date, tabs = ['play', 'board', 'chat', 'photos', 'stats', 'profile', 'members', 'calendar', 'admin'];
-  const label = { play: t('Play'), board: t('Board'), chat: t('Chat'), photos: t('Photos'), stats: t('Stats'), profile: t('Profile'), members: t('Members'), calendar: t('Calendar'), admin: t('Admin tools') };
+  const today = tzParts().date, tabs = ['play', 'board', 'chat', 'tips', 'photos', 'stats', 'profile', 'members', 'calendar', 'admin'];
+  const label = { play: t('Play'), board: t('Board'), chat: t('Chat'), tips: t('Videos'), photos: t('Photos'), stats: t('Stats'), profile: t('Profile'), members: t('Members'), calendar: t('Calendar'), admin: t('Admin tools') };
   const sum = rows => rows.reduce((x, r) => x + r.n, 0), views = usage.filter(r => tabs.includes(r.what));
   const active = days => new Set(usage.filter(r => r.day > addDays(today, -days)).map(r => r.user_id)).size;
   const pct = rows => { const tot = sum(rows); return tabs.map(k => [k, sum(rows.filter(r => r.what === k))]).filter(([, n]) => n).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${label[k]} ${Math.round(100 * n / tot)}%`).join(' · '); };
@@ -484,7 +484,6 @@ function logCard() {
 let urls = {};
 async function gallery() {
   if (photosTab === 'receipts') return receiptList();
-  if (photosTab === 'tips') return tipsList();
   const days = db.days.filter(d => d.photo).reverse();
   urls = {};
   if (days.length) for (const x of ok(await sb.storage.from('photos').createSignedUrls(days.map(d => d.photo), 3600))) urls[x.path] = x.signedUrl;
@@ -495,10 +494,10 @@ async function gallery() {
     : `<div class="empty">${t('No photos yet.')}<br>${t('Close the day and take the group photo.')}</div>`;
   minimalize(gal);
 }
-// video tips: topic filter, a card per video (thumbnail for YouTube), and the add form for admins
-function tipsList() {
+// Group → Videos: topic filter, a card per video (thumbnail for YouTube), and the add form for admins
+function tipsView() {
   const T = TOPICS(), shown = tips.filter(x => tipTopic === 'all' || x.topic === tipTopic), used = Object.keys(T).filter(k => tips.some(x => x.topic === k));
-  gal.innerHTML = (isAdmin() ? `<button class="add" onclick="tipForm()">➕ ${t('Add a video tip')}</button>` : '')
+  return groupSeg() + (isAdmin() ? `<button class="add" onclick="tipForm()">➕ ${t('Add a video tip')}</button>` : '')
     + (used.length > 1 ? `<div class="chips" style="margin:0 0 10px"><button class="chip ${tipTopic === 'all' ? 'in' : ''}" onclick="tipTopic='all';render()">${t('All')}</button>${used.map(k => `<button class="chip ${tipTopic === k ? 'in' : ''}" onclick="tipTopic='${k}';render()">${T[k]}</button>`).join('')}</div>` : '')
     + (shown.length ? `<div class="tips">${shown.map(x => { const y = x.url && ytId(x.url);
       return `<div class="tip card">${x.video_path ? `<button class="thumb other" onclick="playTip(${x.id})" aria-label="${t('Play video')}: ${esc(x.title)}"><span>▶</span><small>📱 ${t('Phone video')}</small></button>` : y ? `<button class="thumb" onclick="playTip(${x.id})" aria-label="${t('Play video')}: ${esc(x.title)}"><img src="https://i.ytimg.com/vi/${y}/mqdefault.jpg" alt="" loading="lazy"><span>▶</span></button>`
@@ -506,7 +505,6 @@ function tipsList() {
         <div class="tbody"><b>${esc(x.title)}</b><small class="mut">${T[x.topic] || ''}</small>${x.note ? `<p>${esc(x.note)}</p>` : ''}</div>
         ${isAdmin() ? `<button class="link danger tdel" onclick="delTip(${x.id})" aria-label="${t('Remove this video tip?')}">✕</button>` : ''}</div>`; }).join('')}</div>`
       : `<div class="empty">${t('No video tips yet.')}${isAdmin() ? '<br>' + t('Add the first one above: paste a link to a video.') : ''}</div>`);
-  minimalize(gal);
 }
 async function receiptList() {
   const sig = {}, paths = receipts.map(r => r.photo_path).filter(Boolean);
@@ -582,7 +580,7 @@ const ICON = k => iconSet() === 'minimal' ? svgIcon(k) : `<img class="on" src="i
 const TOPIMG = { members: 'tm-members.png', admin: 'tm-adminkey.png', logout: 'tm-logout.png', help: 'tm-help.png' };
 const topIcon = k => iconSet() === 'minimal' ? svgIcon(k) : `<img src="${TOPIMG[k]}" alt="">`;
 const NAV = { play: () => ICON('play') + '<span>' + t('Play') + (session && loaded && invites().length ? ' •' : '') + '</span>', board: () => ICON('board') + '<span>' + t('Board') + '</span>',
-  group: () => (iconSet() === 'minimal' ? svgIcon('chat') : '<img class="on" src="tm-members.png" alt=""><img class="off dimmed" src="tm-members.png" alt="">') + '<span>' + t('Group') + '</span>' + (session && loaded && chatUnread() ? `<i class="cbadge">${chatUnread()}</i>` : ''), photos: () => ICON('photos') + '<span>' + t('Photos') + '</span>', stats: () => ICON('stats') + '<span>' + t('Stats') + '</span>' };
+  group: () => (iconSet() === 'minimal' ? svgIcon(chatOn ? 'chat' : 'members') : '<img class="on" src="tm-members.png" alt=""><img class="off dimmed" src="tm-members.png" alt="">') + '<span>' + t('Group') + '</span>' + (session && loaded && chatOn && chatUnread() ? `<i class="cbadge">${chatUnread()}</i>` : ''), photos: () => ICON('photos') + '<span>' + t('Photos') + '</span>', stats: () => ICON('stats') + '<span>' + t('Stats') + '</span>' };
 
 function render() {
   if (session && loaded && view !== lastTracked) { lastTracked = view; track(view); }
@@ -592,7 +590,7 @@ function render() {
   document.body.classList.toggle('out', !session);
   document.body.dataset.view = session ? view : '';
   document.documentElement.lang = lang;
-  document.querySelectorAll('nav button').forEach(b => { b.innerHTML = NAV[b.dataset.v](); b.setAttribute('aria-current', b.dataset.v === view || (b.dataset.v === 'group' && (view === 'chat' || view === 'members')) ? 'page' : ''); });
+  document.querySelectorAll('nav button').forEach(b => { b.innerHTML = NAV[b.dataset.v](); b.setAttribute('aria-current', b.dataset.v === view || (b.dataset.v === 'group' && (view === 'chat' || view === 'tips' || view === 'members')) ? 'page' : ''); });
   if (!sb) { app.innerHTML = `<h1>${t('Almost there')}</h1><p class="mut">${t('Add your Supabase URL and key to config.js (see SETUP.md).')}</p>`; return; }
   if (!authReady) { app.innerHTML = `<p class="mut">${t('Loading…')}</p>`; return; }
   if (!session) { app.innerHTML = login_(); return; }
@@ -603,7 +601,7 @@ function render() {
   const behind = isAdmin() && dbBehind ? `<div class="strip"><span>⚠️ ${t('The database is missing updates, so some buttons may fail. Apply the newest migrations in Supabase (see SETUP.md).')}</span></div>` : '';
   const strip = behind + (me.is_admin && asMember ? `<div class="strip"><span>👁 ${t('You are viewing the app as a member. Admin tools are hidden.')}</span><button onclick="toggleView()">${t('Back to admin')}</button></div>` : '');
   const nearEnd = view === 'chat' && innerHeight + scrollY >= document.body.scrollHeight - 120;   // reading older messages: do not jump
-  app.innerHTML = top + strip + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'admin' && isAdmin() ? adminView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : view === 'chat' ? chatView() : view === 'backfill' && bf ? backfillView() : `<h1>${t('Photos')}</h1><div class="seg" style="margin-bottom:12px"><button class="${photosTab === 'photos' ? 'on' : ''}" onclick="photosTab='photos';render()">📷 ${t('Photos')}</button><button class="${photosTab === 'receipts' ? 'on' : ''}" onclick="photosTab='receipts';render()">🧾 ${t('Receipts')}</button><button class="${photosTab === 'tips' ? 'on' : ''}" onclick="photosTab='tips';render()">🎬 ${t('Tips')}</button></div><div id="gal"></div>`);
+  app.innerHTML = top + strip + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'admin' && isAdmin() ? adminView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : view === 'chat' && chatOn ? chatView() : view === 'tips' ? tipsView() : view === 'backfill' && bf ? backfillView() : `<h1>${t('Photos')}</h1><div class="seg" style="margin-bottom:12px"><button class="${photosTab === 'photos' ? 'on' : ''}" onclick="photosTab='photos';render()">📷 ${t('Photos')}</button><button class="${photosTab === 'receipts' ? 'on' : ''}" onclick="photosTab='receipts';render()">🧾 ${t('Receipts')}</button></div><div id="gal"></div>`);
   drawReactions();
   const sl = document.querySelector('.slides'); shownSlide = slideIdx; if (sl && slideIdx) sl.scrollLeft = slideIdx * sl.clientWidth;
   minimalize(app);
@@ -611,7 +609,7 @@ function render() {
   if (!cf && session) { cf = document.createElement('form'); cf.className = 'cform'; cf.onsubmit = sendChat; document.body.append(cf); }
   if (cf) {
     if (cf.dataset.lang !== lang) { cf.dataset.lang = lang; cf.innerHTML = `<input type="text" name="body" maxlength="1000" autocomplete="off" placeholder="${t('Message')}"><button class="primary" type="submit" aria-label="${t('Send')}">➤</button>`; }
-    cf.hidden = !(session && view === 'chat');
+    cf.hidden = !(session && chatOn && view === 'chat');
   }
   if (view === 'chat' && (nearEnd || chatJump)) {   // opening: start at the first unread message; later: follow new messages unless reading older ones
     const mark = chatJump && app.querySelector('.cnew'); chatJump = false;
@@ -631,7 +629,7 @@ const TOUR = () => [
   ['.startbar, [onclick="start()"], #app ol .row', '▶️ ' + t('Start playing'), t('It opens shortly before play time. Then tap a team to record its win. Someone leaving early or arriving late? Use ⋯ More during play.')],
   ['.teams', '🏆 ' + t('Record the winner'), t('Tap the team that won. Everyone sees the scores live, and Undo fixes a wrong tap.')],
   ['nav [data-v=board]', '🏆 ' + t('Board'), t('Everyone\'s rating first, then the day, the month and all time. Tap a player for their stats.')],
-  ['nav [data-v=group]', '💬 ' + t('Group'), t('Chat with the group: messages, reactions and notes from the app (who is in, extra games, results). Members shows everyone and who is coming.')],
+  ['nav [data-v=group]', '💬 ' + t('Group'), t('Video tips to get better, and Members: everyone in the group and who is coming.')],
   ['nav [data-v=photos]', '📷 ' + t('Photos'), t('The group photo of each day, and receipts for extra courts or shuttles.')],
   ['nav [data-v=stats]', '📊 ' + t('Stats'), t('Your rating over time, badges, best partners and head-to-head records.')],
   ['.top .me', '🙂 ' + t('Your profile'), t('Tap your photo for your profile: picture, language, light or dark theme and privacy.')],

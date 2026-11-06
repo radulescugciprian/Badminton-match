@@ -229,7 +229,7 @@ const rulesHtml = () => `<h2 class="sec">${t('Badminton rules')}</h2>
       <li>${t('During a rally either partner may hit the shuttle. Only the serve and the return of serve are fixed by the diagonal.')}</li></ul></details>`;
 // ---- release notes, newest first. A new id shows "What's new" once to everyone who used the app before (new people get the tour instead).
 const NEWS = () => [{ id: '2026-11-06', items: [
-  ['🎬', t('Video tips: Photos → Tips has short videos to get better (serve, smash, footwork…). Tap one to watch it in the app.')],
+  ['🎬', t('Video tips: Group → Videos has short videos to get better (serve, smash, footwork…). Tap one to watch it in the app.')],
   ['📋', t('Every match of the night: open Matches on the closed-day screen, or any day later under Board → Day.')],
 ] }, { id: '2026-11-05', items: [
   ['💬', t('Group tab: chat with everyone, react to messages and see notes from the app (who is in, extra games, results). Members moved here too.')],
@@ -280,7 +280,7 @@ function showHelp() {
 }
 
 // ---- actions
-const go = v => { if (v !== view && view !== 'profile') prevView = view; if (v === 'chat' && view !== 'chat') { chatJump = true; chatMark = chatSeen(); } if (v === 'chat' || v === 'members') groupTab = v; view = v; render(); };
+const go = v => { if (v === 'chat' && !chatOn) v = 'tips'; if (v !== view && view !== 'profile') prevView = view; if (v === 'chat' && view !== 'chat') { chatJump = true; chatMark = chatSeen(); } if (v === 'chat' || v === 'tips' || v === 'members') groupTab = v; view = v; render(); };
 // usage counters for the admins (which tab, which action); errors are ignored so the app never waits on this
 const track = v => { try { sb.rpc('track', { v }).then(() => {}, () => {}); } catch {} };
 // a guest (no account) who has not played for 8 weeks stops joining new days; they can be brought back from the setup screen
@@ -636,7 +636,8 @@ const pushToggle = () => act(async () => {
 });
 const pushTest = () => act(async () => { const r = await sb.functions.invoke('remind', { body: { test: true } }); if (r.error || !r.data.sent) alert(t('The test notification could not be sent.')); });
 // ---- group chat (newest 200 messages); "seen" is remembered per phone
-let chat = [], chatRx = [], chatOpen = null, chatJump = false, chatMark = 0, groupTab = 'chat';   // groupTab: the Group tab remembers Chat or Members   // chatMark: the last message read before opening the chat
+let chatOn = false;   // the chat is switched off for now (messages are kept); true brings it back in the Group tab
+let chat = [], chatRx = [], chatOpen = null, chatJump = false, chatMark = 0, groupTab = 'tips';   // groupTab: the Group tab remembers Chat or Members   // chatMark: the last message read before opening the chat
 const chatSeen = () => { try { return +localStorage.getItem('chatSeen') || 0; } catch { return 0; } };
 const chatUnread = () => chat.filter(m => m.body && m.id > chatSeen() && m.user_id !== session.user.id).length;
 const markChatSeen = () => { const last = chat.length ? chat[chat.length - 1].id : 0; if (last > chatSeen()) try { localStorage.setItem('chatSeen', last); } catch {} };
