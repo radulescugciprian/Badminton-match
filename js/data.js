@@ -901,9 +901,11 @@ function stats(matches) {
 const monthMatches = ym => db.days.filter(d => d.date.slice(0, 7) === ym).flatMap(d => d.matches);
 const doublesOnly = ms => ms.filter(m => m.t1.length > 1);
 // rating points won or lost in a month (the sum of the nightly Elo changes), with the games played: the Month board and its champion
-function monthGains(ym, an = analyse(db.days, db.players)) {
-  const ds = db.days.filter(d => d.date.slice(0, 7) === ym && d.matches.length), out = new Map();
-  for (const d of ds) for (const [id, r] of an.night.get(d.id) || []) { const x = out.get(id) || { id, name: player(id).name, gain: 0, w: 0, p: 0 }; x.gain += r.delta; x.w += r.w; x.p += r.p; out.set(id, x); }
+// a month's table for one kind (doubles or singles): match rating gained in that month, and the record, from that kind's matches only
+function monthGains(ym, an = analyse(db.days, db.players), kind = 'doubles') {
+  const H = kind === 'singles' ? an.histS : an.hist, out = new Map();
+  for (const p of db.players) { const h = H.get(p.id); h.forEach((x, i) => { if (x.date.slice(0, 7) !== ym) return;
+    const r = out.get(p.id) || { id: p.id, name: p.name, gain: 0, w: 0, p: 0 }; r.gain += x.r - (i ? h[i - 1].r : START_RATING); r.p++; if (x.r > (i ? h[i - 1].r : START_RATING)) r.w++; out.set(p.id, r); }); }
   return [...out.values()].sort((a, b) => b.gain - a.gain || b.w - a.w);
 }
 const monthChamps = () => { const an = analyse(db.days, db.players);   // the champion of a month: most rating points won, with at least 3 games
