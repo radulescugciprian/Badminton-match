@@ -211,8 +211,8 @@ function ratingChart(vals, w = 320, h = 150, label = 'Rating over time') {
     <line x1="8" x2="${w - 8}" y1="${y(START_RATING)}" y2="${y(START_RATING)}" stroke="currentColor" stroke-opacity=".3" stroke-dasharray="4 4"/>
     <polyline points="${pts}" fill="none" stroke="var(--acc)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
     <circle cx="${x(last)}" cy="${y(vals[last])}" r="5" fill="var(--acc)"/>
-    <text x="8" y="12" font-size="11" fill="currentColor" fill-opacity=".7">${Math.round(Math.max(...vals))}</text>
-    <text x="8" y="${h - 3}" font-size="11" fill="currentColor" fill-opacity=".7">${Math.round(Math.min(...vals))}</text></svg>`;
+    <text x="8" y="12" font-size="12" fill="currentColor" fill-opacity=".7">${Math.round(Math.max(...vals))}</text>
+    <text x="8" y="${h - 3}" font-size="12" fill="currentColor" fill-opacity=".7">${Math.round(Math.min(...vals))}</text></svg>`;
 }
 
 if (typeof module !== 'undefined') module.exports = { winnerStays, recap, playerCard, seasonOf, challenge, challengeWins, challengeFor, mondayOf, analyse, playerOfNight, nightAwards, relations, bestPair, ratingChart, START_RATING };

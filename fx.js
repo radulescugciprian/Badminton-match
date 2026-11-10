@@ -34,7 +34,8 @@ function confetti() {
     t - t0 < 1700 ? requestAnimationFrame(frame) : c.remove();
   })(t0);
 }
-function celebrate() { if (fxOn()) { confetti(); fanfare(); } }
+// confetti is left out when the phone asks for less motion; the sound stays (it has its own switch)
+function celebrate() { if (fxOn()) { if (!matchMedia('(prefers-reduced-motion: reduce)').matches) confetti(); fanfare(); } }
 
 // ---- result card: group photo (or a plain background) with the night's podium on top, as a PNG
 // texts are prepared (and translated) by the caller; rows: top 3 [{name, line, img: ImageBitmap|null, hue, initial}], potn: same, with `line` = text under the name
