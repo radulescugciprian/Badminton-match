@@ -321,3 +321,5 @@
   .pchoose{display:flex;gap:10px;overflow-x:auto;padding:4px 2px 8px;scrollbar-width:none} .pchoose::-webkit-scrollbar{display:none}
   .pchoose button{flex:none;display:flex;flex-direction:column;align-items:center;gap:4px;background:none;padding:4px;min-width:64px;color:var(--mut);font-size:var(--fs-xs);font-weight:600}
   .pchoose button .av{border:3px solid transparent} .pchoose button[aria-pressed=true]{color:var(--text)} .pchoose button[aria-pressed=true] .av{border-color:var(--acc)}
+  .howpts{margin:0;padding-left:4px;list-style:none;display:flex;flex-direction:column;gap:6px} .howpts b{display:inline-block;min-width:34px;color:var(--gold);font-family:var(--disp);font-size:20px;font-weight:400}
+  .ptsnight{text-align:center;font-weight:700;margin:0 0 12px} .rank .bn small{display:block}

@@ -56,6 +56,15 @@ const toggleView = () => { asMember = !asMember; if (asMember && (view === 'memb
 // ---- who may see whose rating and stats: players decide for themselves, admins see everything. Guests (no account) are shared.
 const profileOf = pid => { const u = player(pid).user; return u && members.find(m => m.id === u); };
 const sharing = pid => { const pr = profileOf(pid); return !pr || pr.share_stats !== false; };
+// season points (seasonPoints in analytics.js): who answered "I'm in" for a date, the seasons played, and the season shown on Board
+const saidIn = (date, id) => rsvps.some(r => r.day_date === date && r.player_id === id && r.status === 'in');
+let ptSeason = null;   // null = the current season
+const seasonsPlayed = () => [...new Set([...db.days.filter(d => d.matches.length).map(d => seasonKey(d.date)), seasonKey(tzParts().date)])]
+  .sort((a, b) => { const k = s => +s.split(' ')[1].slice(0, 4) * 10 + ['winter', 'spring', 'summer', 'autumn'].indexOf(s.split(' ')[0]); return k(a) - k(b); });
+const seasonLabel = key => { const [k, y] = key.split(' '); return { winter: t('Winter {y}', { y }), spring: t('Spring {y}', { y }), summer: t('Summer {y}', { y }), autumn: t('Autumn {y}', { y }) }[k]; };
+// 🏅 Loyal player: in the top 3 of a finished season
+const loyal = id => seasonsPlayed().filter(s => s !== seasonKey(tzParts().date)).filter(s => seasonPoints(db.days, db.players, s, saidIn).slice(0, 3).some(x => x.id === id)).length;
+const ratingOf = (an, id) => (an.main(id) === 'singles' ? an.ratingS : an.rating).get(id);   // the rating of the kind a player plays most
 const ratingHidden = pid => (profileOf(pid) || {}).hide_rating === true;   // "hide my rating": no number or rank for anyone, the person included
 const canSee = pid => isAdmin() || player(pid).user === session.user.id || sharing(pid);
 
@@ -777,7 +786,7 @@ const cardArt = async id => { const p = player(id); let img = null;
   return { hue: id * 67 % 360, initial: p.name[0].toUpperCase(), img }; };
 async function sharePlayerCard(id) {
   const p = player(id), an = analyse(db.days, db.players), b = an.badges.get(id), crowns = monthChamps().filter(c => c.id === id).length, me_ = stats(db.days.flatMap(d => d.matches)).find(r => r.id === id) || { p: 0 };
-  const em = [crowns && '👑', b.potn && '⭐', b.perfect && '💯', b.fire && '🔥', b.comeback && '🔄', b.improved && '📈', b.nightsRun >= 5 && '🗓', me_.p >= 50 && '🎖', b.everyone && '🤝', b.everyMonth && '📆', earlyBird(id) && '🐦', challengeWins(db.days, db.players).get(id) && '🎯'].filter(Boolean);
+  const em = [crowns && '👑', b.potn && '⭐', b.perfect && '💯', b.fire && '🔥', b.comeback && '🔄', b.improved && '📈', b.nightsRun >= 5 && '🗓', me_.p >= 50 && '🎖', b.everyone && '🤝', b.everyMonth && '📆', earlyBird(id) && '🐦', loyal(id) && '🏅', challengeWins(db.days, db.players).get(id) && '🎯'].filter(Boolean);
   const blob = await drawPlayerCard({ ...cardSpec(id, an, em), ...(await cardArt(id)) });
   const file = new File([blob], `badminton-${p.name}.png`, { type: 'image/png' });
   if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: p.name }).catch(() => {});

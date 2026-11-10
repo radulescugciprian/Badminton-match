@@ -72,12 +72,13 @@ assert(ratingChart([1000, 1032, 1010]).includes('1032'));
   assert.deepEqual(winnerStays([1, 2, 3], ms), { t1: [3], t2: [1], rest: 2 }, '1 comes back in against the winner');
 }
 
-// singles move the rating half as much as doubles
+// doubles and singles have their own ratings: a singles match never moves the doubles rating, and the other way round
 {
   const pl = [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }];
-  const dbl = analyse([{ id: 1, date: 'x', matches: [{ n: 1, t1: [1, 2], t2: [3, 4], win: 1 }] }], pl).rating.get(1) - 1000;
-  const sgl = analyse([{ id: 1, date: 'x', matches: [{ n: 1, t1: [1], t2: [3], win: 1 }] }], pl).rating.get(1) - 1000;
-  assert(Math.abs(sgl - dbl / 2) < 1e-9, 'singles count half: ' + sgl + ' vs ' + dbl);
+  const a = analyse([{ id: 1, date: 'x', matches: [{ n: 1, t1: [1, 2], t2: [3, 4], win: 1 }, { n: 2, t1: [1], t2: [3], win: 2 }] }], pl);
+  assert.equal(a.rating.get(1), 1016, 'doubles: full weight'); assert.equal(a.ratingS.get(1), 984, 'singles: its own rating, full weight');
+  assert.equal(a.hist.get(1).length, 1); assert.equal(a.histS.get(1).length, 1);
+  assert.equal(a.main(1), 'doubles', 'a tie counts as doubles');
 }
 
 // showing-up badges and the monthly recap
@@ -142,6 +143,20 @@ assert(ratingChart([1000, 1032, 1010]).includes('1032'));
   assert.equal(playerCard(many, P, 1).title, 'clutch', 'wins the deciders');
   assert.equal(playerCard(Array.from({ length: 25 }, (_, i) => night(100 + i, '2026-01-01', [[[1, 2], [3, 4], 1]])), P, 3).tier, 'gold');
   assert.deepEqual([seasonOf('2026-11-10'), seasonOf('2026-12-03'), seasonOf('2027-02-01'), seasonOf('2027-04-01')].map(x => x.k + ' ' + x.y), ['autumn 2026', 'winter 2026/27', 'winter 2026/27', 'spring 2027']);
+}
+
+// season points: showing up first, a capped bonus per match, answering in time, and rating gained (never negative)
+{
+  const { seasonPoints, nightPoints, analyse } = require('../analytics.js');
+  const P = [1, 2, 3, 4, 5].map(id => ({ id })), night = (id, date, ms) => ({ id, date, matches: ms.map(([t1, t2, win], i) => ({ n: i + 1, t1, t2, win })) });
+  assert.deepEqual(nightPoints({ p: 7, delta: 23 }, true), { show: 17, perf: 5 }, '10 + 5 (capped) + 2, and 23/4 → 5');
+  assert.deepEqual(nightPoints({ p: 2, delta: -30 }, false), { show: 12, perf: 0 }, 'a bad night never costs points');
+  const days = [night(1, '2026-10-01', [[[1, 2], [3, 4], 1], [[1, 3], [2, 4], 1]]), night(2, '2026-10-08', [[[1, 2], [3, 4], 1]]), night(3, '2026-07-01', [[[1, 2], [3, 4], 1]])];
+  const t = seasonPoints(days, P, 'autumn 2026', (date, id) => id === 2 && date === '2026-10-01');
+  assert.deepEqual(t.map(x => x.id), [1, 2, 3, 4], 'only autumn nights; player 5 never played');
+  const p2 = t.find(x => x.id === 2), p3 = t.find(x => x.id === 3);
+  assert.equal(p2.nights, 2); assert.equal(p2.show, 10 + 2 + 2 + 10 + 1, 'two nights, three matches, answered once');
+  assert.equal(p3.perf, 0, 'player 3 lost everything: no performance points, but still the showing-up ones'); assert(p3.show >= 20);
 }
 
 console.log('analytics tests passed');

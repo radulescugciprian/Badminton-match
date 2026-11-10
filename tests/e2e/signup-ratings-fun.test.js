@@ -75,8 +75,12 @@ run('sign-up list, ratings, badges, result card and reactions', async h => {
   assert((await A.textContent('.card .rank >> nth=0')).includes('Vali'), 'highest rating first');
   await A.click('.rank.tap >> nth=1'); await A.waitForSelector('text=Rating over time');                    // tapping a player opens their stats
   assert.equal(await A.evaluate(() => statsId), await A.evaluate(() => db.players.find(p => p.name === document.querySelector('.pchoose [aria-pressed=true] > span:last-child').textContent.replace(/ 🔒/, '').trim()).id), 'the tapped player is selected');
-  await A.click('nav >> text=Board'); await A.click('.seg >> text=Month'); await A.waitForSelector('.podium');
-  assert((await A.textContent('.calnav')).includes('2026'), 'the month leaderboard shows the month');
+  // season points: everyone who played gets points for showing up, plus a little for rating gained
+  await A.click('nav >> text=Board'); await A.click('.seg >> text=Points'); await A.waitForSelector('text=How points work');
+  assert((await A.textContent('.calnav')).includes('2026'), 'the season is shown');
+  const n = await A.locator('.card .rank').count(); assert(n >= 4, 'everyone who played has points: ' + n);
+  const top = await A.evaluate(() => seasonPoints(db.days, db.players, seasonKey(tzParts().date), saidIn)[0]);
+  assert(top.show >= 10 && top.pts === top.show + top.perf + top.bonus, JSON.stringify(top));
   await A.click('nav >> text=Stats'); await A.waitForSelector('text=Head-to-head');
   await A.click('nav >> text=Board'); await A.click('.seg >> text=Rating');
   await A.click('.seg >> text=Day'); await A.click('summary:has-text("Matches")'); await A.waitForSelector('.mrow');                                        // the match list opens

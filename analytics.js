@@ -3,9 +3,10 @@
 const START_RATING = 1000, K_FACTOR = 32;
 
 // days: [{id, date, matches: [{n, t1: [ids], t2: [ids], win: 1|2}]}] in play order; players: [{id}]
+// doubles and singles have separate ratings (rating / ratingS, hist / histS); a match only moves the rating of its own kind
 function analyse(days, players) {
-  const rating = new Map(players.map(p => [p.id, START_RATING]));
-  const hist = new Map(players.map(p => [p.id, []]));      // rating after each match the player played
+  const rating = new Map(players.map(p => [p.id, START_RATING])), ratingS = new Map(players.map(p => [p.id, START_RATING]));
+  const hist = new Map(players.map(p => [p.id, []])), histS = new Map(players.map(p => [p.id, []]));   // rating after each match the player played
   const results = new Map(players.map(p => [p.id, []]));   // win/loss in play order
   const night = new Map();                                  // dayId -> Map(playerId -> {delta, w, p, res})
   const dayEnd = [];                                        // rating of everyone after each day
@@ -14,15 +15,15 @@ function analyse(days, players) {
   for (const d of days.filter(x => x.matches.length)) {
     const nd = new Map(), row = id => nd.get(id) || nd.set(id, { delta: 0, w: 0, p: 0, res: [] }).get(id);
     for (const m of d.matches) {
-      const avg = ids => ids.reduce((s, id) => s + rating.get(id), 0) / ids.length;
+      const single = m.t1.length === 1, R = single ? ratingS : rating, H = single ? histS : hist;
+      const avg = ids => ids.reduce((s, id) => s + R.get(id), 0) / ids.length;
       const e1 = 1 / (1 + 10 ** ((avg(m.t2) - avg(m.t1)) / 400)); // expected score of team 1
-      const k = m.t1.length === 1 ? K_FACTOR / 2 : K_FACTOR;           // singles (3-player nights) count half, so one evening cannot swing the rating
-      const d1 = k * ((m.win === 1 ? 1 : 0) - e1);                    // both partners get the same change
+      const d1 = K_FACTOR * ((m.win === 1 ? 1 : 0) - e1);             // both partners get the same change
       log.push({ day: d.id, date: d.date, n: m.n, won: m.win === 1 ? m.t1 : m.t2, lost: m.win === 1 ? m.t2 : m.t1, chance: m.win === 1 ? e1 : 1 - e1 });
       for (const ids of [m.t1, m.t2]) for (const a of ids) for (const b of ids) if (a !== b) mates.get(a).add(b);
       for (const [ids, sign, won] of [[m.t1, 1, m.win === 1], [m.t2, -1, m.win === 2]]) for (const id of ids) {
-        rating.set(id, rating.get(id) + sign * d1);
-        hist.get(id).push({ day: d.id, date: d.date, n: m.n, r: rating.get(id) });
+        R.set(id, R.get(id) + sign * d1);
+        H.get(id).push({ day: d.id, date: d.date, n: m.n, r: R.get(id) });
         results.get(id).push(won);
         const r = row(id); r.delta += sign * d1; r.p++; r.w += won ? 1 : 0; r.res.push(won);
       }
@@ -61,7 +62,8 @@ function analyse(days, players) {
     const mine = new Set(nights.filter(d => was(d, p.id)).map(d => d.date.slice(0, 7))), since = groupMonths.filter(ym => ym >= [...mine].sort()[0]);
     b.everyMonth = since.length >= 3 && since.every(ym => mine.has(ym));
   }
-  return { rating, hist, night, badges, potn, dayEnd, log };
+  const main = id => histS.get(id).length > hist.get(id).length ? 'singles' : 'doubles';   // the kind a player plays most
+  return { rating, ratingS, hist, histS, main, night, badges, potn, dayEnd, log };
 }
 
 // the player who gained the most rating that night (ties: more wins)
@@ -122,7 +124,7 @@ function recap(days, players, ym, pid, allow = () => true) {
   if (pid && count.get(pid)) {
     const mine = ms.filter(m => inM(m, pid)), partner = [...relations(md, pid).mate].sort((x, y) => y[1].g - x[1].g)[0] || null, nightsP = md.filter(d => d.matches.some(m => inM(m, pid)));
     const best = nightsP.map(d => { const mm = d.matches.filter(m => inM(m, pid)); return { date: d.date, w: mm.filter(m => won(m, pid)).length, p: mm.length }; }).sort((x, y) => y.w - x.w || x.p - y.p)[0];
-    const h = a.hist.get(pid) || [], before = h.filter(x => x.date.slice(0, 7) < ym).pop(), after = h.filter(x => x.date.slice(0, 7) <= ym).pop();
+    const h = (a.main(pid) === 'singles' ? a.histS : a.hist).get(pid) || [], before = h.filter(x => x.date.slice(0, 7) < ym).pop(), after = h.filter(x => x.date.slice(0, 7) <= ym).pop();
     me = { p: mine.length, w: mine.filter(m => won(m, pid)).length, nights: nightsP.length, partner: partner && { id: partner[0], ...partner[1] }, best, delta: after ? after.r - (before ? before.r : START_RATING) : 0 };
   }
   return { nights: md.length, matches: ms.length, most: { id: mostId, n: mostN }, streak, upset, duo: bestPair(md, 2, allow), bigNight, me };
@@ -157,6 +159,22 @@ function playerCard(days, players, pid, a = analyse(days, players)) {
 // the season of a date: winter (Dec–Feb), spring, summer, autumn; winter spans two years
 const seasonOf = iso => { const y = +iso.slice(0, 4), m = +iso.slice(5, 7);
   return m === 12 ? { k: 'winter', y: `${y}/${String(y + 1).slice(2)}` } : m <= 2 ? { k: 'winter', y: `${y - 1}/${String(y).slice(2)}` } : { k: m <= 5 ? 'spring' : m <= 8 ? 'summer' : 'autumn', y: String(y) }; };
+
+// ---- season points: showing up counts most (10 a night, +1 a match up to 5, +2 for having said "I'm in", +3 per weekly
+// challenge), plus 1 point per 4 rating points gained that night, never below 0 (the rating already weighs who you beat)
+const POINTS = { night: 10, match: 1, maxMatches: 5, answered: 2, challenge: 3, perRating: 4 };
+const seasonKey = iso => { const s = seasonOf(iso); return s.k + ' ' + s.y; };
+// one night's points for one player: { show, perf } (r = a.night.get(dayId).get(playerId))
+const nightPoints = (r, saidIn) => ({ show: POINTS.night + Math.min(POINTS.maxMatches, r.p * POINTS.match) + (saidIn ? POINTS.answered : 0), perf: Math.max(0, Math.floor(r.delta / POINTS.perRating)) });
+// the season table: [{ id, pts, nights, show, perf, bonus }], most points first; saidIn(date, playerId) says if they answered "I'm in"
+function seasonPoints(days, players, season, saidIn = () => false, a = analyse(days, players)) {
+  const rows = new Map(), row = id => rows.get(id) || rows.set(id, { id, pts: 0, nights: 0, show: 0, perf: 0, bonus: 0 }).get(id);
+  const ds = days.filter(d => d.matches.length && seasonKey(d.date) === season);
+  for (const d of ds) for (const [id, r] of a.night.get(d.id) || []) { const x = row(id), n = nightPoints(r, saidIn(d.date, id)); x.nights++; x.show += n.show; x.perf += n.perf; }
+  for (const w of new Set(ds.map(d => mondayOf(d.date)))) for (const [id, c] of challenge(days, players, w, a).of) if (c.done) row(id).bonus += POINTS.challenge;
+  for (const x of rows.values()) x.pts = x.show + x.perf + x.bonus;
+  return [...rows.values()].sort((p, q) => q.pts - p.pts || q.nights - p.nights);
+}
 
 // ---- weekly mini-challenge: the same light goal for everyone, a new one every Monday, checked from the match log
 const CHALLENGES = ['newpartner', 'partners3', 'streak2', 'upset', 'six', 'bounce', 'opponents4'];
@@ -217,4 +235,4 @@ function ratingChart(vals, w = 320, h = 150, label = 'Rating over time') {
     <text x="8" y="${h - 3}" font-size="12" fill="currentColor" fill-opacity=".7">${Math.round(Math.min(...vals))}</text></svg>`;
 }
 
-if (typeof module !== 'undefined') module.exports = { winnerStays, recap, playerCard, seasonOf, challenge, challengeWins, challengeFor, mondayOf, analyse, playerOfNight, nightAwards, relations, bestPair, ratingChart, START_RATING };
+if (typeof module !== 'undefined') module.exports = { winnerStays, recap, seasonPoints, nightPoints, seasonKey, POINTS, playerCard, seasonOf, challenge, challengeWins, challengeFor, mondayOf, analyse, playerOfNight, nightAwards, relations, bestPair, ratingChart, START_RATING };
