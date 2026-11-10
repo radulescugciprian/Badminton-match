@@ -169,6 +169,7 @@ function setup(d) {
         <div class="vs"><b style="--c:var(--t1)">${pair(first.t1)}</b><span>${t('vs')}</span><b style="--c:var(--t2)">${pair(first.t2)}</b></div>
         ${first.rest ? `<div class="rs">${t('Resting:')} <b>${name(first.rest)}</b></div>` : ''}<button class="link wa" onclick="shareLineup()">💬 ${t('Share the line-up on WhatsApp')}</button></div>` : ''}
       <button class="add" onclick="addPlayer()">${t('+ Add guest player (no account)')}</button>
+      ${challengeCard()}
       ${idle.length ? `<details class="fold"><summary>${t('Guests who have not played lately')} (${idle.length})</summary><div class="chips">${idle.map(p => `<button class="chip" onclick="bringBack(${p.id})">${av(p.id, 22)} ${esc(p.name)} +</button>`).join('')}</div></details>` : ''}
       ${o.length > m ? `<details class="fold" ${benchOpen ? 'open' : ''} ontoggle="benchOpen=this.open"><summary>${t('Sitting out')} (${o.length - m})</summary><ol>${o.slice(m).map((id, k) => rowOf(id, m + k)).join('')}</ol></details>` : ''}
 `}</div>
@@ -201,7 +202,7 @@ function play() {
     return `<h1>${t('Day closed')} 🏁</h1><p class="mut">${esc(d.date)} · ${tp('{n} matches', n)}</p>
       <div class="card" style="padding:4px 16px;margin-bottom:16px">${stats(d.matches).slice(0, 3).map((r, i) => `<div class="rank"><span class="r">${['🥇', '🥈', '🥉'][i]}</span>${av(r.id, 32)}
         <b>${esc(r.name)}</b><span class="mut" style="margin:0">${r.w}/${r.p}</span><b>${Math.round(pct(r) * 100)}%</b></div>`).join('')}</div>
-      ${closedExtras(d)}${matchList(d, 'closed')}
+      ${closedExtras(d)}${matchList(d, 'closed')}${challengeCard()}
       <button class="primary" onclick="photo(${d.id})">📷 ${d.photo ? t('Retake group photo') : t('Take group photo')}</button>
       ${d.photo ? `<p class="mut" style="text-align:center;margin:8px 0 0">✓ ${t('Photo saved in Photos')}</p>` : ''}
       <button class="add" style="margin-top:12px" onclick="shareCard(${d.id})">📤 ${t('Share result card')}</button>
@@ -326,9 +327,9 @@ function statsView() {
     b.comeback && `🔄 ${t('Comeback')} ×${b.comeback}`, b.improved && `📈 ${t('Most improved')}`,
     // showing up counts too
     b.nightsRun >= 5 && `🗓 ${t('{n} nights in a row', { n: b.nightsRun })}`, me_.p >= 50 && `🎖 ${t('{n} matches played', { n: [250, 100, 50].find(x => me_.p >= x) })}`,
-    b.everyone && `🤝 ${t('Played with everyone')}`, b.everyMonth && `📆 ${t('Never missed a month')}`, earlyBird(id) && `🐦 ${t('Early bird')} ×${earlyBird(id)}`].filter(Boolean);
+    b.everyone && `🤝 ${t('Played with everyone')}`, b.everyMonth && `📆 ${t('Never missed a month')}`, earlyBird(id) && `🐦 ${t('Early bird')} ×${earlyBird(id)}`, challengeWins(db.days, db.players).get(id) && `🎯 ${t('Weekly challenges')} ×${challengeWins(db.days, db.players).get(id)}`].filter(Boolean);
   const rm = recapDefault();
-  return `<h1>${t('Stats')}</h1>${rm ? `<button class="add recapbtn" onclick="openRecap()">🎁 ${t('{month} recap', { month: monthLabel(rm) })}</button>` : ''}
+  return `<h1>${t('Stats')}</h1>${rm ? `<button class="add recapbtn" onclick="openRecap()">🎁 ${t('{month} recap', { month: monthLabel(rm) })}</button>` : ''}${challengeCard()}
     <select onchange="statsId=+this.value;render()" aria-label="${t('Player')}">${played.map(p => `<option value="${p.id}" ${p.id === id ? 'selected' : ''}>${esc(p.name)}${sharing(p.id) ? '' : ' 🔒'}</option>`).join('')}</select>
     ${sharing(id) ? '' : `<p class="mut" role="status">🔒 ${t('{name} keeps these stats private. You can see them because you are an admin or it is you.', { name: esc(player(id).name) })}</p>`}
     <div class="card" style="display:flex;align-items:center;gap:14px;margin:12px 0">${av(id, 64)}<div style="flex:1"><b style="font-size:var(--fs-lg)">${name(id)}</b>
@@ -344,6 +345,17 @@ function statsView() {
     <h2 class="sec">${t('Best pair in the group')}</h2><div class="card">${pair_ ? `${pair(pair_.ids)} <span class="mut">${t('{record} together', { record: `${pair_.w}-${pair_.g - pair_.w}` })}</span>` : `<span class="mut">${t('needs 3 games together')}</span>`}</div>`;
 }
 
+
+// this week's mini-challenge: the goal, how far you are, and who has done it
+function challengeCard() {
+  const c = challenge(db.days, db.players, mondayOf(tzParts().date)), mine = db.players.find(p => p.user === session.user.id), my = mine && c.of.get(mine.id);
+  const done = [...c.of].filter(([, x]) => x.done).map(([id]) => name(id));
+  const goal = { newpartner: t('Win a match with a partner you have not won with in the last 30 days.'), partners3: t('Play with 3 different partners.'), streak2: t('Win 2 matches in a row.'),
+    upset: t('Beat a team that was expected to win.'), six: t('Play 6 matches this week.'), bounce: t('Lose a match, then win the very next one.'), opponents4: t('Play against 4 different opponents.') }[c.kind];
+  return `<div class="card chal"><div class="mut">🎯 ${t('Challenge of the week')}</div><b>${goal}</b>
+    <div class="chalme">${my ? (my.done ? '✅ ' + t('Done! It counts for your badge.') : `${t('You')}: ${my.have} / ${c.need}`) : t('Play this week to take part.')}</div>
+    ${done.length ? `<div class="mut">🏅 ${done.join(', ')}</div>` : ''}</div>`;
+}
 
 // a player's mini profile (Members and Board): rating, record, together/against you; respects "share my stats"
 function miniProfile(p) {

@@ -7,6 +7,7 @@ run('hide rating, showing-up badges, monthly recap', async h => {
     [[[1, 2], [3, 4], 5, 1], [[2, 3], [4, 5], 1, 1], [[3, 5], [1, 4], 2, 2]].forEach(([t1, t2, rest, win], n) => st.matches.push({ id: 900 + i * 10 + n, day_id: 90 + i, n: n + 1, t1, t2, rest, win, created_at: date + 'T17:00:00Z' }));
   });
   const A = await mk(); await signup(A, 'Anna', 'a@x.com', '1');
+  await A.waitForSelector('.chal >> text=Challenge of the week'); assert((await A.textContent('.chal')).includes('Play this week to take part'), 'the weekly challenge, nothing played yet this week');
   await A.click('nav >> text=Stats'); await A.waitForSelector('.badge:has-text("5 nights in a row")');
   // the recap of the last finished month, with your own cards, and a WhatsApp share
   await A.click('.recapbtn'); await A.waitForSelector('#recap .rcard');

@@ -128,6 +128,41 @@ function recap(days, players, ym, pid, allow = () => true) {
   return { nights: md.length, matches: ms.length, most: { id: mostId, n: mostN }, streak, upset, duo: bestPair(md, 2, allow), bigNight, me };
 }
 
+// ---- weekly mini-challenge: the same light goal for everyone, a new one every Monday, checked from the match log
+const CHALLENGES = ['newpartner', 'partners3', 'streak2', 'upset', 'six', 'bounce', 'opponents4'];
+const NEED = { newpartner: 1, partners3: 3, streak2: 2, upset: 1, six: 6, bounce: 1, opponents4: 4 };
+const mondayOf = iso => { const d = Date.parse(iso + 'T12:00:00Z'), k = (new Date(d).getUTCDay() + 6) % 7; return new Date(d - k * 864e5).toISOString().slice(0, 10); };
+const challengeFor = monday => CHALLENGES[Math.round(Date.parse(monday + 'T12:00:00Z') / (7 * 864e5)) % CHALLENGES.length];
+// the week starting `monday`: { kind, need, of: Map(playerId -> { have, done }) } for everyone who played that week
+function challenge(days, players, monday, a = analyse(days, players)) {
+  const kind = challengeFor(monday), need = NEED[kind], of = new Map();
+  const week = d => mondayOf(d.date) === monday, inM = (m, id) => m.t1.includes(id) || m.t2.includes(id), won = (m, id) => (m.win === 1 ? m.t1 : m.t2).includes(id);
+  const ms = days.filter(d => d.matches.length && week(d)).sort((x, y) => x.date < y.date ? -1 : 1).flatMap(d => d.matches);
+  const from30 = new Date(Date.parse(monday + 'T12:00:00Z') - 30 * 864e5).toISOString().slice(0, 10);
+  const before = days.filter(d => d.date >= from30 && d.date < monday).flatMap(d => d.matches);
+  for (const p of players) {
+    const mine = ms.filter(m => inM(m, p.id)); if (!mine.length) continue;
+    const side = m => m.t1.includes(p.id) ? m.t1 : m.t2, other = m => m.t1.includes(p.id) ? m.t2 : m.t1, mates = m => side(m).filter(x => x !== p.id);
+    let have = 0;
+    if (kind === 'newpartner') { const old = new Set(before.filter(m => inM(m, p.id) && won(m, p.id)).flatMap(mates)); have = mine.some(m => won(m, p.id) && mates(m).some(x => !old.has(x))) ? 1 : 0; }
+    if (kind === 'partners3') have = new Set(mine.flatMap(mates)).size;
+    if (kind === 'streak2') { let run = 0; for (const m of mine) { run = won(m, p.id) ? run + 1 : 0; have = Math.max(have, run); } }
+    if (kind === 'upset') have = a.log.some(x => mondayOf(x.date) === monday && x.won.includes(p.id) && x.chance < 0.5) ? 1 : 0;
+    if (kind === 'six') have = mine.length;
+    if (kind === 'bounce') have = mine.some((m, i) => i && won(m, p.id) && !won(mine[i - 1], p.id)) ? 1 : 0;
+    if (kind === 'opponents4') have = new Set(mine.flatMap(other)).size;
+    of.set(p.id, { have: Math.min(have, need), done: have >= need });
+  }
+  return { kind, need, of };
+}
+// how many weekly challenges each player has completed: Map(playerId -> n)
+function challengeWins(days, players) {
+  const a = analyse(days, players), out = new Map();
+  for (const w of new Set(days.filter(d => d.matches.length).map(d => mondayOf(d.date))))
+    for (const [id, x] of challenge(days, players, w, a).of) if (x.done) out.set(id, (out.get(id) || 0) + 1);
+  return out;
+}
+
 // 3 players play singles: the winner stays on, but after 3 games in a row they sit out one game.
 // order: the 3 player ids; matches: the day's matches so far. Returns the next match as { t1: [id], t2: [id], rest: id }.
 function winnerStays(order, matches) {
@@ -152,4 +187,4 @@ function ratingChart(vals, w = 320, h = 150, label = 'Rating over time') {
     <text x="8" y="${h - 3}" font-size="11" fill="currentColor" fill-opacity=".7">${Math.round(Math.min(...vals))}</text></svg>`;
 }
 
-if (typeof module !== 'undefined') module.exports = { winnerStays, recap, analyse, playerOfNight, nightAwards, relations, bestPair, ratingChart, START_RATING };
+if (typeof module !== 'undefined') module.exports = { winnerStays, recap, challenge, challengeWins, challengeFor, mondayOf, analyse, playerOfNight, nightAwards, relations, bestPair, ratingChart, START_RATING };

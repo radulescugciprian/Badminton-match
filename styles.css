@@ -294,3 +294,4 @@
   :root[data-theme=light] :is(#player .pbox,.tip,textarea,input[type=url]){--text:#10231a;--mut:#3d5a4c;color:var(--text)}
   .clip input{margin-top:6px;font-size:var(--fs-sm);width:100%} #player video{width:100%;height:100%;display:block;background:#000}
   .addold{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
+  .chal{margin:12px 0;border-color:var(--acc);display:flex;flex-direction:column;gap:4px} .chal .mut{margin:0;font-size:var(--fs-sm)} .chal b{font-size:var(--fs-md)} .chalme{font-weight:700;color:var(--acc)}

@@ -105,4 +105,24 @@ assert(ratingChart([1000, 1032, 1010]).includes('1032'));
   assert.deepEqual(up.upset.won, [3, 4], 'the favourites lost the last one');
 }
 
+// weekly challenges
+{
+  const { challenge, challengeWins, challengeFor, mondayOf } = require('../analytics.js');
+  assert.equal(mondayOf('2026-11-12'), '2026-11-09'); assert.equal(mondayOf('2026-11-09'), '2026-11-09'); assert.equal(mondayOf('2026-11-15'), '2026-11-09');
+  const weeks = ['2026-11-09', '2026-11-16', '2026-11-23', '2026-11-30', '2026-12-07', '2026-12-14', '2026-12-21'];
+  assert.equal(new Set(weeks.map(challengeFor)).size, 7, 'a different challenge each week, all 7 in turn');
+  const P = [1, 2, 3, 4, 5].map(id => ({ id })), night = (id, date, ms) => ({ id, date, matches: ms.map(([t1, t2, win], i) => ({ n: i + 1, t1, t2, win })) });
+  const at = kind => weeks.find(w => challengeFor(w) === kind), day = (w, k) => new Date(Date.parse(w + 'T12:00:00Z') + k * 864e5).toISOString().slice(0, 10);
+  const R = [[[1, 2], [3, 4], 1], [[1, 3], [2, 4], 2], [[1, 4], [2, 3], 1]];   // player 1: won with 2, lost with 3, won with 4
+  for (const [kind, want] of [['partners3', [3, true]], ['streak2', [1, false]], ['bounce', [1, true]], ['opponents4', [3, false]], ['six', [3, false]]]) {
+    const w = at(kind), c = challenge([night(1, day(w, 3), R)], P, w).of.get(1);
+    assert.deepEqual([c.have, c.done], want, kind);
+  }
+  const w = at('newpartner');   // won with 2 before this week: winning with 2 again does not count, winning with 4 does
+  const before = night(1, day(w, -5), [[[1, 2], [3, 4], 1]]);
+  assert(!challenge([before, night(2, day(w, 2), [[[1, 2], [3, 4], 1]])], P, w).of.get(1).done, 'same partner');
+  assert(challenge([before, night(2, day(w, 2), [[[1, 4], [3, 2], 1]])], P, w).of.get(1).done, 'new partner');
+  assert.equal(challengeWins([before, night(2, day(w, 2), [[[1, 4], [3, 2], 1]])], P).get(1), 1);
+}
+
 console.log('analytics tests passed');
