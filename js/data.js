@@ -901,16 +901,9 @@ function stats(matches) {
 const monthMatches = ym => db.days.filter(d => d.date.slice(0, 7) === ym).flatMap(d => d.matches);
 const doublesOnly = ms => ms.filter(m => m.t1.length > 1);
 // rating points won or lost in a month (the sum of the nightly Elo changes), with the games played: the Month board and its champion
-// a month's table for one kind (doubles or singles): match rating gained in that month, and the record, from that kind's matches only
-function monthGains(ym, an = analyse(db.days, db.players), kind = 'doubles') {
-  const H = kind === 'singles' ? an.histS : an.hist, out = new Map();
-  for (const p of db.players) { const h = H.get(p.id); h.forEach((x, i) => { if (x.date.slice(0, 7) !== ym) return;
-    const r = out.get(p.id) || { id: p.id, name: p.name, gain: 0, w: 0, p: 0 }; r.gain += x.r - (i ? h[i - 1].r : START_RATING); r.p++; if (x.r > (i ? h[i - 1].r : START_RATING)) r.w++; out.set(p.id, r); }); }
-  return [...out.values()].sort((a, b) => b.gain - a.gain || b.w - a.w);
-}
-const monthChamps = () => { const an = analyse(db.days, db.players);   // the champion of a month: most rating points won, with at least 3 games
-  return [...new Set(db.days.filter(d => d.matches.length).map(d => d.date.slice(0, 7)))].filter(ym => ym < tzParts().date.slice(0, 7))
-    .map(ym => { const g = monthGains(ym, an), r = g.find(x => x.p >= 3) || g[0]; return { ym, id: r.id }; }); };
+const monthChamps = () =>   // the champion of a month: the top of that month's doubles table (best win rate, at least 3 games)
+  [...new Set(db.days.filter(d => d.matches.length).map(d => d.date.slice(0, 7)))].filter(ym => ym < tzParts().date.slice(0, 7))
+    .map(ym => { const g = stats(monthMatches(ym).filter(m => m.t1.length === 2)).sort(byRate), r = g.find(x => x.p >= 3) || g[0]; return r && { ym, id: r.id }; }).filter(Boolean);
 const monthName = ym => new Date(ym + '-15T12:00:00Z').toLocaleDateString(LOCALE[lang], { month: 'long', year: 'numeric', timeZone: 'UTC' });
 let lbMonth = null;
 const dayShift = n => { const days = db.days.filter(d => d.matches.length), i = Math.max(0, days.findIndex(d => d.id === selId)), cur_ = selId && i >= 0 && days[i].id === selId ? i : days.length - 1, k = Math.min(days.length - 1, Math.max(0, cur_ + n)); selId = days[k] && days[k].id; render(); };
