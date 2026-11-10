@@ -49,7 +49,7 @@ run('help, plain errors, languages, privacy and the schedule editor', async h =>
   assert(st.profiles.find(p => p.username === 'Bob').share_stats === false, 'choice saved');
   // Cleo (member): Dani (Bob's player) is private
   await C.waitForFunction(() => members.find(m => m.username === 'Bob').share_stats === false);   // Cleo's phone has heard about it
-  await C.click('nav >> text=Board'); await C.click('.seg >> text=Rating'); await C.waitForSelector('text=Everyone starts at 1000');
+  await C.click('nav >> text=Board'); await C.click('.seg >> text=All time'); await C.waitForSelector('text=Everyone starts at 1000');
   const ratingC = await C.textContent('#app');
   assert(ratingC.includes('private') && !(await C.locator('.rank:has-text("Dani") b >> nth=-1').textContent()).match(/\d{4}/), 'Dani hidden from members');
   await C.click('nav >> text=Stats'); await C.waitForSelector('text=Rating over time');
@@ -64,7 +64,7 @@ run('help, plain errors, languages, privacy and the schedule editor', async h =>
   await C.click('nav >> text=Board'); await C.click('.seg >> text=All time');
   assert((await C.textContent('#app')).includes('Dani'), 'results stay visible');
   await B.click('.top .me'); await B.click('.check >> nth=0'); await B.waitForFunction(() => document.querySelector('.check input').checked === true);   // Bob shares again
-  await C.click('.seg >> text=Rating'); await C.waitForFunction(() => !document.getElementById('app').textContent.includes('private'));
+  await C.click('.seg >> text=All time'); await C.waitForFunction(() => !document.getElementById('app').textContent.includes('private'));
   
   // ---- admin edits the schedule in the app
   await h.menu(A); await A.click('[aria-label="Admin tools"]'); await A.click('[data-adm=schedule]'); await A.waitForSelector('[name=dow]');

@@ -25,7 +25,7 @@ const DB_VERSION = 20261112; // bump together with db_version() in the newest mi
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
 let boardKind = 'doubles', boardOpen = null, memFilter = 'all', memSort = 'name', memOpen = null, adminPage = '', admPanel = '', prevView = 'play', profPanel = '', usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, lineupOpen = false, moreOpen = false, dayMore = false, matchesOpen = {}, lastRec = 0, bgLoaded = false, rsvps = [], reactions = [], statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
-let view = 'play', tab = 'rating', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0, manualLogout = false, lostSession = false, asMember = false;   // asMember: an admin previewing the app as a normal member
+let view = 'play', tab = 'all', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0, manualLogout = false, lostSession = false, asMember = false;   // asMember: an admin previewing the app as a normal member
 // the sign-in is kept on the phone (localStorage) and renewed automatically, so people stay logged in until they log out
 const sb = window.supabase && CONFIG.url && !CONFIG.url.includes('YOUR-')
   ? supabase.createClient(CONFIG.url, CONFIG.key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }) : null;
@@ -888,7 +888,6 @@ function saveSchedule(e) { // admins only; the database also refuses unknown tim
 const pct = r => (r.p ? r.w / r.p : 0);
 const byWins = (a, b) => b.w - a.w || pct(b) - pct(a) || a.name.localeCompare(b.name);
 // Month and All time rank by win rate (ties: more wins, then more games); players need 3 games to be ranked
-const byRate = (a, b) => pct(b) - pct(a) || b.w - a.w || b.p - a.p || a.name.localeCompare(b.name);
 function stats(matches) {
   const s = new Map(db.players.map(p => [p.id, { id: p.id, name: p.name, w: 0, p: 0 }]));
   for (const m of matches) {
@@ -901,9 +900,19 @@ function stats(matches) {
 const monthMatches = ym => db.days.filter(d => d.date.slice(0, 7) === ym).flatMap(d => d.matches);
 const doublesOnly = ms => ms.filter(m => m.t1.length > 1);
 // rating points won or lost in a month (the sum of the nightly Elo changes), with the games played: the Month board and its champion
-const monthChamps = () =>   // the champion of a month: the top of that month's doubles table (best win rate, at least 3 games)
-  [...new Set(db.days.filter(d => d.matches.length).map(d => d.date.slice(0, 7)))].filter(ym => ym < tzParts().date.slice(0, 7))
-    .map(ym => { const g = stats(monthMatches(ym).filter(m => m.t1.length === 2)).sort(byRate), r = g.find(x => x.p >= 3) || g[0]; return r && { ym, id: r.id }; }).filter(Boolean);
+// rating points won over some nights: the match rating change (one kind, or 'all') plus each night's loyalty bonus; most first
+function ratingGains(ds, kind = 'all', an = analyse(db.days, db.players)) {
+  const ids = new Set(ds.map(d => d.id)), out = new Map(), Hs = kind === 'singles' ? [an.histS] : kind === 'doubles' ? [an.hist] : [an.hist, an.histS];
+  for (const p of db.players) for (const H of Hs) H.get(p.id).forEach((x, i, h) => { if (!ids.has(x.day)) return;
+    const prev = i ? h[i - 1].r : START_RATING, r = out.get(p.id) || { id: p.id, name: p.name, gain: 0, w: 0, p: 0, nights: new Set() };
+    r.gain += x.r - prev; r.p++; if (x.r > prev) r.w++; r.nights.add(x.day); out.set(p.id, r); });
+  for (const r of out.values()) for (const d of r.nights) r.gain += nightBonus(an.night.get(d).get(r.id));
+  return [...out.values()].sort((a, b) => b.gain - a.gain || b.w - a.w);
+}
+const monthDays = ym => db.days.filter(d => d.matches.length && d.date.slice(0, 7) === ym);
+const monthChamps = () => { const an = analyse(db.days, db.players);   // the champion of a month: most doubles rating points won, at least 3 games
+  return [...new Set(db.days.filter(d => d.matches.length).map(d => d.date.slice(0, 7)))].filter(ym => ym < tzParts().date.slice(0, 7))
+    .map(ym => { const g = ratingGains(monthDays(ym), 'doubles', an), r = g.find(x => x.p >= 3) || g[0]; return r && { ym, id: r.id }; }).filter(Boolean); };
 const monthName = ym => new Date(ym + '-15T12:00:00Z').toLocaleDateString(LOCALE[lang], { month: 'long', year: 'numeric', timeZone: 'UTC' });
 let lbMonth = null;
 const dayShift = n => { const days = db.days.filter(d => d.matches.length), i = Math.max(0, days.findIndex(d => d.id === selId)), cur_ = selId && i >= 0 && days[i].id === selId ? i : days.length - 1, k = Math.min(days.length - 1, Math.max(0, cur_ + n)); selId = days[k] && days[k].id; render(); };

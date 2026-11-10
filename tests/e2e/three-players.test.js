@@ -17,7 +17,7 @@ run('three players: winner stays', async h => {
   await A.click('.seg >> text=Singles'); await A.waitForSelector('.podium');
   await A.click('.seg >> text=Day'); await A.waitForSelector('.podium');
   // ratings: singles have their own, so the doubles rating is untouched
-  await A.click('.seg >> text=Rating'); await A.click('.seg.mini2 >> text=Singles'); await A.waitForSelector('.podium');
+  await A.click('.seg >> text=All time'); await A.click('.seg.mini2 >> text=Singles'); await A.waitForSelector('.podium');
   assert.equal(await A.evaluate(() => analyse(db.days, db.players).rating.get(1)), 1000, 'doubles rating untouched by singles');
   // Month is split the same way: no doubles played, so the doubles month is empty and the singles month has the table
   await A.click('.seg >> text=Month'); await A.click('.seg.mini2 >> text=Doubles'); await A.waitForSelector('text=No matches yet');

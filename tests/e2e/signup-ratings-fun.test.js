@@ -71,19 +71,19 @@ run('sign-up list, ratings, badges, result card and reactions', async h => {
   const sx = await A.textContent('#app');
   assert(sx.includes('Perfect night') && sx.includes('Partners') && sx.includes('Best pair') && (await A.locator('svg[aria-label^="Rating over time"]').count()) === 1, 'stats page parts');
   await A.screenshot({ path: require('os').tmpdir() + '/stats.png', fullPage: true });
-  await A.click('nav >> text=Board'); await A.click('.seg >> text=Rating'); await A.waitForSelector('text=Everyone starts at 1000');
+  await A.click('nav >> text=Board'); await A.click('.seg >> text=All time'); await A.waitForSelector('text=Everyone starts at 1000');
   assert((await A.textContent('.card .rank >> nth=0')).includes('Vali'), 'highest rating first');
   await A.click('.rank.tap >> nth=1'); await A.waitForSelector('text=Rating over time');                    // tapping a player opens their stats
   assert.equal(await A.evaluate(() => statsId), await A.evaluate(() => db.players.find(p => p.name === document.querySelector('.pchoose [aria-pressed=true] > span:last-child').textContent.replace(/ 🔒/, '').trim()).id), 'the tapped player is selected');
   // the rating everyone sees = match rating + loyalty bonus for showing up; Month is back
-  await A.click('nav >> text=Board'); await A.click('.seg >> text=Rating');
+  await A.click('nav >> text=Board'); await A.click('.seg >> text=All time');
   const r = await A.evaluate(() => { const an = analyse(db.days, db.players), id = db.players[0].id; return { shown: ratingOf(an, id), match: matchRatingOf(an, id), bonus: bonusOf(an, id) }; });
   assert(r.bonus >= 3 && Math.abs(r.shown - r.match - r.bonus) < 1e-9, JSON.stringify(r));
   await A.click('summary:has-text("How the rating works")'); const [rules] = await Promise.all([A.waitForEvent('download'), A.click('text=Share the rules')]);
   assert.equal(rules.suggestedFilename(), 'badminton-rating.png', 'the rules as a picture to share');
   await A.click('.seg >> text=Month'); await A.waitForSelector('.podium'); assert((await A.textContent('.calnav')).includes('2026'), 'the month leaderboard is back');
   await A.click('nav >> text=Stats'); await A.waitForSelector('text=Head-to-head');
-  await A.click('nav >> text=Board'); await A.click('.seg >> text=Rating');
+  await A.click('nav >> text=Board'); await A.click('.seg >> text=All time');
   await A.click('.seg >> text=Day'); await A.click('summary:has-text("Matches")'); await A.waitForSelector('.mrow');                                        // the match list opens
   await A.screenshot({ path: require('os').tmpdir() + '/board2.png', fullPage: true });
   // ---- admin resets the answers for the coming play date
