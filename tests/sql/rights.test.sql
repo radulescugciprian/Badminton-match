@@ -279,6 +279,14 @@ select must_fail($$insert into tips (url, title) values ('https://youtu.be/x', '
 select check_that(rows_changed($$delete from tips$$) = 0, 'members cannot remove tips');
 reset role;
 
+-- the big profile photo for the cards: only your own (member1 is player 2)
+set role authenticated; select as_user((select m1 from ids));
+insert into storage.objects (bucket_id, name) values ('photos', 'avatars/p2.jpg');
+select must_fail($$insert into storage.objects (bucket_id, name) values ('photos', 'avatars/p1.jpg')$$, 'row-level security');
+select must_fail($$insert into storage.objects (bucket_id, name) values ('photos', 'bg/play.jpg')$$, 'row-level security');
+insert into storage.objects (bucket_id, name) values ('photos', 'days/5.jpg');
+reset role;
+
 -- ================= logged out (anon) =================
 reset role; set role anon;
 select check_that((select count(*) from players) = 0 and (select count(*) from profiles) = 0 and (select count(*) from matches) = 0, 'nothing readable when logged out');

@@ -21,7 +21,7 @@ let db = { players: [], days: [] }, members = [], me = {}, session = null, loade
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
-const DB_VERSION = 20261111; // bump together with db_version() in the newest migration
+const DB_VERSION = 20261112; // bump together with db_version() in the newest migration
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
 let boardKind = 'doubles', boardOpen = null, memFilter = 'all', memSort = 'name', memOpen = null, adminPage = '', admPanel = '', prevView = 'play', profPanel = '', usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, lineupOpen = false, moreOpen = false, dayMore = false, matchesOpen = {}, lastRec = 0, bgLoaded = false, rsvps = [], reactions = [], statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
@@ -356,8 +356,10 @@ const shrink = (file, max, q, square) => new Promise(ok => {
 const toDataUrl = b => new Promise(ok => { const r = new FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(b); });
 pick.onchange = async () => {
   const f = pick.files[0]; if (!f) return;
-  const url = await toDataUrl(await shrink(f, 96, .8, true)), id = pickFor; // 96px square, stored in the players table
-  act(async () => ok(await sb.from('players').update({ avatar: url }).eq('id', id)));
+  // a small square in the players table for the lists (sharp on phone screens), and a big one in storage for the player card
+  const id = pickFor, url = await toDataUrl(await shrink(f, 160, .82, true)), big = await shrink(f, 640, .85, true);
+  act(async () => { ok(await sb.from('players').update({ avatar: url }).eq('id', id));
+    const up = await sb.storage.from('photos').upload(`avatars/p${id}.jpg`, big, { upsert: true, contentType: 'image/jpeg' }); if (!up.error) delete bigAvatar[id]; });
 };
 let shotFor;
 const photo = id => { shotFor = id; shot.value = ''; shot.click(); };
@@ -765,7 +767,10 @@ const reactionBar = day => KINDS.map(([k, e]) => { const n = reactions.filter(r 
   return `<button class="rx ${mineOn(day, k) ? 'on' : ''}" onclick="react(${day},'${k}')" aria-pressed="${mineOn(day, k)}" aria-label="${k}">${e}${n ? ' ' + n : ''}</button>`; }).join('');
 
 // ---- shareable player card (a picture for WhatsApp)
-const cardArt = async id => { const p = player(id); let img = null; if (p.avatar) try { img = await createImageBitmap(await (await fetch(p.avatar)).blob()); } catch {}
+const bigAvatar = {};   // signed links to the sharp profile photos, per player (missing = only the small one exists)
+const cardArt = async id => { const p = player(id); let img = null;
+  if (!(id in bigAvatar)) { const r = await sb.storage.from('photos').createSignedUrls([`avatars/p${id}.jpg`], 3600); bigAvatar[id] = !r.error && r.data[0] && !r.data[0].error ? r.data[0].signedUrl : null; }
+  for (const src of [bigAvatar[id], p.avatar]) if (src && !img) try { const res = await fetch(src); if (res.ok) img = await createImageBitmap(await res.blob()); } catch {}
   return { hue: id * 67 % 360, initial: p.name[0].toUpperCase(), img }; };
 async function sharePlayerCard(id) {
   const p = player(id), an = analyse(db.days, db.players), b = an.badges.get(id), crowns = monthChamps().filter(c => c.id === id).length, me_ = stats(db.days.flatMap(d => d.matches)).find(r => r.id === id) || { p: 0 };

@@ -20,6 +20,7 @@ run('sign-in, rights, photos and the play schedule', async h => {
   await B.click('.top .me'); await B.click('text=Change photo'); await B.setInputFiles('#pick', S + 'red.png');
   await A.waitForSelector('img.av'); // Dani's new avatar is visible to everyone
   assert(st.players[1].avatar && !st.players[0].avatar, 'avatar stored on the right player');
+  await h.until(() => st.files['avatars/p2.jpg'], 'a sharp copy for the player card');
   const r = rpc('u2', { table: 'players', op: 'update', f: [['eq', 'id', 1]], payload: { avatar: 'x' } });
   assert(r.error, 'server refuses avatar change for someone else');
   await B.click('nav >> text=Play');
@@ -74,7 +75,7 @@ run('sign-in, rights, photos and the play schedule', async h => {
   await A.click('text=Log out'); await A.fill('[name=login]', 'anna'); await A.fill('[name=password]', 'brandnew1'); await A.click('button[type=submit]'); await A.waitForSelector('text=Day closed');
   // reset day (admin) clears matches + photo for everyone
   await A.click('text=Reopen day'); await h.more(A); await A.click('text=Reset day'); await B.waitForSelector('text=No photos yet'); await B.click('nav >> text=Play'); await B.waitForSelector('text=Next match day');
-  assert(st.matches.length === 0 && Object.keys(st.files).length === 0, 'reset cleaned matches and photo');
+  assert(st.matches.length === 0 && Object.keys(st.files).filter(k => !k.startsWith('avatars/')).length === 0, 'reset cleaned matches and photo (profile photos stay)');
   // admin tools: guests are marked, accounts can be removed, scores can be reset
   await A.click('nav >> text=Play'); await A.waitForSelector('text=Next match day');
   assert((await A.locator('.row .tag').count()) === 3, 'three players have no account (Costi, Zjepko, Ciprian)');
@@ -97,7 +98,7 @@ run('sign-in, rights, photos and the play schedule', async h => {
   await A.click('text=Take group photo'); await A.setInputFiles('#shot', S + 'red.png'); await A.waitForSelector('text=Photo saved');
   await A.click('nav >> text=Photos'); await A.waitForSelector('.grid img');
   await A.click('.grid .x'); await A.waitForSelector('text=No photos yet');
-  assert(Object.keys(st.files).length === 0 && st.days.every(d => !d.photo_path), 'photo deleted from storage and day');
+  assert(Object.keys(st.files).filter(k => !k.startsWith('avatars/')).length === 0 && st.days.every(d => !d.photo_path), 'photo deleted from storage and day');
   await A.click('nav >> text=Play'); await A.click('text=Start next match day'); await A.click('text=Start playing'); await win(A, 2);
   await A.click('nav >> text=Board'); await A.click('.seg >> text=Day'); await A.waitForSelector('.calnav');
   assert.equal(await A.evaluate(() => db.days.filter(d => d.matches.length).length), 2, 'two days with matches');
