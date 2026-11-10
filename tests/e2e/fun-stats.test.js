@@ -10,8 +10,10 @@ run('hide rating, showing-up badges, monthly recap', async h => {
   await A.waitForSelector('.chal >> text=Challenge of the week'); assert((await A.textContent('.chal')).includes('Play this week to take part'), 'the weekly challenge, nothing played yet this week');
   await A.click('nav >> text=Stats'); await A.waitForSelector('.badge:has-text("5 nights in a row")');
   // the player card: bronze for 5 nights, its stats, and a picture to share
-  assert.equal(await A.locator('.pcard.bronze').count(), 1, 'bronze under 10 nights');
-  assert((await A.textContent('.pcard')).includes('Autumn 2026'), 'the season');
+  await A.waitForSelector('img.pcimg[src^="blob:"]');
+  assert(/matches 10, win rate 100%/.test(await A.getAttribute('img.pcimg', 'alt')), 'the card picture, described for screen readers');
+  assert.equal(await A.evaluate(() => cardSpec(1).tier), 'bronze', 'bronze under 10 nights');
+  assert((await A.evaluate(() => cardSpec(1).footer)).includes('Autumn 2026'), 'the season');
   const [dl] = await Promise.all([A.waitForEvent('download'), A.click('text=Share card')]);
   assert.equal(dl.suggestedFilename(), 'badminton-Vali.png');
   // the recap of the last finished month, with your own cards, and a WhatsApp share

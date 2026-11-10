@@ -14,7 +14,7 @@ run('merge players', async h => {
   await A.click('button:has-text("Merge")');
   await until(() => !st.players.includes(fresh) && st.players.find(p => p.id === 4).user_id === st.users['z@x.com'].id, 'merged');
   await B.reload(); await B.waitForSelector('text=Next match day');
-  await B.click('nav >> text=Stats'); await B.waitForSelector('.pc-stats div:has-text("matches") >> text=1');   // the new account now has the old player's match
+  await B.click('nav >> text=Stats'); await B.waitForSelector('img.pcimg[alt*="matches 1,"]');   // the new account now has the old player's match
   assert(st.log.some(l => l.action === 'merge_players'), 'logged');
   assert(A.errs.length === 0 && B.errs.length === 0, A.errs.concat(B.errs).join());
 });

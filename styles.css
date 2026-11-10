@@ -295,14 +295,5 @@
   .clip input{margin-top:6px;font-size:var(--fs-sm);width:100%} #player video{width:100%;height:100%;display:block;background:#000}
   .addold{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
   .chal{margin:12px 0;border-color:var(--acc);display:flex;flex-direction:column;gap:4px} .chal .mut{margin:0;font-size:var(--fs-sm)} .chal b{font-size:var(--fs-md)} .chalme{font-weight:700;color:var(--acc)}
-  /* player card */
-  .pcard{--c:#d97706;position:relative;margin:12px 0 0;border-radius:26px;border:3px solid var(--c);padding:16px 18px 14px;color:#fff;text-shadow:none;overflow:hidden;
-    background:radial-gradient(circle at 50% 30%,color-mix(in srgb,var(--c) 32%,transparent),transparent 58%),linear-gradient(160deg,#16382c,#0b1220 72%)}
-  .pcard.silver{--c:#cbd5e1} .pcard.gold{--c:#facc15}
-  .pc-top{display:flex;justify-content:space-between;align-items:flex-start} .pc-rt{font-size:40px;font-weight:900;line-height:1;color:var(--c)} .pc-rt small{display:block;font-size:11px;letter-spacing:.12em;color:#cfe6da;font-weight:700;margin-top:3px;text-transform:uppercase}
-  .pc-tier{font-size:11px;font-weight:800;letter-spacing:.08em;background:rgba(190,242,100,.18);color:#bef264;border-radius:999px;padding:4px 10px;text-transform:uppercase}
-  .pc-photo{display:flex;justify-content:center;margin:2px 0 0} .pc-photo .av{border:4px solid var(--c);font-size:56px}
-  .pc-name{text-align:center;font-size:28px;font-weight:900;letter-spacing:.05em;margin-top:8px;text-transform:uppercase} .pc-title{text-align:center;color:#bef264;font-weight:700;font-size:var(--fs-sm);margin-top:2px}
-  .pc-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px} .pc-stats div{background:rgba(255,255,255,.07);border-radius:12px;text-align:center;padding:7px 4px;min-width:0}
-  .pc-stats b{display:block;font-size:19px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .pc-stats span{font-size:10px;letter-spacing:.07em;color:#cfe6da;font-weight:700;text-transform:uppercase}
-  .pc-badges{text-align:center;font-size:20px;letter-spacing:3px;margin-top:10px} .pc-foot{text-align:center;font-size:11px;color:#9fb3a8;letter-spacing:.06em;margin-top:10px;text-transform:uppercase}
+  /* player card: a picture drawn by drawPlayerCard */
+  .pcimg{width:100%;aspect-ratio:1080/1512;display:block;border-radius:22px;margin-top:12px;background:linear-gradient(135deg,#d4a83a33,#0000)}

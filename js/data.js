@@ -765,11 +765,12 @@ const reactionBar = day => KINDS.map(([k, e]) => { const n = reactions.filter(r 
   return `<button class="rx ${mineOn(day, k) ? 'on' : ''}" onclick="react(${day},'${k}')" aria-pressed="${mineOn(day, k)}" aria-label="${k}">${e}${n ? ' ' + n : ''}</button>`; }).join('');
 
 // ---- shareable player card (a picture for WhatsApp)
+const cardArt = async id => { const p = player(id); let img = null; if (p.avatar) try { img = await createImageBitmap(await (await fetch(p.avatar)).blob()); } catch {}
+  return { hue: id * 67 % 360, initial: p.name[0].toUpperCase(), img }; };
 async function sharePlayerCard(id) {
   const p = player(id), an = analyse(db.days, db.players), b = an.badges.get(id), crowns = monthChamps().filter(c => c.id === id).length, me_ = stats(db.days.flatMap(d => d.matches)).find(r => r.id === id) || { p: 0 };
   const em = [crowns && '👑', b.potn && '⭐', b.perfect && '💯', b.fire && '🔥', b.comeback && '🔄', b.improved && '📈', b.nightsRun >= 5 && '🗓', me_.p >= 50 && '🎖', b.everyone && '🤝', b.everyMonth && '📆', earlyBird(id) && '🐦', challengeWins(db.days, db.players).get(id) && '🎯'].filter(Boolean);
-  let img = null; if (p.avatar) try { img = await createImageBitmap(await (await fetch(p.avatar)).blob()); } catch {}
-  const blob = await drawPlayerCard({ ...cardSpec(id, an, em), hue: id * 67 % 360, initial: p.name[0].toUpperCase(), img });
+  const blob = await drawPlayerCard({ ...cardSpec(id, an, em), ...(await cardArt(id)) });
   const file = new File([blob], `badminton-${p.name}.png`, { type: 'image/png' });
   if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: p.name }).catch(() => {});
   else saveFile(blob, file.name);

@@ -77,33 +77,62 @@ async function drawCard({ title, subtitle, rows, potn, potnTitle, footer, bg }) 
   return new Promise(res => c.toBlob(res, 'image/png'));
 }
 
-// a player card as a 1080×1600 picture: tier colour frame, rating, photo, name, title, six stats, badges, season
-async function drawPlayerCard({ tier, tierLabel, rating, ratingLabel, name, title, stats, badges, footer, hue, initial, img }) {
-  const W = 1080, H = 1600, c = document.createElement('canvas'); c.width = W; c.height = H;
-  const g = c.getContext('2d'), font = 'system-ui, "Segoe UI Emoji", "Apple Color Emoji", sans-serif', col = { gold: '#facc15', silver: '#cbd5e1', bronze: '#d97706' }[tier];
-  const text = (s, x, y, size, weight = 700, color = '#fff', align = 'center') => { g.font = `${weight} ${size}px ${font}`; g.fillStyle = color; g.textAlign = align; g.fillText(s, x, y); };
-  const fit = (s, max, size, weight) => { g.font = `${weight} ${size}px ${font}`; while (size > 20 && g.measureText(s).width > max) { size -= 2; g.font = `${weight} ${size}px ${font}`; } return size; };
-  g.fillStyle = '#0b1220'; g.fillRect(0, 0, W, H);
-  const bg = g.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#16382c'); bg.addColorStop(.7, '#0b1220');
-  g.fillStyle = bg; g.beginPath(); g.roundRect(30, 30, W - 60, H - 60, 70); g.fill();
-  const glow = g.createRadialGradient(W / 2, 430, 20, W / 2, 430, 520); glow.addColorStop(0, col + '55'); glow.addColorStop(1, col + '00');
-  g.fillStyle = glow; g.fillRect(30, 30, W - 60, H - 60);
-  g.lineWidth = 14; g.strokeStyle = col; g.beginPath(); g.roundRect(37, 37, W - 74, H - 74, 64); g.stroke();
-  text(rating, 110, 200, rating.length > 2 ? 140 : 120, 900, col, 'left'); text(ratingLabel.toUpperCase(), 112, 252, 34, 700, '#cfe6da', 'left');
-  g.font = `800 34px ${font}`; const tw = g.measureText(tierLabel.toUpperCase()).width + 60;
-  g.fillStyle = 'rgba(190,242,100,.18)'; g.beginPath(); g.roundRect(W - 100 - tw, 130, tw, 66, 33); g.fill(); text(tierLabel.toUpperCase(), W - 100 - tw / 2, 175, 34, 800, '#bef264');
-  const cx = W / 2, cy = 520, r = 200;
+// a player card as a 1080×1512 picture in the style of football trading cards: foil in the loyalty colour (glitter),
+// the photo on a striped panel, a tilted ribbon with the name and the title word, coloured stat boxes
+async function drawPlayerCard({ id, tier, rating, ratingLabel, name, titleEmoji, titleWord, titleLine, stats, badges, footer, group, hue, initial, img }) {
+  const W = 1080, H = 1512, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d'), font = 'system-ui, "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+  const text = (s, x, y, size, weight = 800, color = '#fff', align = 'center', stroke = 0, sc = '#3b0a0a') => {
+    g.font = `${weight} ${size}px ${font}`; g.textAlign = align; g.lineJoin = 'round';
+    if (stroke) { g.lineWidth = stroke; g.strokeStyle = sc; g.strokeText(s, x, y); } g.fillStyle = color; g.fillText(s, x, y); };
+  const fit = (s, max, size, weight = 800) => { g.font = `${weight} ${size}px ${font}`; while (size > 18 && g.measureText(s).width > max) { size -= 2; g.font = `${weight} ${size}px ${font}`; } return size; };
+  const box = (x, y, w, h, r, fill) => { g.fillStyle = fill; g.beginPath(); g.roundRect(x, y, w, h, r); g.fill(); };
+  // foil: a metallic gradient plus glitter that is the same every time for the same player
+  const foil = { gold: ['#fff1a8', '#d4a83a', '#f7dc7c', '#b8861f'], silver: ['#ffffff', '#aab4c0', '#e8edf2', '#8792a0'], bronze: ['#ffd2a6', '#b86a2c', '#e8a066', '#8a4a1c'] }[tier];
+  const fg = g.createLinearGradient(0, 0, W, H); foil.forEach((col, i) => fg.addColorStop(i / 3, col));
+  g.fillStyle = fg; g.beginPath(); g.roundRect(0, 0, W, H, 60); g.fill();
+  let seed = id * 9301 + 49297; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  for (let i = 0; i < 2600; i++) { g.fillStyle = `rgba(255,255,255,${(rnd() * .5).toFixed(2)})`; g.fillRect(rnd() * W, rnd() * H, 2 + rnd() * 3, 2 + rnd() * 3); }
+  for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(80,50,0,${(rnd() * .18).toFixed(2)})`; g.fillRect(rnd() * W, rnd() * H, 2, 2); }
+  // the art panel: the player's colour with diagonal stripes, a white frame
+  const P = { x: 150, y: 70, w: 860, h: 880 };
+  g.save(); g.beginPath(); g.roundRect(P.x, P.y, P.w, P.h, 34); g.clip();
+  const pg = g.createLinearGradient(P.x, P.y, P.x + P.w, P.y + P.h); pg.addColorStop(0, `hsl(${hue} 55% 42%)`); pg.addColorStop(1, `hsl(${hue} 60% 22%)`);
+  g.fillStyle = pg; g.fillRect(P.x, P.y, P.w, P.h);
+  g.fillStyle = 'rgba(255,255,255,.16)'; for (let k = -P.h; k < P.w; k += 90) { g.beginPath(); g.moveTo(P.x + k, P.y + P.h); g.lineTo(P.x + k + 40, P.y + P.h); g.lineTo(P.x + k + 40 + P.h * .7, P.y); g.lineTo(P.x + k + P.h * .7, P.y); g.fill(); }
+  g.fillStyle = 'rgba(255,255,255,.9)'; g.beginPath(); g.moveTo(P.x + P.w - 260, P.y); g.lineTo(P.x + P.w, P.y); g.lineTo(P.x + P.w, P.y + 330); g.fill();   // a light corner, like the flag corner
+  // the photo, big
+  const cx = P.x + P.w / 2, cy = P.y + 420, r = 300;
   g.save(); g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.clip();
   if (img) { const k = Math.max(2 * r / img.width, 2 * r / img.height); g.drawImage(img, cx - img.width * k / 2, cy - img.height * k / 2, img.width * k, img.height * k); }
-  else { g.fillStyle = `hsl(${hue} 50% 36%)`; g.fillRect(cx - r, cy - r, 2 * r, 2 * r); text(initial, cx, cy + r * .36, r * 1.05, 800); }
-  g.restore(); g.lineWidth = 12; g.strokeStyle = col; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.stroke();
-  text(name.toUpperCase(), W / 2, 850, fit(name.toUpperCase(), W - 200, 96, 900), 900);
-  text(title, W / 2, 925, fit(title, W - 180, 44, 700), 700, '#bef264');
-  stats.forEach(([v, l], i) => { const x = 110 + (i % 3) * 293, y = 985 + Math.floor(i / 3) * 210;
-    g.fillStyle = 'rgba(255,255,255,.08)'; g.beginPath(); g.roundRect(x, y, 273, 185, 32); g.fill();
-    text(v, x + 136, y + 98, fit(v, 240, 64, 800), 800); text(l.toUpperCase(), x + 136, y + 150, fit(l.toUpperCase(), 245, 28, 700), 700, '#cfe6da'); });
-  if (badges) text(badges, W / 2, 1460, 56, 400);
-  text(footer.toUpperCase(), W / 2, 1530, fit(footer.toUpperCase(), W - 200, 32, 600), 600, '#9fb3a8');
+  else { g.fillStyle = `hsl(${hue} 45% 30%)`; g.fillRect(cx - r, cy - r, 2 * r, 2 * r); text(initial, cx, cy + r * .36, r * 1.05, 900); }
+  g.restore(); g.lineWidth = 16; g.strokeStyle = '#fff'; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.stroke();
+  g.restore();
+  g.lineWidth = 10; g.strokeStyle = '#fffbea'; g.beginPath(); g.roundRect(P.x, P.y, P.w, P.h, 34); g.stroke();
+  // top left: the group badge, then the badges in a column
+  box(46, 70, 86, 120, 16, '#fff'); text('🏸', 89, 128, 46, 400); text(group, 89, 172, fit(group, 76, 28), 900, '#1e293b');
+  (badges || '').split(' ').filter(Boolean).slice(0, 7).forEach((e, i) => { box(54, 216 + i * 84, 70, 70, 14, 'rgba(255,255,255,.85)'); text(e, 89, 266 + i * 84, 40, 400); });
+  // the ribbon: the name on a small band, the title word big
+  g.save(); g.translate(W / 2 + 20, 960); g.rotate(-0.1);
+  box(-430, -150, 640, 84, 10, '#7f1d1d'); text(name.toUpperCase(), -110, -92, fit(name.toUpperCase(), 600, 58), 900, '#fff');
+  const rib = g.createLinearGradient(0, -70, 0, 110); rib.addColorStop(0, '#dc2626'); rib.addColorStop(1, '#7f1d1d');
+  box(-480, -72, 960, 180, 14, rib); g.fillStyle = 'rgba(255,255,255,.18)'; g.fillRect(-480, -72, 960, 22);
+  text(titleWord.toUpperCase(), 0, 72, fit(titleWord.toUpperCase(), 880, 150, 900), 900, '#fff1d6', 'center', 14, '#3b0a0a');
+  g.restore();
+  text(`${titleEmoji} ${titleLine}`, W / 2, 1150, fit(`${titleEmoji} ${titleLine}`, W - 160, 40, 700), 700, '#3b2400');
+  // the stat boxes: two rows, coloured like the cards, with the rating in a purple shield in the middle
+  const tile = (x, y, w, h, fill, v, l, vc = '#fff', lc = 'rgba(255,255,255,.9)') => { box(x, y, w, h, 18, fill); g.lineWidth = 5; g.strokeStyle = '#fff'; g.beginPath(); g.roundRect(x, y, w, h, 18); g.stroke();
+    text(v, x + w / 2, y + h * .58, fit(v, w - 24, h * .5), 900, vc); text(l.toUpperCase(), x + w / 2, y + h - 14, fit(l.toUpperCase(), w - 20, 24, 800), 800, lc); };
+  const [m, wr, br, dc, fp, nt] = stats.map(([v]) => v), L = stats.map(([, l]) => l);
+  tile(70, 1190, 290, 150, '#dc2626', wr, L[1]); tile(720, 1190, 290, 150, '#16a34a', br, L[2]);
+  const sh = g.createLinearGradient(0, 1170, 0, 1370); sh.addColorStop(0, '#a855f7'); sh.addColorStop(1, '#6b21a8');
+  g.fillStyle = sh; g.beginPath(); g.moveTo(400, 1170); g.lineTo(680, 1170); g.lineTo(680, 1310); g.lineTo(540, 1370); g.lineTo(400, 1310); g.closePath(); g.fill();
+  g.lineWidth = 6; g.strokeStyle = '#fff'; g.stroke();
+  text(rating, 540, 1262, fit(rating, 250, rating.length > 2 ? 84 : 76), 900, '#fde047'); text(ratingLabel.toUpperCase(), 540, 1305, fit(ratingLabel.toUpperCase(), 250, 26), 800);
+  tile(70, 1352, 290, 120, '#2563eb', m, L[0]); tile(720, 1352, 290, 120, '#f8fafc', nt, L[5], '#0f172a', '#334155');
+  text(`🧊 ${dc} ${L[3]}`, 540, 1405, fit(`🧊 ${dc} ${L[3]}`, 300, 30, 800), 800, '#3b2400');
+  text(`🤝 ${fp}`, 540, 1445, fit(`🤝 ${fp}`, 300, 30, 800), 800, '#3b2400');
+  text(footer.toUpperCase(), W / 2, 1497, fit(footer.toUpperCase(), W - 200, 22, 700), 700, 'rgba(59,36,0,.75)');
   return new Promise(res => c.toBlob(res, 'image/png'));
 }
 
