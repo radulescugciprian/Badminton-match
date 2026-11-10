@@ -460,8 +460,7 @@ function adminView() {
       ${row('bg', '🖼', t('Play background'), dim() ? `${t('Photo dimming')} ${dim()}%` : '')}${panel('bg', `<p class="mut" style="margin:0 0 8px">${t('Shown behind the Play tab for everyone.')}</p>
         <button onclick="pickBg()">🖼 ${t('Change background')}</button> <button class="link" onclick="resetBg()">${t('Use default background')}</button>
         <label class="field" style="margin:12px 0 0">${t('Photo dimming')}: <b id="dimv">${dim()}%</b><input type="range" min="0" max="90" step="5" value="${dim()}" oninput="previewDim(this.value)" onchange="saveDim(this.value)"></label>`)}
-      ${row('icons', '✏', t('Icons'), iconSet() === 'minimal' ? t('Minimal') : t('Neon'))}${panel('icons', `<div class="seg" style="margin:0 0 8px">${[['neon', t('Neon')], ['minimal', t('Minimal')]].map(([k, l]) => `<button class="${iconSet() === k ? 'on' : ''}" onclick="saveIconSet('${k}')">${l}</button>`).join('')}</div>
-        <div class="iconrow">${['play', 'board', 'photos', 'stats', 'members', 'admin', 'logout', 'help'].map(k => svgIcon(k)).join('')}</div><p class="mut" style="margin:6px 0 0">${t('The minimal set follows the light or dark theme.')}</p>`)}</div>
+</div>
     <h2 class="sgroup">${t('Insights')}</h2><div class="card slist">
       ${row('usage', '📊', t('Usage'), `${week} ${t('active, 7 days')}`, true)}${row('log', '📜', t('Activity log'), last ? esc((last.actor_name || '') + ' ' + (LOG[last.action] || (() => last.action))(last.detail)) : '', true)}</div>
     <h2 class="sgroup danger">${t('Danger zone')}</h2><div class="card slist">
@@ -607,18 +606,16 @@ const EMO = { '👁': 'eye', '💬': 'chat', '📅': 'calendar', '✅': 'check',
   '📊': 'stats', '🏆': 'board', '🏸': 'play', '👥': 'members', '❔': 'help', '❓': 'help', '⚙': 'gear', '⚠': 'warn', '🔑': 'admin', '⬇': 'save' };
 const EMO_RE = new RegExp('(' + Object.keys(EMO).join('|') + ')\uFE0F?', 'gu');
 function minimalize(root) {
-  if (!root || iconSet() !== 'minimal') return;
+  if (!root) return;
   const skip = n => /^(OPTION|SELECT|TEXTAREA|SCRIPT|STYLE|TITLE)$/.test(n.parentNode.nodeName) || n.parentNode.closest('#rx, .podium, .badge, .rx, .lic');
   const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), hits = [];
   while (w.nextNode()) { EMO_RE.lastIndex = 0; if (EMO_RE.test(w.currentNode.data) && !skip(w.currentNode)) hits.push(w.currentNode); }
   for (const n of hits) { const s = document.createElement('span'); s.innerHTML = esc(n.data).replace(EMO_RE, (_, e) => svgIcon(EMO[e], 'inl i-' + EMO[e])); n.replaceWith(...s.childNodes); }
 }
 const svgIcon = (k, cls = '') => `<svg class="lic ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LINE[k]}</svg>`;
-const ICON = k => iconSet() === 'minimal' ? svgIcon(k) : `<img class="on" src="ic-${k}-on.png" alt=""><img class="off" src="ic-${k}-off.png" alt="">`;
-const TOPIMG = { members: 'tm-members.png', admin: 'tm-adminkey.png', logout: 'tm-logout.png', help: 'tm-help.png' };
-const topIcon = k => iconSet() === 'minimal' ? svgIcon(k) : `<img src="${TOPIMG[k]}" alt="">`;
+const ICON = svgIcon, topIcon = svgIcon;   // one icon family: line icons that follow the light or dark theme
 const NAV = { play: () => ICON('play') + '<span>' + t('Play') + (session && loaded && invites().length ? ' •' : '') + '</span>', board: () => ICON('board') + '<span>' + t('Board') + '</span>',
-  group: () => (iconSet() === 'minimal' ? svgIcon(chatOn ? 'chat' : 'members') : '<img class="on" src="tm-members.png" alt=""><img class="off dimmed" src="tm-members.png" alt="">') + '<span>' + t('Group') + '</span>' + (session && loaded && chatOn && chatUnread() ? `<i class="cbadge">${chatUnread()}</i>` : ''), photos: () => ICON('photos') + '<span>' + t('Photos') + '</span>', stats: () => ICON('stats') + '<span>' + t('Stats') + '</span>' };
+  group: () => svgIcon(chatOn ? 'chat' : 'members') + '<span>' + t('Group') + '</span>' + (session && loaded && chatOn && chatUnread() ? `<i class="cbadge">${chatUnread()}</i>` : ''), photos: () => ICON('photos') + '<span>' + t('Photos') + '</span>', stats: () => ICON('stats') + '<span>' + t('Stats') + '</span>' };
 
 function render() {
   if (session && loaded && view !== lastTracked) { lastTracked = view; track(view); }

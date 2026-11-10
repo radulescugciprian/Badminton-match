@@ -51,10 +51,10 @@ run('compact sign-up card and play calendar', async h => {
   assert.deepEqual([m4.t1, m4.t2], [[1, 3], [2, 4]], 'after the best of 3 the teams change');
   assert(!st.play_dates.some(x => x.day === '2026-10-12'), 'the past date was not marked');
   // the saved day can be corrected or deleted from the same date
-  await A.click('.cal button[aria-label*="12 October"]'); await A.click('text=✎ Edit'); await A.waitForSelector('text=Edit match day');
+  await A.click('.cal button[aria-label*="12 October"]'); await A.click('button:has-text("Edit")'); await A.waitForSelector('text=Edit match day');
   await A.click('text=Team 2 Wins >> nth=0'); await A.click('text=Save this day'); await A.waitForSelector('text=Calendar');
   await until(() => st.days.filter(d => d.date === '2026-10-12').length === 1 && st.matches.filter(m => m.day_id === st.days.find(d => d.date === '2026-10-12').id).map(m => m.win).join() === '2,2,1,1', 'the corrected day replaced the old one');
-  await A.click('.cal button[aria-label*="12 October"]'); await A.click('text=🗑 Delete');
+  await A.click('.cal button[aria-label*="12 October"]'); await A.click('button:has-text("Delete")');
   await until(() => !st.days.some(d => d.date === '2026-10-12'), 'the old day deleted');
   await A.click('text=Back');
   await until(() => st.play_dates.some(x => x.day === '2026-10-22' && x.kind === 'cancelled'), 'the cancelled day on the server');

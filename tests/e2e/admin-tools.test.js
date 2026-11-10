@@ -48,8 +48,8 @@ run('admin tools', async h => {
   assert(h.rpc('u2', { table: 'usage', op: 'select', f: [] }).data.length === 0, 'members cannot read usage');
   await A.reload(); await A.click('[aria-label="Admin tools"]'); await A.click('[data-adm=usage]'); await A.waitForSelector('text=Usage (last 30 days)');
   const ut = await A.textContent('.usage'); assert(ut.includes('Most used') && ut.includes('Bob') && ut.includes('last seen'), ut.slice(0, 200));
-  // icons: an admin switches everyone to the minimal line icons
-  await A.click('text=← Admin tools'); await A.click('[data-adm=icons]'); await A.click('.seg >> text=Minimal'); await h.until(() => st.schedule[0].icon_set === 'minimal', 'icon set saved');
+  // icons: one family of line icons for everyone, no setting
+  await A.click('text=← Admin tools'); assert.equal(await A.locator('[data-adm=icons]').count(), 0, 'no icon setting');
   await A.waitForFunction(() => document.querySelectorAll('nav svg.lic').length === 5 && document.querySelectorAll('.top svg.lic').length >= 3);
   await B.reload(); await B.waitForFunction(() => document.querySelectorAll('nav svg.lic').length === 5);
   // photo dimming: the admin's slider is saved for everyone, members have no slider

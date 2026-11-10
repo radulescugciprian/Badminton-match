@@ -89,7 +89,6 @@
   .top .me{flex:1} 
   .top .bar{display:flex;align-items:center;gap:0;flex-shrink:0}
   .top .link{display:inline-flex;flex-direction:column;justify-content:center;align-items:center;gap:1px;padding:4px 3px;font-size:var(--fs-xs);border-radius:10px;color:var(--text);font-weight:600} .top .link:active{background:var(--line)}
-  .top img:not(.av){width:26px;height:26px} .top .ico img:not(.av){width:30px;height:30px}
   .top .link.ico{font-size:var(--fs-md);padding:6px 4px}
   .msg{color:var(--danger);min-height:1.4em;font-size:var(--fs-sm)}
   body.out nav{display:none}
@@ -153,11 +152,9 @@
   /* nav */
   nav{position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:var(--nav);backdrop-filter:blur(10px);border-top:1px solid var(--line)}
   nav button{flex:1;background:none;color:var(--mut);padding:12px 2px;font-weight:600;font-size:var(--fs-sm)}
-  nav button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 2px;font-size:var(--fs-xs)} nav img{width:30px;height:30px}
-  nav .on{display:none} nav [aria-current=page] .on{display:block} nav [aria-current=page] .off{display:none}
+  nav button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 2px;font-size:var(--fs-xs)}
   nav button[aria-current=page]{color:var(--acc);background:var(--card)}
   /* the neon icons are drawn for a dark ground: darken them on the light theme */
-  :root[data-theme=light] nav img,:root[data-theme=light] .top img:not(.av){filter:brightness(.55) saturate(1.8) contrast(1.15)}
   /* light theme, photo shown as it is: text straight on the photo is white; light surfaces (cards, buttons, bars) keep dark text */
   :root[data-theme=light] body:is(.out,[data-view=play],[data-view=board],[data-view=photos],[data-view=stats]){--text:#fff;--mut:#eaf2ed;--ts:rgba(0,0,0,.8);--line-t:#c4d8cd}
   :root[data-theme=light] :is(.card,.stage,.toast,#tour .tip,button:not(.link,.primary),select,input,.row,.team,.rest,.seg,.tile,.badge,.cal .d,.top,nav,.rsvp,.rx){--text:#10231a;--mut:#3d5a4c;--ts:rgba(255,255,255,.95);color:var(--text)}
@@ -262,7 +259,7 @@
   :root[data-theme=light] :is(.cb,.cev,.cform){--text:#10231a;--mut:#3d5a4c;color:var(--text)}
   .cform[hidden]{display:none}
   .cnew{display:flex;align-items:center;gap:8px;color:var(--danger);font-size:var(--fs-xs);font-weight:700;text-transform:uppercase;letter-spacing:.06em} .cnew::before,.cnew::after{content:'';flex:1;border-top:1.5px solid var(--danger)}
-  nav button{position:relative} nav .cbadge{top:2px;right:calc(50% - 26px)} nav img.dimmed{opacity:.55;filter:grayscale(.7)}
+  nav button{position:relative} nav .cbadge{top:2px;right:calc(50% - 26px)}
   /* monthly recap: full-screen swipeable cards */
   .recapbtn{margin:0 0 12px;border-style:solid;border-color:var(--acc);color:var(--text);font-weight:700}
   #recap{position:fixed;inset:0;z-index:35;background:var(--bg);color:var(--text);display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);text-shadow:none}

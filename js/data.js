@@ -379,8 +379,6 @@ const loadBg = async () => {
   document.documentElement.style.setProperty('--pbg', u ? `url("${u.signedUrl}")` : 'url(bg-play.jpg)');
 };
 const openStats = id => { statsId = id; go('stats'); };
-const iconSet = () => (sched && sched.icon_set) || 'neon';
-const saveIconSet = k => act(async () => ok(await sb.from('schedule').update({ icon_set: k }).eq('id', true)), () => { if (sched) sched.icon_set = k; });
 const dim = () => (sched && sched.bg_dim) || 0;
 const previewDim = v => { document.documentElement.style.setProperty('--dim', v / 100); dimv.textContent = v + '%'; };
 const saveDim = v => act(async () => ok(await sb.from('schedule').update({ bg_dim: +v }).eq('id', true)), () => { if (sched) sched.bg_dim = +v; });
