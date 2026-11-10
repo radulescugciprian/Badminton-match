@@ -56,14 +56,16 @@ const toggleView = () => { asMember = !asMember; if (asMember && (view === 'memb
 // ---- who may see whose rating and stats: players decide for themselves, admins see everything. Guests (no account) are shared.
 const profileOf = pid => { const u = player(pid).user; return u && members.find(m => m.id === u); };
 const sharing = pid => { const pr = profileOf(pid); return !pr || pr.share_stats !== false; };
-// season points (seasonPoints in analytics.js): the seasons played, and the season shown on Board
-let ptSeason = null;   // null = the current season
-const seasonsPlayed = () => [...new Set([...db.days.filter(d => d.matches.length).map(d => seasonKey(d.date)), seasonKey(tzParts().date)])]
-  .sort((a, b) => { const k = s => +s.split(' ')[1].slice(0, 4) * 10 + ['winter', 'spring', 'summer', 'autumn'].indexOf(s.split(' ')[0]); return k(a) - k(b); });
+// the seasons played (for the Loyal player badge and the rules card)
+const seasonsPlayed = () => [...new Set([...db.days.filter(d => d.matches.length).map(d => seasonKey(d.date)), seasonKey(tzParts().date)])];
 const seasonLabel = key => { const [k, y] = key.split(' '); return { winter: t('Winter {y}', { y }), spring: t('Spring {y}', { y }), summer: t('Summer {y}', { y }), autumn: t('Autumn {y}', { y }) }[k]; };
-// 🏅 Loyal player: in the top 3 of a finished season
-const loyal = id => seasonsPlayed().filter(s => s !== seasonKey(tzParts().date)).filter(s => seasonPoints(db.days, db.players, s).slice(0, 3).some(x => x.id === id)).length;
-const ratingOf = (an, id) => (an.main(id) === 'singles' ? an.ratingS : an.rating).get(id);   // the rating of the kind a player plays most
+// 🏅 Loyal player: one of the 3 biggest loyalty bonuses of a finished season
+const loyal = id => seasonsPlayed().filter(s => s !== seasonKey(tzParts().date))
+  .filter(s => [...loyalty(db.days, db.players, s)].sort((x, y) => y[1].bonus - x[1].bonus).slice(0, 3).some(([pid]) => pid === id)).length;
+// the rating everyone sees = the match rating (pure, used for odds and upsets) + this season's loyalty bonus
+const bonusOf = (an, id) => ((an.bonus || (an.bonus = loyalty(db.days, db.players, seasonKey(tzParts().date), an))).get(id) || { bonus: 0 }).bonus;
+const matchRatingOf = (an, id) => (an.main(id) === 'singles' ? an.ratingS : an.rating).get(id);
+const ratingOf = (an, id) => matchRatingOf(an, id) + bonusOf(an, id);   // in the kind a player plays most
 const ratingHidden = pid => (profileOf(pid) || {}).hide_rating === true;   // "hide my rating": no number or rank for anyone, the person included
 const canSee = pid => isAdmin() || player(pid).user === session.user.id || sharing(pid);
 
@@ -793,15 +795,13 @@ async function sharePlayerCard(id) {
 }
 // ---- the points rules as a picture for WhatsApp (drawRulesCard in fx.js)
 async function shareRules() {
-  const good = nightPoints({ p: 5, delta: 23 }), plain = nightPoints({ p: 5, delta: 0 });
-  const blob = await drawRulesCard({ title: t('How points work'), season: seasonLabel(seasonKey(tzParts().date)),
-    rules: [[`+${POINTS.night}`, t('Play a night'), t('just by showing up')], [`+${POINTS.match}`, t('Each match'), t('at most {n} a night', { n: POINTS.maxMatches })],
-      [`+${POINTS.challenge}`, t('Weekly challenge'), t('complete it, any week')], ['+1', t('Every {n} rating points', { n: POINTS.perRating }), t('gained in a night: beat stronger players, get more')]],
-    compare: { title: t('Two nights, 5 matches each'), showLabel: t('showing up'), perfLabel: t('performance'),
-      rows: [{ label: t('Good night'), show: good.show, perf: good.perf }, { label: t('Just playing'), show: plain.show, perf: plain.perf }] },
-    notes: [t('A bad night never costs points.'), t('Each season starts at 0. The top 3 get the Loyal player badge.')], footer: t('Badminton Thursdays') });
-  const file = new File([blob], 'badminton-points.png', { type: 'image/png' });
-  if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: t('How points work') }).catch(() => {});
+  const blob = await drawRulesCard({ title: t('How the rating works'), season: seasonLabel(seasonKey(tzParts().date)),
+    rules: [['±', t('Win and lose matches'), t('beat stronger players and you gain more'), 'chart'], [`+${LOYALTY.night}`, t('Play a night'), t('loyalty bonus, just by showing up'), 'shuttle'],
+      [`+${LOYALTY.match}`, t('Each match'), t('at most {n} a night', { n: LOYALTY.maxMatches }), 'shuttles'], [`+${LOYALTY.challenge}`, t('Weekly challenge'), t('complete it, any week'), 'target']],
+    sum: { title: t('Your rating'), parts: [['1094', t('match rating')], ['+34', t('loyalty bonus')], ['1128', t('Rating')]] },
+    notes: [t('The loyalty bonus starts again each season.'), t('The top 3 bonuses of a season get the Loyal player badge.')], footer: t('Badminton Thursdays') });
+  const file = new File([blob], 'badminton-rating.png', { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: t('How the rating works') }).catch(() => {});
   else saveFile(blob, file.name);
 }
 // ---- shareable result card

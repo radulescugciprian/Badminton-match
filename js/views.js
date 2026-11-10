@@ -184,8 +184,8 @@ function closedExtras(d) {
   if (!top) return '';
   return `<div class="card potn">${av(top.id, 56)}<div><div class="mut">⭐ ${t('Player of the night')}</div><b style="font-size:var(--fs-lg)">${name(top.id)}</b>
       <div class="mut">${canSee(top.id) && !ratingHidden(top.id) ? `${top.delta >= 0 ? '+' : ''}${Math.round(top.delta)} ${t('rating')} · ` : ''}${t('{w} of {p} won', { w: top.w, p: top.p })}</div></div></div>
-    ${(() => { const mine = db.players.find(p => p.user === session.user.id), r = mine && (an.night.get(d.id) || new Map()).get(mine.id); if (!r) return '';
-      const n = nightPoints(r); return `<p class="ptsnight">🏅 ${t('Your points tonight: +{n}', { n: n.show + n.perf })} <span class="mut">(${t('{a} showing up · {b} rating', { a: n.show, b: n.perf })})</span></p>`; })()}
+    ${(() => { const mine = db.players.find(p => p.user === session.user.id), r = mine && (an.night.get(d.id) || new Map()).get(mine.id);
+      return r ? `<p class="ptsnight">🏅 ${t('+{n} loyalty bonus tonight', { n: nightBonus(r) })}</p>` : ''; })()}
     ${nightAwards(an, d.id).map(x => `<span class="badge">${name(x.id)}: ${AWARD[x.kind]()}</span>`).join('')}<div style="height:10px"></div>`;
 }
 
@@ -282,10 +282,9 @@ function board() {
   const head = `<h1>${t('Leaderboard')}</h1>
     <div class="seg"><button class="${tab === 'rating' ? 'on' : ''}" onclick="tab='rating';render()">${t('Rating')}</button>
       <button class="${tab === 'day' ? 'on' : ''}" onclick="tab='day';render()">${t('Day')}</button>
-      <button class="${tab === 'points' ? 'on' : ''}" onclick="tab='points';render()">${t('Points')}</button>
+      <button class="${tab === 'month' ? 'on' : ''}" onclick="tab='month';render()">${t('Month')}</button>
       <button class="${tab === 'all' ? 'on' : ''}" onclick="tab='all';render()">${t('All time')}</button></div>`;
   if (tab === 'rating') return head + ratingList();
-  if (tab === 'points') return head + pointsList();
   const nav = tab === 'day' ? (days.length ? `<div class="calnav"><button onclick="dayShift(-1)" aria-label="${t('Previous day')}" ${di <= 0 ? 'disabled' : ''}>‹</button><b>${esc(niceDate(sel.date))} · ${tp('{n} matches', sel.matches.length)}<br><span class="kind ${sel.matches.some(m => m.t1.length === 1) ? 'single' : 'double'}">${sel.matches.every(m => m.t1.length === 1) ? '1 vs 1 · ' + t('Singles') : sel.matches.some(m => m.t1.length === 1) ? t('Singles') + ' + ' + t('Doubles') : '2 vs 2 · ' + t('Doubles')}</span></b>
       <button onclick="dayShift(1)" aria-label="${t('Next day')}" ${di >= days.length - 1 ? 'disabled' : ''}>›</button>
       ${isAdmin() ? `<details class="more" ${dayMore ? 'open' : ''} ontoggle="dayMore=this.open"><summary aria-label="${t('More')}">⋯</summary><button class="link" onclick="dayMore=false;photo(${sel.id})">📷 ${sel.photo ? t('Replace the group photo') : t('Add a group photo')}</button><button class="link danger" onclick="deleteDay(${sel.id})">🗑 ${t("Delete this day's leaderboard")}</button></details>` : ''}</div>` : '')
@@ -301,40 +300,30 @@ function board() {
       : emptyState('board', t('No matches yet.'), t('Play one and the podium shows up here.'), `<button class="primary" onclick="go('play')">${t('Go to Play')}</button>`)}`;
 }
 
-// Board → Points: the season table (showing up + rating gained), with how it works
-function pointsList() {
-  const ss = seasonsPlayed(), cur_ = seasonKey(tzParts().date), s = ss.includes(ptSeason) ? ptSeason : cur_, i = ss.indexOf(s), rows = seasonPoints(db.days, db.players, s);
-  const mine = db.players.find(p => p.user === session.user.id);
-  const nav = `<div class="calnav"><button onclick="ptSeason='${ss[i - 1] || ''}';render()" aria-label="${t('Previous season')}" ${i > 0 ? '' : 'disabled'}>‹</button><b>${esc(seasonLabel(s))}</b>
-    <button onclick="ptSeason='${ss[i + 1] || ''}';render()" aria-label="${t('Next season')}" ${i < ss.length - 1 ? '' : 'disabled'}>›</button></div>`;
-  const how = `<details class="fold" ${matchesOpen.points ? 'open' : ''} ontoggle="matchesOpen.points=this.open"><summary>${t('How points work')}</summary><div class="card"><ul class="howpts">
-    <li><b>+${POINTS.night}</b> ${t('for every night you play')}</li><li><b>+${POINTS.match}</b> ${t('for each match, at most {n} a night', { n: POINTS.maxMatches })}</li>
-<li><b>+${POINTS.challenge}</b> ${t('for each weekly challenge you complete')}</li>
-    <li><b>+1</b> ${t('for every {n} rating points you gain in a night (a bad night never costs points)', { n: POINTS.perRating })}</li></ul>
-    <p class="mut" style="margin:8px 0 0">${t('Each season starts at 0. The top 3 get the Loyal player badge.')}</p>
-    <button class="add" style="margin:12px 0 0" onclick="shareRules()">📤 ${t('Share the rules')}</button></div></details>`;
-  if (!rows.length) return nav + emptyState('board', t('No points yet this season.'), t('Play a night to get your first points.'), `<button class="primary" onclick="go('play')">${t('Go to Play')}</button>`) + how;
-  return nav + `<div class="card" style="padding:4px 16px">${rows.map((r, k) => `<div class="rank tap ${mine && r.id === mine.id ? 'me' : ''}" role="button" tabindex="0" onclick="openStats(${r.id})"><span class="r">${['🥇', '🥈', '🥉'][k] || k + 1}</span>${av(r.id, 32)}
-      <span class="bn"><b>${name(r.id)}</b><small class="mut">${tp('{n} nights', r.nights)} · ${t('{a} showing up · {b} rating · {c} challenges', { a: r.show, b: r.perf, c: r.bonus })}</small></span><b>${r.pts}</b></div>`).join('')}</div>` + how;
-}
-
 function ratingList() {
   const an = analyse(db.days, db.players), hasS = db.players.some(p => an.histS.get(p.id).length), kind = hasS ? boardKind : 'doubles';
   const R = kind === 'singles' ? an.ratingS : an.rating, H = kind === 'singles' ? an.histS : an.hist, lastDay = [...an.night.keys()].pop();
-  const ranked = db.players.filter(p => H.get(p.id).length).sort((x, y) => R.get(y.id) - R.get(x.id));
-  // the change on the last play day, in this kind's rating
-  const lastMove = id => { const h = H.get(id), i = h.findIndex(x => x.day === lastDay); return i < 0 ? undefined : h[h.length - 1].r - (i ? h[i - 1].r : START_RATING); };
+  const shownR = id => R.get(id) + bonusOf(an, id);   // match rating + loyalty bonus
+  const ranked = db.players.filter(p => H.get(p.id).length).sort((x, y) => shownR(y.id) - shownR(x.id));
+  // the change on the last play day: the match rating, plus that night's loyalty bonus
+  const lastMove = id => { const h = H.get(id), i = h.findIndex(x => x.day === lastDay); if (i < 0) return undefined; const r = (an.night.get(lastDay) || new Map()).get(id);
+    return h[h.length - 1].r - (i ? h[i - 1].r : START_RATING) + (r && seasonKey(db.days.find(d => d.id === lastDay).date) === seasonKey(tzParts().date) ? nightBonus(r) : 0); };
   const kindSeg = hasS ? `<div class="seg mini2">${[['doubles', t('Doubles')], ['singles', t('Singles')]].map(([k, l]) => `<button class="${kind === k ? 'on' : ''}" onclick="boardKind='${k}';render()">${l}</button>`).join('')}</div>` : '';
   if (!ranked.length) return emptyState('board', t('No matches yet.'), t('Ratings start at 1000 and move with every result.'), `<button class="primary" onclick="go('play')">${t('Go to Play')}</button>`);
   const shown = ranked.filter(p => canSee(p.id) && !ratingHidden(p.id)), hidden = ranked.filter(p => !canSee(p.id) && !ratingHidden(p.id)), relaxed = ranked.filter(p => ratingHidden(p.id));
   const pod = [[0, '🥇', '#facc15', 120], [1, '🥈', '#cbd5e1', 90], [2, '🥉', '#d97706', 64]].map(([i, medal, c, h]) => shown[i] ? `<div class="pod" onclick="openStats(${shown[i].id})"><div class="medal">${medal}</div>${av(shown[i].id)}<div class="pn">${esc(shown[i].name)}</div>
-    <div class="pw">${Math.round(R.get(shown[i].id))}</div><div class="bar" style="--c:${c};--h:${h}px">${i + 1}</div></div>` : '<div class="pod"></div>');
+    <div class="pw">${Math.round(shownR(shown[i].id))}</div><div class="bar" style="--c:${c};--h:${h}px">${i + 1}</div></div>` : '<div class="pod"></div>');
   return kindSeg + `<div class="podium">${pod[1]}${pod[0]}${pod[2]}</div><p class="mut">${t('Everyone starts at 1000. Beat a stronger team and you gain more.')}</p><div class="card" style="padding:4px 16px">${shown.map((p, i) => {
     const dl = lastMove(p.id);
     return `<div class="rank tap" role="button" tabindex="0" onclick="openStats(${p.id})" onkeydown="if(event.key==='Enter')openStats(${p.id})"><span class="r">${i + 1}</span>${av(p.id, 32)}<b>${esc(p.name)}${sharing(p.id) ? '' : ' 🔒'}</b>
-      <span class="mut" style="margin:0">${dl === undefined ? '' : (dl >= 0 ? '▲' : '▼') + Math.abs(Math.round(dl))}</span><b>${Math.round(R.get(p.id))}</b></div>`; }).join('')}
+      <span class="mut" style="margin:0">${dl === undefined ? '' : (dl >= 0 ? '▲' : '▼') + Math.abs(Math.round(dl))}</span><b>${Math.round(shownR(p.id))}</b></div>`; }).join('')}
     ${hidden.map(p => `<div class="rank" style="opacity:.6"><span class="r">–</span>${av(p.id, 32)}<b>${esc(p.name)}</b><span class="mut" style="margin:0">🔒 ${t('private')}</span><span></span></div>`).join('')}
-    ${relaxed.map(p => `<div class="rank" style="opacity:.6"><span class="r">–</span>${av(p.id, 32)}<b>${esc(p.name)}</b><span class="mut" style="margin:0">🙈 ${t('just playing')}</span><span></span></div>`).join('')}</div>`;
+    ${relaxed.map(p => `<div class="rank" style="opacity:.6"><span class="r">–</span>${av(p.id, 32)}<b>${esc(p.name)}</b><span class="mut" style="margin:0">🙈 ${t('just playing')}</span><span></span></div>`).join('')}</div>
+    <details class="fold" ${matchesOpen.howrating ? 'open' : ''} ontoggle="matchesOpen.howrating=this.open"><summary>${t('How the rating works')}</summary><div class="card"><ul class="howpts">
+      <li><b>±</b> ${t('Win or lose matches: beat stronger players and you gain more')}</li><li><b>+${LOYALTY.night}</b> ${t('loyalty bonus for every night you play')}</li>
+      <li><b>+${LOYALTY.match}</b> ${t('for each match, at most {n} a night', { n: LOYALTY.maxMatches })}</li><li><b>+${LOYALTY.challenge}</b> ${t('for each weekly challenge you complete')}</li></ul>
+      <p class="mut" style="margin:8px 0 0">${t('The loyalty bonus starts again each season. The top 3 get the Loyal player badge.')}</p>
+      <button class="add" style="margin:12px 0 0" onclick="shareRules()">📤 ${t('Share the rules')}</button></div></details>`;
 }
 
 function statsView() {
@@ -355,6 +344,7 @@ function statsView() {
   const rm = recapDefault();
   return `<h1>${t('Stats')}</h1>${rm ? `<button class="add recapbtn" onclick="openRecap()">🎁 ${t('{month} recap', { month: monthLabel(rm) })}</button>` : ''}${challengeCard()}
     <div class="pchoose" role="group" aria-label="${t('Player')}">${played.map(p => `<button aria-pressed="${p.id === id}" onclick="statsId=${p.id};render()">${av(p.id, 48)}<span>${esc(p.name)}${sharing(p.id) ? '' : ' 🔒'}</span></button>`).join('')}</div>
+    ${ratingHidden(id) ? '' : `<p class="mut rbreak">${t('Rating')} <b>${Math.round(ratingOf(an, id))}</b> = ${Math.round(matchRatingOf(an, id))} ${t('match rating')} + ${bonusOf(an, id)} ${t('loyalty bonus')}</p>`}
     ${sharing(id) ? '' : `<p class="mut" role="status">🔒 ${t('{name} keeps these stats private. You can see them because you are an admin or it is you.', { name: esc(player(id).name) })}</p>`}
     ${playerCardHtml(cardSpec(id, an, badges))}<button class="add" style="margin-top:10px" onclick="sharePlayerCard(${id})">📤 ${t('Share card')}</button>
     <h2 class="sec">${t('Badges')}</h2>${badges.map(x => `<span class="badge">${x}</span>`).join('') || `<p class="mut">${t('None yet. They come for wins, streaks and simply showing up.')}</p>`}

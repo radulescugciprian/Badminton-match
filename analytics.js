@@ -160,20 +160,18 @@ function playerCard(days, players, pid, a = analyse(days, players)) {
 const seasonOf = iso => { const y = +iso.slice(0, 4), m = +iso.slice(5, 7);
   return m === 12 ? { k: 'winter', y: `${y}/${String(y + 1).slice(2)}` } : m <= 2 ? { k: 'winter', y: `${y - 1}/${String(y).slice(2)}` } : { k: m <= 5 ? 'spring' : m <= 8 ? 'summer' : 'autumn', y: String(y) }; };
 
-// ---- season points: showing up counts (5 a night, +1 a match up to 5, +3 per weekly challenge), but performance counts more:
-// 1 point per 2 rating points gained that night, never below 0 (the rating already weighs who you beat)
-const POINTS = { night: 5, match: 1, maxMatches: 5, challenge: 3, perRating: 2 };
+// ---- loyalty bonus: showing up raises the rating everyone sees (match rating + bonus), while the match rating itself stays
+// pure for odds and upsets. Per night played: +3, +1 per match (at most 2), +2 per weekly challenge; it starts again each season.
+const LOYALTY = { night: 3, match: 1, maxMatches: 2, challenge: 2 };
 const seasonKey = iso => { const s = seasonOf(iso); return s.k + ' ' + s.y; };
-// one night's points for one player: { show, perf } (r = a.night.get(dayId).get(playerId))
-const nightPoints = r => ({ show: POINTS.night + Math.min(POINTS.maxMatches, r.p * POINTS.match), perf: Math.max(0, Math.floor(r.delta / POINTS.perRating)) });
-// the season table: [{ id, pts, nights, show, perf, bonus }], most points first
-function seasonPoints(days, players, season, a = analyse(days, players)) {
-  const rows = new Map(), row = id => rows.get(id) || rows.set(id, { id, pts: 0, nights: 0, show: 0, perf: 0, bonus: 0 }).get(id);
+const nightBonus = r => LOYALTY.night + Math.min(LOYALTY.maxMatches, r.p * LOYALTY.match);   // r = a.night.get(dayId).get(playerId)
+// the season's bonus per player: Map(id -> { bonus, nights, challenges })
+function loyalty(days, players, season, a = analyse(days, players)) {
+  const out = new Map(), row = id => out.get(id) || out.set(id, { bonus: 0, nights: 0, challenges: 0 }).get(id);
   const ds = days.filter(d => d.matches.length && seasonKey(d.date) === season);
-  for (const d of ds) for (const [id, r] of a.night.get(d.id) || []) { const x = row(id), n = nightPoints(r); x.nights++; x.show += n.show; x.perf += n.perf; }
-  for (const w of new Set(ds.map(d => mondayOf(d.date)))) for (const [id, c] of challenge(days, players, w, a).of) if (c.done) row(id).bonus += POINTS.challenge;
-  for (const x of rows.values()) x.pts = x.show + x.perf + x.bonus;
-  return [...rows.values()].sort((p, q) => q.pts - p.pts || q.nights - p.nights);
+  for (const d of ds) for (const [id, r] of a.night.get(d.id) || []) { const x = row(id); x.nights++; x.bonus += nightBonus(r); }
+  for (const w of new Set(ds.map(d => mondayOf(d.date)))) for (const [id, c] of challenge(days, players, w, a).of) if (c.done) { const x = row(id); x.challenges++; x.bonus += LOYALTY.challenge; }
+  return out;
 }
 
 // ---- weekly mini-challenge: the same light goal for everyone, a new one every Monday, checked from the match log
@@ -235,4 +233,4 @@ function ratingChart(vals, w = 320, h = 150, label = 'Rating over time') {
     <text x="8" y="${h - 3}" font-size="12" fill="currentColor" fill-opacity=".7">${Math.round(Math.min(...vals))}</text></svg>`;
 }
 
-if (typeof module !== 'undefined') module.exports = { winnerStays, recap, seasonPoints, nightPoints, seasonKey, POINTS, playerCard, seasonOf, challenge, challengeWins, challengeFor, mondayOf, analyse, playerOfNight, nightAwards, relations, bestPair, ratingChart, START_RATING };
+if (typeof module !== 'undefined') module.exports = { winnerStays, recap, loyalty, nightBonus, seasonKey, LOYALTY, playerCard, seasonOf, challenge, challengeWins, challengeFor, mondayOf, analyse, playerOfNight, nightAwards, relations, bestPair, ratingChart, START_RATING };

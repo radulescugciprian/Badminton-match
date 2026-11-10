@@ -145,18 +145,16 @@ assert(ratingChart([1000, 1032, 1010]).includes('1032'));
   assert.deepEqual([seasonOf('2026-11-10'), seasonOf('2026-12-03'), seasonOf('2027-02-01'), seasonOf('2027-04-01')].map(x => x.k + ' ' + x.y), ['autumn 2026', 'winter 2026/27', 'winter 2026/27', 'spring 2027']);
 }
 
-// season points: showing up first, a capped bonus per match, answering in time, and rating gained (never negative)
+// loyalty bonus: per night played 3 + 1 a match (max 2), per weekly challenge 2; per season
 {
-  const { seasonPoints, nightPoints, analyse } = require('../analytics.js');
+  const { loyalty, nightBonus } = require('../analytics.js');
   const P = [1, 2, 3, 4, 5].map(id => ({ id })), night = (id, date, ms) => ({ id, date, matches: ms.map(([t1, t2, win], i) => ({ n: i + 1, t1, t2, win })) });
-  assert.deepEqual(nightPoints({ p: 7, delta: 23 }), { show: 10, perf: 11 }, '5 + 5 (capped), and 23/2 → 11: a good night beats just showing up');
-  assert.deepEqual(nightPoints({ p: 2, delta: -30 }), { show: 7, perf: 0 }, 'a bad night never costs points');
-  const days = [night(1, '2026-10-01', [[[1, 2], [3, 4], 1], [[1, 3], [2, 4], 1]]), night(2, '2026-10-08', [[[1, 2], [3, 4], 1]]), night(3, '2026-07-01', [[[1, 2], [3, 4], 1]])];
-  const t = seasonPoints(days, P, 'autumn 2026');
-  assert.deepEqual(t.map(x => x.id), [1, 2, 3, 4], 'only autumn nights; player 5 never played');
-  const p2 = t.find(x => x.id === 2), p3 = t.find(x => x.id === 3);
-  assert.equal(p2.nights, 2); assert.equal(p2.show, 5 + 2 + 5 + 1, 'two nights, three matches');
-  assert.equal(p3.perf, 0, 'player 3 lost everything: no performance points, but still the showing-up ones'); assert(p3.show >= 10);
+  assert.equal(nightBonus({ p: 7 }), 5, '3 + 2 (capped)'); assert.equal(nightBonus({ p: 1 }), 4);
+  const days = [night(1, '2026-10-01', [[[1, 2], [3, 4], 1], [[1, 3], [2, 4], 1]]), night(2, '2026-10-08', [[[1, 2], [3, 4], 2]]), night(3, '2026-07-01', [[[1, 2], [3, 4], 1]])];
+  const l = loyalty(days, P, 'autumn 2026');
+  assert(!l.has(5), 'never played'); assert.equal(l.get(1).nights, 2, 'only autumn nights');
+  assert.equal(l.get(1).bonus - 2 * l.get(1).challenges, 5 + 4, 'two nights: 3+2 and 3+1');
+  assert.equal(l.get(3).bonus - 2 * l.get(3).challenges, l.get(1).bonus - 2 * l.get(1).challenges, 'winning or losing makes no difference to the bonus');
 }
 
 console.log('analytics tests passed');

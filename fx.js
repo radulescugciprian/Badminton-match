@@ -145,8 +145,8 @@ async function drawPlayerCard({ tier, edition, rating, ratingLabel, name, titleE
   return new Promise(res => c.toBlob(res, 'image/png'));
 }
 
-// the points rules as a 1080×1500 picture to share: four rules with drawn icons, a bar comparison of two nights, the season badge
-async function drawRulesCard({ title, season, rules, compare, notes, footer }) {
+// how the rating works, as a 1080×1500 picture to share: four rules with drawn icons, the sum (match rating + loyalty = rating), the badge
+async function drawRulesCard({ title, season, rules, sum, notes, footer }) {
   await loadCardFont();
   const W = 1080, H = 1500, c = document.createElement('canvas'); c.width = W; c.height = H;
   const g = c.getContext('2d'), sans = 'system-ui, "Segoe UI Emoji", "Apple Color Emoji", sans-serif', disp = `"Bebas Neue", "Arial Narrow", ${sans}`;
@@ -163,27 +163,24 @@ async function drawRulesCard({ title, season, rules, compare, notes, footer }) {
   say(season.toUpperCase(), W / 2, 80, fit(season.toUpperCase(), 600, 54), '#fff', { align: 'center', sp: '4px' });
   say(title.toUpperCase(), W / 2, 210, fit(title.toUpperCase(), 900, 130), NAVY, { align: 'center' });
   // the four rules: an icon tile, the text, the points in a big badge
-  const icons = [
-    (x, y) => shuttle(x, y, 2.1, '#fff'),
-    (x, y) => { for (let i = 0; i < 5; i++) shuttle(x - 44 + i * 22, y + (i % 2 ? 8 : -8), .75, '#fff'); },
-    (x, y) => { [38, 24, 10].forEach((r, i) => { g.beginPath(); g.arc(x, y, r, 0, 6.3); g.fillStyle = i % 2 ? TEAL : '#fff'; g.fill(); }); },
-    (x, y) => { g.strokeStyle = '#fff'; g.lineWidth = 8; g.lineJoin = 'round'; g.lineCap = 'round'; g.beginPath(); g.moveTo(x - 38, y + 26); g.lineTo(x - 12, y); g.lineTo(x + 6, y + 14); g.lineTo(x + 38, y - 24); g.stroke();
-      g.beginPath(); g.moveTo(x + 16, y - 26); g.lineTo(x + 40, y - 26); g.lineTo(x + 40, y - 2); g.stroke(); } ];
-  const tiles = [TEAL, '#2563eb', '#9333ea', LIME];
-  rules.forEach(([pts, head, sub], i) => { const y = 270 + i * 168;
+  const icons = {
+    shuttle: (x, y) => shuttle(x, y, 2.1, '#fff'),
+    shuttles: (x, y) => { for (let i = 0; i < 3; i++) shuttle(x - 30 + i * 30, y + (i % 2 ? 8 : -8), .9, '#fff'); },
+    target: (x, y) => { [38, 24, 10].forEach((r, i) => { g.beginPath(); g.arc(x, y, r, 0, 6.3); g.fillStyle = i % 2 ? TEAL : '#fff'; g.fill(); }); },
+    chart: (x, y) => { g.strokeStyle = '#fff'; g.lineWidth = 8; g.lineJoin = 'round'; g.lineCap = 'round'; g.beginPath(); g.moveTo(x - 38, y + 26); g.lineTo(x - 12, y); g.lineTo(x + 6, y + 14); g.lineTo(x + 38, y - 24); g.stroke();
+      g.beginPath(); g.moveTo(x + 16, y - 26); g.lineTo(x + 40, y - 26); g.lineTo(x + 40, y - 2); g.stroke(); } };
+  const tiles = { chart: LIME, shuttle: TEAL, shuttles: '#2563eb', target: '#9333ea' };
+  rules.forEach(([pts, head, sub, icon], i) => { const y = 270 + i * 168;
     g.fillStyle = '#fff'; rr(90, y, W - 180, 146, 26); g.fill(); g.lineWidth = 3; g.strokeStyle = GREY; g.stroke();
-    g.fillStyle = tiles[i]; rr(112, y + 18, 110, 110, 22); g.fill(); icons[i](167, y + 73);
+    g.fillStyle = tiles[icon]; rr(112, y + 18, 110, 110, 22); g.fill(); icons[icon](167, y + 73);
     say(head, 250, y + 66, fit(head, 520, 52), NAVY); say(sub, 252, y + 108, fit(sub, 520, 30, sans, 600), '#5b6475', { f: sans, w: 600 });
-    g.fillStyle = i === 3 ? GOLD : NAVY; rr(W - 270, y + 26, 160, 94, 47); g.fill(); say(pts, W - 190, y + 98, fit(pts, 140, 76), '#fff', { align: 'center' }); });
-  // two nights side by side: stacked bars, showing up (navy) and performance (gold)
-  const cy = 970; say(compare.title.toUpperCase(), 90, cy, fit(compare.title.toUpperCase(), 900, 44), NAVY, { sp: '2px' });
-  const max = Math.max(...compare.rows.map(r => r.show + r.perf)), bw = W - 180 - 420;
-  compare.rows.forEach((r, i) => { const y = cy + 28 + i * 86, u = bw / max;
-    say(r.label, 90, y + 46, fit(r.label, 300, 34, sans, 700), NAVY, { f: sans, w: 700 });
-    g.fillStyle = NAVY; rr(400, y + 10, r.show * u, 50, [12, 0, 0, 12]); g.fill(); g.fillStyle = GOLD; rr(400 + r.show * u, y + 10, Math.max(r.perf * u, 1), 50, [0, 12, 12, 0]); g.fill();
-    say(String(r.show + r.perf), 400 + (r.show + r.perf) * u + 14, y + 52, 52, NAVY); });
-  [[NAVY, compare.showLabel], [GOLD, compare.perfLabel]].forEach(([col, l], i) => { const x = 400 + i * 280; g.fillStyle = col; rr(x, cy + 214, 26, 26, 6); g.fill(); say(l, x + 38, cy + 236, fit(l, 230, 28, sans, 600), '#5b6475', { f: sans, w: 600 }); });
-  // the notes and the badge
+    g.fillStyle = i ? GOLD : NAVY; rr(W - 270, y + 26, 160, 94, 47); g.fill(); say(pts, W - 190, y + 98, fit(pts, 140, 76), '#fff', { align: 'center' }); });
+  // the sum: match rating + loyalty bonus = the rating everyone sees
+  const cy = 970; say(sum.title.toUpperCase(), 90, cy, fit(sum.title.toUpperCase(), 900, 44), NAVY, { sp: '2px' });
+  const boxes = [[sum.parts[0], NAVY], [sum.parts[1], GOLD], [sum.parts[2], TEAL]], bw = 250, gap = (W - 180 - 3 * bw) / 2;
+  boxes.forEach(([[v, l], col], i) => { const x = 90 + i * (bw + gap); g.fillStyle = col; rr(x, cy + 30, bw, 150, 24); g.fill();
+    say(v, x + bw / 2, cy + 128, fit(v, bw - 30, 88), '#fff', { align: 'center' }); say(l.toUpperCase(), x + bw / 2, cy + 222, fit(l.toUpperCase(), bw, 28, sans, 700), '#5b6475', { f: sans, w: 700, align: 'center' });
+    if (i < 2) say(i ? '=' : '+', x + bw + gap / 2, cy + 128, 80, NAVY, { align: 'center' }); });
   g.lineWidth = 2; g.strokeStyle = GREY; g.beginPath(); g.moveTo(90, 1290); g.lineTo(W - 90, 1290); g.stroke();
   notes.forEach((n, i) => say(n, 90, 1350 + i * 46, fit(n, 740, 32, sans, 700), NAVY, { f: sans, w: 700 }));
   g.beginPath(); g.arc(W - 150, 1362, 58, 0, 6.3); g.fillStyle = GOLD; g.fill(); g.lineWidth = 6; g.strokeStyle = NAVY; g.stroke(); say('🏅', W - 150, 1384, 60, '#000', { f: sans, align: 'center' });

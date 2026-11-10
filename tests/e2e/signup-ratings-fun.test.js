@@ -75,14 +75,13 @@ run('sign-up list, ratings, badges, result card and reactions', async h => {
   assert((await A.textContent('.card .rank >> nth=0')).includes('Vali'), 'highest rating first');
   await A.click('.rank.tap >> nth=1'); await A.waitForSelector('text=Rating over time');                    // tapping a player opens their stats
   assert.equal(await A.evaluate(() => statsId), await A.evaluate(() => db.players.find(p => p.name === document.querySelector('.pchoose [aria-pressed=true] > span:last-child').textContent.replace(/ 🔒/, '').trim()).id), 'the tapped player is selected');
-  // season points: everyone who played gets points for showing up, plus a little for rating gained
-  await A.click('nav >> text=Board'); await A.click('.seg >> text=Points'); await A.waitForSelector('text=How points work');
-  assert((await A.textContent('.calnav')).includes('2026'), 'the season is shown');
-  const n = await A.locator('.card .rank').count(); assert(n >= 4, 'everyone who played has points: ' + n);
-  const top = await A.evaluate(() => seasonPoints(db.days, db.players, seasonKey(tzParts().date))[0]);
-  assert(top.show >= 5 && top.pts === top.show + top.perf + top.bonus, JSON.stringify(top));
-  await A.click('summary:has-text("How points work")'); const [rules] = await Promise.all([A.waitForEvent('download'), A.click('text=Share the rules')]);
-  assert.equal(rules.suggestedFilename(), 'badminton-points.png', 'the rules as a picture to share');
+  // the rating everyone sees = match rating + loyalty bonus for showing up; Month is back
+  await A.click('nav >> text=Board'); await A.click('.seg >> text=Rating');
+  const r = await A.evaluate(() => { const an = analyse(db.days, db.players), id = db.players[0].id; return { shown: ratingOf(an, id), match: matchRatingOf(an, id), bonus: bonusOf(an, id) }; });
+  assert(r.bonus >= 3 && Math.abs(r.shown - r.match - r.bonus) < 1e-9, JSON.stringify(r));
+  await A.click('summary:has-text("How the rating works")'); const [rules] = await Promise.all([A.waitForEvent('download'), A.click('text=Share the rules')]);
+  assert.equal(rules.suggestedFilename(), 'badminton-rating.png', 'the rules as a picture to share');
+  await A.click('.seg >> text=Month'); await A.waitForSelector('.podium'); assert((await A.textContent('.calnav')).includes('2026'), 'the month leaderboard is back');
   await A.click('nav >> text=Stats'); await A.waitForSelector('text=Head-to-head');
   await A.click('nav >> text=Board'); await A.click('.seg >> text=Rating');
   await A.click('.seg >> text=Day'); await A.click('summary:has-text("Matches")'); await A.waitForSelector('.mrow');                                        // the match list opens
