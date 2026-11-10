@@ -25,7 +25,7 @@ function rpc(u, r) {
   const match = row => r.f.every(([op, c, v]) => op === 'eq' ? row[c] === v : op === 'gte' ? row[c] >= v : row[c] > v);
   switch (r.op) {
     case 'rpc': {
-      if (r.name === 'db_version') return { data: st.dbVersion ?? 20261112 };
+      if (r.name === 'db_version') return { data: st.dbVersion ?? 20261113 };
       if (r.name === 'track') {
         if (!u) return { data: null };
         const f = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(st.now || Date.now())), g = x => f.find(p => p.type === x).value;
@@ -71,6 +71,7 @@ function rpc(u, r) {
       return err('Could not find the function ' + r.name + ' in the schema cache');
     }
     case 'upload': st.files[r.path] = r.data; return { data: {} };
+    case 'copy': { if (!st.files[r.from]) return err('Object not found'); if (st.files[r.to]) return err('The resource already exists'); st.files[r.to] = st.files[r.from]; return { data: {} }; }
     case 'remove': { if (!isAdmin(u)) return err('Admins only'); r.paths.forEach(p => delete st.files[p]); emit(); return { data: [] }; }
     case 'sign': return { data: r.paths.map(p => ({ path: p, signedUrl: 'http://localhost:8766/' + p })) };
     case 'select': {

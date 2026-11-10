@@ -20,7 +20,7 @@ The app stores everything in a free [Supabase](https://supabase.com) project so 
 
 ## Accounts and players
 - Every account is a player. On the sign-up form people pick which existing player they are (Vali, Dani, ...) or "I'm a new player", which creates one.
-- Only the account owner can change their own avatar (**Profile** at the top of the app). The database refuses anyone else, admins included.
+- Only the account owner can change their own avatar (**Profile** at the top of the app). The database refuses anyone else, admins included. Next to the small avatar the app stores a sharp copy for the player card in Storage at `photos/avatars/p<player id>.jpg`; owners write their own, admins may write any (needed when merging players, which moves the card photo to the kept player).
 - Players without an account (guests) are added by admins only, with "Add guest player" on the new-day screen. Guests have no avatar until someone claims them.
 
 ## Admin tools
@@ -28,7 +28,7 @@ The app stores everything in a free [Supabase](https://supabase.com) project so 
 - Admins can remove an account (✕). The person can no longer log in; their player and results stay and become a "no account" guest.
 - **Delete this day's leaderboard** (Board → Day) removes that day, its matches and its group photo. Deleting today's day starts a fresh one.
 - **Delete a photo**: ✕ on a photo card in Photos, or Delete when it's open.
-- **Reset all scores** (Board → General) deletes every day, match and group photo; players and accounts are kept.
+- **Reset all scores** (admin settings, ⋯ at the top) deletes every day, match and group photo; players and accounts are kept.
 - Check that every account has a player (the second list should be empty after running `..._admin_tools.sql`, which also repairs any gaps):
 ```sql
 select pr.username, p.name as player from profiles pr left join players p on p.user_id = pr.id order by pr.username;
@@ -51,8 +51,8 @@ Admins change the schedule in the app: **Members → Play schedule** (day, time,
   - How it runs: the migration `..._push_reminders.sql` schedules `pg_cron` to call the edge function `supabase/functions/remind` every 5 minutes; the database decides who is due (`claim_reminders()`), so nothing is sent twice. The function creates its own notification keys on the first run; no secrets to set.
   - **Deploying the function:** if *Edge Functions* in the Supabase dashboard does not list `remind` after a push, deploy it once by hand: *Edge Functions → Deploy a new function → Via editor*, name it `remind`, paste `supabase/functions/remind/index.ts`, and turn **off** *Enforce JWT verification* (it is called by the scheduler without a login). Or with the CLI: `supabase functions deploy remind --no-verify-jwt`.
   - Check: *Notify me on play days* → *Send a test*. "Not set up on the server yet" means the function has not run yet (wait 5 minutes after deploying).
-- **Chat:** 💬 at the top (with an unread count). Everyone with an account reads and writes; you can delete your own messages, admins any. The app adds its own notes: extra game added, who is in or out, day closed. Reactions 👍😂🔥❤️🏸. *New-message notifications* is a per-person switch in the chat (it needs the play-day notifications to be on); the same edge function `remind` sends them. Only the newest 200 messages load. Not end-to-end encrypted: whoever runs the Supabase project can read it.
-- **Rating (Elo):** everyone starts at 1000 and moves after every match; computed from the match log (`analytics.js`, tested in `tests/`). Badges: 5 in a row, perfect night (4+ matches, all won), comeback (lost the first two, finished ahead), most improved (last 4 nights), player of the night.
+- **Chat:** switched off for now (the code and database tables stay, so it can come back). The **Videos** tips page now sits in the **Group** tab instead.
+- **Rating (Elo):** doubles and singles have separate ratings, both start at 1000 and move after every match. On top comes a **loyalty bonus** that starts again each season: +3 per night played, +1 per match (max 2 a night), +2 per weekly challenge. The shown rating is match rating + bonus. The **Board** is all rating points: **Day** (points won that night), **Month** (points won that month, doubles or singles) and **All time** (the rating, with *How the rating works* and a shareable rules card). Ratings are computed from the match log (`analytics.js`, tested in `tests/`). Badges: 5 in a row, perfect night (4+ matches, all won), comeback (lost the first two, finished ahead), most improved (last 4 nights), player of the night.
 - **Result card:** on the closed-day screen or in a photo, *Share result card* makes a 1080×1350 picture of the podium over the group photo.
 - **Team names** (✎ under a team on the match screen) are saved with the match and shown in the day's match list. **Reactions** (👏🔥😂❤️🏆) go on the group photo.
 

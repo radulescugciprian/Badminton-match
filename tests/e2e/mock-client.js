@@ -26,6 +26,7 @@
       upload: (path, blob, o) => blob.arrayBuffer().then(b => window.__rpc(sess && sess.user.id, { op: 'upload', path, data: Array.from(new Uint8Array(b)) })),
       createSignedUrl: async (path) => ({ data: { signedUrl: 'http://localhost:8766/' + path } }),
       remove: paths => window.__rpc(sess && sess.user.id, { op: 'remove', paths }),
+      copy: (from, to) => window.__rpc(sess && sess.user.id, { op: 'copy', from, to }),
       createSignedUrls: paths => window.__rpc(sess && sess.user.id, { op: 'sign', paths }),
     }) },
     channel: () => { const c = { on: (_a, _b, f) => { emitCb = f; return c; }, subscribe: () => c }; return c; },

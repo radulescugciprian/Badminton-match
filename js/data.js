@@ -21,7 +21,7 @@ let db = { players: [], days: [] }, members = [], me = {}, session = null, loade
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
-const DB_VERSION = 20261112; // bump together with db_version() in the newest migration
+const DB_VERSION = 20261113; // bump together with db_version() in the newest migration
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
 let boardKind = 'doubles', boardOpen = null, memFilter = 'all', memSort = 'name', memOpen = null, adminPage = '', admPanel = '', prevView = 'play', profPanel = '', usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, lineupOpen = false, moreOpen = false, dayMore = false, matchesOpen = {}, lastRec = 0, bgLoaded = false, rsvps = [], reactions = [], statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
@@ -242,7 +242,13 @@ const rulesHtml = () => `<h2 class="sec">${t('Badminton rules')}</h2>
       <li>${t('When your side wins a rally while serving, the same player serves again from the other court and the two partners swap sides.')}</li>
       <li>${t('During a rally either partner may hit the shuttle. Only the serve and the return of serve are fixed by the diagonal.')}</li></ul></details>`;
 // ---- release notes, newest first. A new id shows "What's new" once to everyone who used the app before (new people get the tour instead).
-const NEWS = () => [{ id: '2026-11-10', items: [
+const NEWS = () => [{ id: '2026-11-10.2', date: '2026-11-10', items: [
+  ['📈', t('Separate ratings for doubles and singles, plus a loyalty bonus for showing up: +3 a night, +1 a match (max 2), +2 per weekly challenge. It starts again each season.')],
+  ['🏆', t('The leaderboard is all about rating points: won that night, won that month, and your rating over all time. Share "How the rating works" from All time.')],
+  ['🃏', t('New player cards in a clean style, with your best partner (best win rate together). Upload your profile photo again for a sharp card.')],
+  ['🎬', t('Videos moved to the Group tab. The chat is switched off for now.')],
+  ['👆', t('Easier to use: bigger buttons, a ⋯ menu at the top for admin tools and log out, and short "✓" messages instead of pop-ups.')],
+] }, { id: '2026-11-10', items: [
   ['🎯', t('Challenge of the week: one light goal for everyone, a new one every Monday. Do it and collect the badge.')],
   ['🃏', t('Player cards on the Stats tab: your title, six stats and badges. Bronze, silver or gold depends on how many nights you played. Share yours on WhatsApp.')],
   ['📷', t('Admins can add or replace the group photo of an earlier day.')],
@@ -261,11 +267,11 @@ const NEWS = () => [{ id: '2026-11-10', items: [
 ] }];
 const newsSeen = () => { try { return localStorage.getItem('seenNews') || ''; } catch { return '9999'; } };
 const markNews = () => { try { localStorage.setItem('seenNews', NEWS()[0].id); } catch {} };
-const newsText = () => { const r = NEWS()[0]; return `🏸 ${t("What's new in our badminton app")} (${niceDate(r.id, { day: 'numeric', month: 'long', year: 'numeric' })})\n\n` + r.items.map(([e, x]) => `${e} ${x}`).join('\n') + '\n\n' + appLink(); };
+const newsText = () => { const r = NEWS()[0]; return `🏸 ${t("What's new in our badminton app")} (${niceDate(r.date || r.id, { day: 'numeric', month: 'long', year: 'numeric' })})\n\n` + r.items.map(([e, x]) => `${e} ${x}`).join('\n') + '\n\n' + appLink(); };
 function showNews() {
   document.getElementById('news')?.remove(); markNews();
   const el = document.createElement('div'); el.id = 'news'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
-  el.innerHTML = `<div class="card"><h1>🆕 ${t("What's new")}</h1>${NEWS().map(r => `<h2 class="sec">${esc(niceDate(r.id, { day: 'numeric', month: 'long', year: 'numeric' }))}</h2>
+  el.innerHTML = `<div class="card"><h1>🆕 ${t("What's new")}</h1>${NEWS().map(r => `<h2 class="sec">${esc(niceDate(r.date || r.id, { day: 'numeric', month: 'long', year: 'numeric' }))}</h2>
       <ul class="news">${r.items.map(([e, x]) => `<li><span>${e}</span><span>${esc(x)}</span></li>`).join('')}</ul>`).join('')}
     <button class="add" id="newsshare">💬 ${t('Share on WhatsApp')}</button><button class="primary" id="newsok">${t('Got it')}</button></div>`;
   document.body.append(el); minimalize(el);
@@ -287,7 +293,8 @@ function showHelp() {
     <p class="mut">${t('The numbers are places in the player list (1 = top).')}</p>
     <p>${t('With 4 players nobody rests: the same teams play best of 3, then change teams, until everyone has played with everyone.')}</p>
     <p>${t('With 3 players you play singles: the winner stays on court, but after 3 games in a row the winner sits out one game.')}</p>
-    <h2 class="sec">${t('Rating')}</h2><p>${t('Everyone starts at 1000 points. Beating stronger players earns more.')}</p>
+    <h2 class="sec">${t('Rating')}</h2><p>${t('Doubles and singles have separate ratings, both starting at 1000. Win and you gain points, lose and you drop; beating stronger players earns more.')}</p>
+    <p>${t('On top comes a loyalty bonus that starts again each season: +3 for every night you play, +1 per match (at most 2 a night) and +2 per weekly challenge. The leaderboard shows your rating with the bonus.')}</p>
     ${rulesHtml()}
     <p class="mut">🔒 ${t('Admins can see how often each person opens each screen (only counts, nothing you type).')}</p>
     <button class="primary" id="gotit">${t('Got it')}</button></div>`;
@@ -863,7 +870,15 @@ const mergePlayers = e => {
   if (keep === dup) return showMsg(t('Pick two different players.'));
   const v = { keep: player(keep).name, dup: player(dup).name };
   if (!confirm(t('Merge {dup} into {keep}? All matches, answers and the account of {dup} move to {keep}, and {dup} disappears. This cannot be undone.', v))) return;
-  act(async () => { ok(await sb.rpc('merge_players', { keep, dup })); toast(t('{dup} is now part of {keep}.', v)); });
+  const moveCardPhoto = !!player(dup).user;   // the account's own photo wins, like the small avatar in the database
+  act(async () => { ok(await sb.rpc('merge_players', { keep, dup }));
+    // the sharp card photo moves along: only once the new account's photo is known to exist is the old one replaced
+    const from = `avatars/p${dup}.jpg`, to = `avatars/p${keep}.jpg`, has = await sb.storage.from('photos').createSignedUrls([from], 60);
+    if (!has.error && has.data[0] && !has.data[0].error && (await fetch(has.data[0].signedUrl, { method: 'HEAD' }).catch(() => ({}))).ok) {
+      if (moveCardPhoto) { await sb.storage.from('photos').remove([to]); await sb.storage.from('photos').copy(from, to); delete bigAvatar[keep]; }
+      await sb.storage.from('photos').remove([from]);
+    }
+    toast(t('{dup} is now part of {keep}.', v)); });
 };
 const toggleAdmin = (id, v) => act(async () => ok(await sb.from('profiles').update({ is_admin: v }).eq('id', id)));
 function saveSchedule(e) { // admins only; the database also refuses unknown time zones

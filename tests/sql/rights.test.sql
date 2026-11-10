@@ -283,6 +283,7 @@ reset role;
 set role authenticated; select as_user((select m1 from ids));
 insert into storage.objects (bucket_id, name) values ('photos', 'avatars/p2.jpg');
 select must_fail($$insert into storage.objects (bucket_id, name) values ('photos', 'avatars/p1.jpg')$$, 'row-level security');
+select as_user((select adm from ids)); insert into storage.objects (bucket_id, name) values ('photos', 'avatars/p9.jpg'); select as_user((select m1 from ids));   -- admins may (moving a photo when merging)
 select must_fail($$insert into storage.objects (bucket_id, name) values ('photos', 'bg/play.jpg')$$, 'row-level security');
 insert into storage.objects (bucket_id, name) values ('photos', 'days/5.jpg');
 reset role;
