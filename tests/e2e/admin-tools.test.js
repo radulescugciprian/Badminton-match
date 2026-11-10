@@ -58,6 +58,11 @@ run('admin tools', async h => {
   await A.locator('input[type=range]').evaluate(el => { el.value = 40; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); });
   await h.until(() => st.schedule[0].bg_dim === 40, 'dimming saved');
   assert.equal(await A.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--dim').trim()), '0.4');
+  // clean look by default; the admin can switch the photo backgrounds back on for everyone
+  assert(await B.evaluate(() => document.body.classList.contains('clean')), 'plain background at first');
+  await A.click('label:has-text("Photo backgrounds") input'); await h.until(() => st.schedule[0].bg_photos === true, 'photos on saved');
+  await A.waitForFunction(() => !document.body.classList.contains('clean'));
+  await A.click('label:has-text("Photo backgrounds") input'); await h.until(() => st.schedule[0].bg_photos === false, 'photos off saved');
   await B.reload(); await B.waitForSelector('text=Next match day').catch(() => {});
   // receipts on the Photos tab: a member adds one, everyone sees it, the member deletes it again
   await B.click('nav >> text=Photos'); await B.click('.seg >> text=Receipts'); await B.waitForSelector('text=Add a receipt');

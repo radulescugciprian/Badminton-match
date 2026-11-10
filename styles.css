@@ -5,7 +5,7 @@
   /* top-down badminton court (doubles lines, singles sidelines, service lines, net) behind everything */
   body::before{content:'';position:fixed;inset:0;z-index:-1;background:var(--court)}
   /* one photo per screen, darkened so cards and text stay readable (Play's can be replaced by an admin via --pbg) */
-  body.out::before,body[data-view=play]::before,body[data-view=board]::before,body[data-view=photos]::before,body[data-view=stats]::before{background:linear-gradient(var(--ov1),var(--ov2)),var(--bg-img) center/cover}
+  body:not(.clean):is(.out,[data-view=play],[data-view=board],[data-view=photos],[data-view=stats])::before{background:linear-gradient(var(--ov1),var(--ov2)),var(--bg-img) center/cover}
   body.out{--bg-img:url(bg-login.jpg)} body[data-view=play]{--bg-img:var(--pbg,url(bg-play.jpg))}
   body[data-view=board]{--bg-img:url(bg-board.jpg)} body[data-view=photos]{--bg-img:url(bg-photos.jpg)} body[data-view=stats]{--bg-img:url(bg-stats.jpg)}
   body{margin:0;background:var(--bg);color:var(--text);font:var(--fs-md)/1.45 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;font-variant-numeric:tabular-nums;min-height:100dvh;
@@ -43,7 +43,7 @@
   .row.bench{opacity:.5}
   .tag{display:inline-block;font-size:var(--fs-xs);font-weight:600;color:var(--mut);border:1px solid var(--line);border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:middle}
   .sep{color:var(--mut);font-size:var(--fs-sm);text-transform:uppercase;letter-spacing:.08em;padding:6px 4px 0}
-  .add{width:100%;background:none;border:2px dashed var(--line);color:var(--mut);margin-bottom:16px}
+  .add{width:100%;background:var(--card);border:1px solid var(--line);color:var(--text);margin-bottom:16px}
   .who{display:flex;align-items:center;gap:8px;justify-content:center;margin-top:8px}
   .team b{font-size:var(--fs-md);margin:0}
   .pod .av{--s:56px;margin:4px 0}
@@ -156,8 +156,8 @@
   nav button[aria-current=page]{color:var(--acc);background:var(--card)}
   /* the neon icons are drawn for a dark ground: darken them on the light theme */
   /* light theme, photo shown as it is: text straight on the photo is white; light surfaces (cards, buttons, bars) keep dark text */
-  :root[data-theme=light] body:is(.out,[data-view=play],[data-view=board],[data-view=photos],[data-view=stats]){--text:#fff;--mut:#eaf2ed;--ts:rgba(0,0,0,.8);--line-t:#c4d8cd}
-  :root[data-theme=light] :is(.card,.stage,.toast,#tour .tip,button:not(.link,.primary),select,input,.row,.team,.rest,.seg,.tile,.badge,.cal .d,.top,nav,.rsvp,.rx){--text:#10231a;--mut:#3d5a4c;--ts:rgba(255,255,255,.95);color:var(--text)}
+  :root[data-theme=light] body:not(.clean):is(.out,[data-view=play],[data-view=board],[data-view=photos],[data-view=stats]){--text:#fff;--mut:#eaf2ed;--ts:rgba(0,0,0,.8);--line-t:#c4d8cd}
+  :root[data-theme=light] :is(.card,.podium .bar,.pchoose,.stage,.toast,#tour .tip,button:not(.link,.primary),select,input,.row,.team,.rest,.seg,.tile,.badge,.cal .d,.top,nav,.rsvp,.rx){--text:#10231a;--mut:#3d5a4c;--ts:rgba(255,255,255,.95);color:var(--text)}
   .field select{width:100%;margin-top:6px}
   .next{margin:12px 0;padding:12px;border-radius:14px;background:var(--card);border:1px solid var(--line);text-align:center}
   .next small{display:block;color:var(--mut);font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:8px}
@@ -323,3 +323,12 @@
   .pchoose button .av{border:3px solid transparent} .pchoose button[aria-pressed=true]{color:var(--text)} .pchoose button[aria-pressed=true] .av{border-color:var(--acc)}
   .howpts{margin:0;padding-left:4px;list-style:none;display:flex;flex-direction:column;gap:6px} .howpts b{display:inline-block;min-width:34px;color:var(--gold);font-family:var(--disp);font-size:20px;font-weight:400}
   .ptsnight{text-align:center;font-weight:700;margin:0 0 12px} .rank .bn small{display:block}
+
+  /* clean look (default): one plain surface, no photos or court lines; admins can switch photo backgrounds back on */
+  body.clean::before{background:none}
+  /* photo backgrounds: always a dark veil behind the white text, so a bright or missing photo never hides it */
+  body:not(.clean){--ovc:7,12,24;--ov1:rgba(var(--ovc),max(.35,var(--dim)));--ov2:rgba(var(--ovc),max(.5,var(--dim)))}
+  body:not(.clean) .pchoose{background:var(--card);border-radius:14px;padding:6px}
+  .stseg{margin:16px 0 4px}
+  .nextup{display:flex;gap:8px;margin:0 0 16px} .nextup>button{flex:1;margin:0}
+  .quietacts{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;margin-top:8px}

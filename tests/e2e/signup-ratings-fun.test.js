@@ -69,7 +69,10 @@ run('sign-up list, ratings, badges, result card and reactions', async h => {
   // ---- stats + rating
   await A.click('nav >> text=Stats'); await A.waitForSelector('text=Rating over time');
   const sx = await A.textContent('#app');
-  assert(sx.includes('Perfect night') && sx.includes('Partners') && sx.includes('Best pair') && (await A.locator('svg[aria-label^="Rating over time"]').count()) === 1, 'stats page parts');
+  assert(sx.includes('Perfect night') && !sx.includes('Best pair') && (await A.locator('svg[aria-label^="Rating over time"]').count()) === 1, 'stats: badges and the chart first');
+  await A.click('.stseg >> text=Partners'); await A.waitForSelector('text=Best pair');   // one section at a time
+  await A.click('.stseg >> text=Rivals'); await A.waitForSelector('h2:has-text("Head-to-head")');
+  await A.click('.stseg >> text=Badges');
   await A.screenshot({ path: require('os').tmpdir() + '/stats.png', fullPage: true });
   await A.click('nav >> text=Board'); await A.click('.seg >> text=All time'); await A.waitForSelector('text=Everyone starts at 1000');
   assert((await A.textContent('.card .rank >> nth=0')).includes('Vali'), 'highest rating first');
@@ -82,7 +85,7 @@ run('sign-up list, ratings, badges, result card and reactions', async h => {
   await A.click('summary:has-text("How the rating works")'); const [rules] = await Promise.all([A.waitForEvent('download'), A.click('text=Share the rules')]);
   assert.equal(rules.suggestedFilename(), 'badminton-rating.png', 'the rules as a picture to share');
   await A.click('.seg >> text=Month'); await A.waitForSelector('.podium'); assert((await A.textContent('.calnav')).includes('2026'), 'the month leaderboard is back');
-  await A.click('nav >> text=Stats'); await A.waitForSelector('text=Head-to-head');
+  await A.click('nav >> text=Stats'); await A.waitForSelector('svg[aria-label^="Rating over time"]');
   await A.click('nav >> text=Board'); await A.click('.seg >> text=All time');
   await A.click('.seg >> text=Day'); await A.click('summary:has-text("Matches")'); await A.waitForSelector('.mrow');                                        // the match list opens
   await A.screenshot({ path: require('os').tmpdir() + '/board2.png', fullPage: true });

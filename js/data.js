@@ -21,10 +21,10 @@ let db = { players: [], days: [] }, members = [], me = {}, session = null, loade
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
-const DB_VERSION = 20261113; // bump together with db_version() in the newest migration
+const DB_VERSION = 20261114; // bump together with db_version() in the newest migration
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
-let boardKind = 'doubles', boardOpen = null, memFilter = 'all', memSort = 'name', memOpen = null, adminPage = '', admPanel = '', prevView = 'play', profPanel = '', usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, lineupOpen = false, moreOpen = false, dayMore = false, matchesOpen = {}, lastRec = 0, bgLoaded = false, rsvps = [], reactions = [], statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
+let statsSeg = 'badges', boardKind = 'doubles', boardOpen = null, memFilter = 'all', memSort = 'name', memOpen = null, adminPage = '', admPanel = '', prevView = 'play', profPanel = '', usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, lineupOpen = false, moreOpen = false, dayMore = false, matchesOpen = {}, lastRec = 0, bgLoaded = false, rsvps = [], reactions = [], statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
 let view = 'play', tab = 'all', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0, manualLogout = false, lostSession = false, asMember = false;   // asMember: an admin previewing the app as a normal member
 // the sign-in is kept on the phone (localStorage) and renewed automatically, so people stay logged in until they log out
 const sb = window.supabase && CONFIG.url && !CONFIG.url.includes('YOUR-')
@@ -247,6 +247,7 @@ const NEWS = () => [{ id: '2026-11-10.2', date: '2026-11-10', items: [
   ['🏆', t('The leaderboard is all about rating points: won that night, won that month, and your rating over all time. Share "How the rating works" from All time.')],
   ['🃏', t('New player cards in a clean style, with your best partner (best win rate together). Upload your profile photo again for a sharp card.')],
   ['🎬', t('Videos moved to the Group tab. The chat is switched off for now.')],
+  ['✨', t('A cleaner look: a plain background, Stats in three sections (Badges, Partners, Rivals) and a clear next step after a match night. Admins can switch the photo backgrounds back on.')],
   ['👆', t('Easier to use: bigger buttons, a ⋯ menu at the top for admin tools and log out, and short "✓" messages instead of pop-ups.')],
 ] }, { id: '2026-11-10', items: [
   ['🎯', t('Challenge of the week: one light goal for everyone, a new one every Monday. Do it and collect the badge.')],
@@ -401,6 +402,9 @@ const loadBg = async () => {
 };
 const openStats = id => { statsId = id; go('stats'); };
 const dim = () => (sched && sched.bg_dim) || 0;
+// clean look by default; admins can switch the photo backgrounds back on for everyone (remembered for the login screen)
+const photosOn = () => { if (sched) { try { localStorage.setItem('bgPhotos', sched.bg_photos ? '1' : '0'); } catch {} return !!sched.bg_photos; } try { return localStorage.getItem('bgPhotos') === '1'; } catch { return false; } };
+const saveBgPhotos = on => act(async () => ok(await sb.from('schedule').update({ bg_photos: on }).eq('id', true)), () => { if (sched) sched.bg_photos = on; });
 const previewDim = v => { document.documentElement.style.setProperty('--dim', v / 100); dimv.textContent = v + '%'; };
 const saveDim = v => act(async () => ok(await sb.from('schedule').update({ bg_dim: +v }).eq('id', true)), () => { if (sched) sched.bg_dim = +v; });
 // receipts: a photo of the bill, what it was for and (optionally) how much; whoever added it or an admin can delete it

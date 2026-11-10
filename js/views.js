@@ -204,12 +204,12 @@ function play() {
     return `<h1>${t('Day closed')} 🏁</h1><p class="mut">${esc(d.date)} · ${tp('{n} matches', n)}</p>
       <div class="card" style="padding:4px 16px;margin-bottom:16px">${stats(d.matches).slice(0, 3).map((r, i) => `<div class="rank"><span class="r">${['🥇', '🥈', '🥉'][i]}</span>${av(r.id, 32)}
         <b>${esc(r.name)}</b><span class="mut" style="margin:0">${r.w}/${r.p}</span><b>${Math.round(pct(r) * 100)}%</b></div>`).join('')}</div>
-      ${closedExtras(d)}${matchList(d, 'closed')}${challengeCard()}
-      <button class="primary" onclick="photo(${d.id})">📷 ${d.photo ? t('Retake group photo') : t('Take group photo')}</button>
-      ${d.photo ? `<p class="mut" style="text-align:center;margin:8px 0 0">✓ ${t('Photo saved in Photos')}</p>` : ''}
-      <button class="add" style="margin-top:12px" onclick="shareCard(${d.id})">📤 ${t('Share result card')}</button>
-      <button class="add" onclick="newDayBtn()">${t('Start next match day')}</button>
-      ${admin ? `<div class="actions"><button class="link" onclick="reopenDay()">${t('Reopen day')}</button></div>` : ''}`;
+      ${closedExtras(d)}
+      <div class="nextup"><button class="primary" onclick="photo(${d.id})">📷 ${d.photo ? t('Retake group photo') : t('Take group photo')}</button>
+        <button class="add" onclick="shareCard(${d.id})">📤 ${t('Share result card')}</button></div>
+      ${d.photo ? `<p class="mut" style="text-align:center;margin:-8px 0 12px">✓ ${t('Photo saved in Photos')}</p>` : ''}
+      ${rsvpCard()}${matchList(d, 'closed')}${challengeCard()}
+      <div class="quietacts"><button class="link" onclick="newDayBtn()">${t('Start next match day')}</button>${admin ? `<button class="link" onclick="reopenDay()">${t('Reopen day')}</button>` : ''}</div>`;
   }
   const { t1, t2, rest } = nextTeams(d), ms = d.matches.slice(d.rotFrom || 0), bo3 = series(ms.map(m => m.win)).w;
   const streak = ms.slice().reverse().findIndex(m => ![...m.t1, ...m.t2].includes(t1[0])); // games in a row the player staying on has played
@@ -339,19 +339,22 @@ function statsView() {
     b.nightsRun >= 5 && `🗓 ${t('{n} nights in a row', { n: b.nightsRun })}`, me_.p >= 50 && `🎖 ${t('{n} matches played', { n: [250, 100, 50].find(x => me_.p >= x) })}`,
     b.everyone && `🤝 ${t('Played with everyone')}`, b.everyMonth && `📆 ${t('Never missed a month')}`, earlyBird(id) && `🐦 ${t('Early bird')} ×${earlyBird(id)}`, loyal(id) && `🏅 ${t('Loyal player')} ×${loyal(id)}`, challengeWins(db.days, db.players).get(id) && `🎯 ${t('Weekly challenges')} ×${challengeWins(db.days, db.players).get(id)}`].filter(Boolean);
   const rm = recapDefault();
-  return `<h1>${t('Stats')}</h1>${rm ? `<button class="add recapbtn" onclick="openRecap()">🎁 ${t('{month} recap', { month: monthLabel(rm) })}</button>` : ''}${challengeCard()}
+  const seg = [['badges', t('Badges')], ['partners', t('Partners')], ['rivals', t('Rivals')]];
+  return `<h1>${t('Stats')}</h1>
     <div class="pchoose" role="group" aria-label="${t('Player')}">${played.map(p => `<button aria-pressed="${p.id === id}" onclick="statsId=${p.id};render()">${av(p.id, 48)}<span>${esc(p.name)}${sharing(p.id) ? '' : ' 🔒'}</span></button>`).join('')}</div>
     ${ratingHidden(id) ? '' : `<p class="mut rbreak">${t('Rating')} <b>${Math.round(ratingOf(an, id))}</b> = ${Math.round(matchRatingOf(an, id))} ${t('match rating')} + ${bonusOf(an, id)} ${t('loyalty bonus')}</p>`}
     ${sharing(id) ? '' : `<p class="mut" role="status">🔒 ${t('{name} keeps these stats private. You can see them because you are an admin or it is you.', { name: esc(player(id).name) })}</p>`}
     ${playerCardHtml(cardSpec(id, an, badges))}<button class="add" style="margin-top:10px" onclick="sharePlayerCard(${id})">📤 ${t('Share card')}</button>
-    <h2 class="sec">${t('Badges')}</h2>${badges.map(x => `<span class="badge">${x}</span>`).join('') || `<p class="mut">${t('None yet. They come for wins, streaks and simply showing up.')}</p>`}
-    ${ratingHidden(id) ? '' : `<h2 class="sec">${t('Rating over time')}</h2><div class="card" style="color:var(--mut)">${ratingChart(h.map(x => x.r), 320, 150, t('Rating over time')) || `<p class="mut" style="margin:0">${t('Play a few more matches to see the chart.')}</p>`}</div>`}
-    <h2 class="sec">${t('Partners')}</h2><div class="card" style="padding:4px 16px">${mates.map(x => `<div class="member"><span>${line(x)}</span></div>`).join('') || `<p class="mut">${t('No partners yet.')}</p>`}</div>
-    <h2 class="sec">${t('Rivals')}</h2><div class="card" style="padding:4px 16px">
+    <div class="seg stseg">${seg.map(([k, l]) => `<button class="${statsSeg === k ? 'on' : ''}" onclick="statsSeg='${k}';render()">${l}</button>`).join('')}</div>
+    ${statsSeg === 'badges' ? `<h2 class="sec">${t('Badges')}</h2>${badges.map(x => `<span class="badge">${x}</span>`).join('') || `<p class="mut">${t('None yet. They come for wins, streaks and simply showing up.')}</p>`}
+    ${ratingHidden(id) ? '' : `<h2 class="sec">${t('Rating over time')}</h2><div class="card" style="color:var(--mut)">${ratingChart(h.map(x => x.r), 320, 150, t('Rating over time')) || `<p class="mut" style="margin:0">${t('Play a few more matches to see the chart.')}</p>`}</div>`}` : ''}
+    ${statsSeg === 'partners' ? `<h2 class="sec">${t('Partners')}</h2><div class="card" style="padding:4px 16px">${mates.map(x => `<div class="member"><span>${line(x)}</span></div>`).join('') || `<p class="mut">${t('No partners yet.')}</p>`}</div>
+    <h2 class="sec">${t('Best pair in the group')}</h2><div class="card">${pair_ ? `${pair(pair_.ids)} <span class="mut">${t('{record} together', { record: `${pair_.w}-${pair_.g - pair_.w}` })}</span>` : `<span class="mut">${t('needs 3 games together')}</span>`}</div>` : ''}
+    ${statsSeg === 'rivals' ? `<h2 class="sec">${t('Rivals')}</h2><div class="card" style="padding:4px 16px">
       <div class="member"><span>😈 ${t('Nemesis')}</span><span>${nemesis && rate(nemesis[1]) < 50 ? line(nemesis) : none}</span></div>
       <div class="member"><span>🎯 ${t('Favourite victim')}</span><span>${victim && rate(victim[1]) > 50 ? line(victim) : none}</span></div></div>
-    <h2 class="sec">${t('Head-to-head')}</h2><div class="card" style="padding:4px 16px">${[...rel.foe].filter(([pid]) => canSee(pid)).sort((p, q) => q[1].g - p[1].g).map(x => `<div class="member"><span>${line(x)}</span></div>`).join('') || `<p class="mut">${t('No opponents yet.')}</p>`}</div>
-    <h2 class="sec">${t('Best pair in the group')}</h2><div class="card">${pair_ ? `${pair(pair_.ids)} <span class="mut">${t('{record} together', { record: `${pair_.w}-${pair_.g - pair_.w}` })}</span>` : `<span class="mut">${t('needs 3 games together')}</span>`}</div>`;
+    <h2 class="sec">${t('Head-to-head')}</h2><div class="card" style="padding:4px 16px">${[...rel.foe].filter(([pid]) => canSee(pid)).sort((p, q) => q[1].g - p[1].g).map(x => `<div class="member"><span>${line(x)}</span></div>`).join('') || `<p class="mut">${t('No opponents yet.')}</p>`}</div>` : ''}
+    ${challengeCard()}${rm ? `<button class="add recapbtn" onclick="openRecap()">🎁 ${t('{month} recap', { month: monthLabel(rm) })}</button>` : ''}`;
 }
 
 
@@ -468,7 +471,9 @@ function adminView() {
         <p class="msg" role="alert"></p><button class="primary" type="submit">${t('Save schedule')}</button></form>`) : ''}
       <button class="srow" onclick="go('calendar')"><span>📅 ${t('Calendar')}</span><span class="mut">${t('extra days, cancelled days, old days')} ›</span></button></div>
     <h2 class="sgroup">${t('Look')}</h2><div class="card slist">
-      ${row('bg', '🖼', t('Play background'), dim() ? `${t('Photo dimming')} ${dim()}%` : '')}${panel('bg', `<p class="mut" style="margin:0 0 8px">${t('Shown behind the Play tab for everyone.')}</p>
+      ${row('bg', '🖼', t('Play background'), !photosOn() ? t('Off') : dim() ? `${t('Photo dimming')} ${dim()}%` : '')}${panel('bg', `<label class="check" style="margin:0 0 12px"><input type="checkbox" ${photosOn() ? 'checked' : ''} onchange="saveBgPhotos(this.checked)"> ${t('Photo backgrounds')}</label>
+        <p class="mut" style="margin:0 0 8px">${t('Off: a clean, plain background. On: photos behind Play, Board, Photos and Stats, for everyone.')}</p>
+        <p class="mut" style="margin:0 0 8px">${t('Shown behind the Play tab for everyone.')}</p>
         <button onclick="pickBg()">🖼 ${t('Change background')}</button> <button class="link" onclick="resetBg()">${t('Use default background')}</button>
         <label class="field" style="margin:12px 0 0">${t('Photo dimming')}: <b id="dimv">${dim()}%</b><input type="range" min="0" max="90" step="5" value="${dim()}" oninput="previewDim(this.value)" onchange="saveDim(this.value)"></label>`)}
 </div>
@@ -612,12 +617,20 @@ Object.assign(LINE, {
   flag: '<path d="M5 21V4h12l-2 4 2 4H5"/>', warn: '<path d="M12 3l10 18H2zM12 10v5M12 18h.01"/>', save: '<path d="M12 4v11M8 11l4 4 4-4M5 20h14"/>',
   gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/>',
   plus: '<path d="M12 5v14M5 12h14"/>', video: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5v5l4.5-2.5z"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/>',
+  eyeoff: '<path d="M3 3l18 18M10.6 6.1A10 10 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-3.2 3.8M6.6 6.6A17 17 0 0 0 2 12s3.5 6 10 6a9.7 9.7 0 0 0 4.4-1"/>',
+  contrast: '<circle cx="12" cy="12" r="9"/><path d="M12 3v18a9 9 0 0 0 0-18z" fill="currentColor"/>', unlock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/>',
+  star: '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>', crown: '<path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z"/>',
+  gift: '<rect x="3" y="8" width="18" height="5" rx="1"/><path d="M5 13v8h14v-8M12 8v13M12 8S10.5 3 8 4s0 4 4 4zM12 8s1.5-5 4-4 0 4-4 4z"/>',
+  medal: '<circle cx="12" cy="15" r="5"/><path d="M8.5 11 6 3h4l2 5M15.5 11 18 3h-4l-2 5"/>', bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+  phone: '<rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/>', user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
   target: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/>', link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
 });
 // minimal set: the emoji used as icons anywhere in the app become line icons (reactions, medals and badges stay as they are)
 const EMO = { '👁': 'eye', '💬': 'chat', '📅': 'calendar', '✅': 'check', '❌': 'cross', '✕': 'cross', '⏳': 'clock', '✎': 'pencil', '📤': 'share', '🔔': 'bell',
   '🧾': 'receipt', '🖼': 'image', '🚫': 'ban', '↺': 'undo', '↶': 'undo', '🗑': 'trash', '▶': 'go', '🔒': 'lock', '✉': 'mail', '🏁': 'flag', '📷': 'photos',
-  '📊': 'stats', '🏆': 'board', '🏸': 'play', '👥': 'members', '❔': 'help', '❓': 'help', '⚙': 'gear', '⚠': 'warn', '🔑': 'admin', '⬇': 'save', '➕': 'plus', '🎬': 'video', '🎯': 'target', '🔗': 'link' };
+  '📊': 'stats', '🏆': 'board', '🏸': 'play', '👥': 'members', '❔': 'help', '❓': 'help', '⚙': 'gear', '⚠': 'warn', '🔑': 'admin', '⬇': 'save', '➕': 'plus', '🎬': 'video', '🎯': 'target', '🔗': 'link',
+  '🌐': 'globe', '🙈': 'eyeoff', '🌗': 'contrast', '🎨': 'contrast', '🔓': 'unlock', '⭐': 'star', '👑': 'crown', '🎁': 'gift', '🏅': 'medal', '😈': 'bolt', '📱': 'phone', '👤': 'user' };
 const EMO_RE = new RegExp('(' + Object.keys(EMO).join('|') + ')\uFE0F?', 'gu');
 function minimalize(root) {
   if (!root) return;
@@ -640,7 +653,7 @@ function render() {
   if (view === 'admin' && !isAdmin()) view = 'play';
   if (view === 'chat' && session && loaded) markChatSeen();
   document.documentElement.style.setProperty('--dim', dim() / 100);
-  document.body.classList.toggle('out', !session);
+  document.body.classList.toggle('out', !session); document.body.classList.toggle('clean', !photosOn());
   document.body.dataset.view = session ? view : '';
   document.documentElement.lang = lang;
   document.querySelectorAll('nav button').forEach(b => { b.innerHTML = NAV[b.dataset.v](); b.setAttribute('aria-current', b.dataset.v === view || (b.dataset.v === 'group' && (view === 'chat' || view === 'tips' || view === 'members')) ? 'page' : ''); });
