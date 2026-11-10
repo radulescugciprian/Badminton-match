@@ -120,3 +120,4 @@ app.*.symbols
 
 # Node tools used only for the tests
 node_modules/
+.impeccable/
