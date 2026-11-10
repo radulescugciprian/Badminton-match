@@ -332,9 +332,7 @@ function statsView() {
   return `<h1>${t('Stats')}</h1>${rm ? `<button class="add recapbtn" onclick="openRecap()">🎁 ${t('{month} recap', { month: monthLabel(rm) })}</button>` : ''}${challengeCard()}
     <select onchange="statsId=+this.value;render()" aria-label="${t('Player')}">${played.map(p => `<option value="${p.id}" ${p.id === id ? 'selected' : ''}>${esc(p.name)}${sharing(p.id) ? '' : ' 🔒'}</option>`).join('')}</select>
     ${sharing(id) ? '' : `<p class="mut" role="status">🔒 ${t('{name} keeps these stats private. You can see them because you are an admin or it is you.', { name: esc(player(id).name) })}</p>`}
-    <div class="card" style="display:flex;align-items:center;gap:14px;margin:12px 0">${av(id, 64)}<div style="flex:1"><b style="font-size:var(--fs-lg)">${name(id)}</b>
-      <div class="mut" style="margin:0">${t('Rating')}</div></div><b style="font-size:var(--fs-2xl)">${ratingHidden(id) ? '🙈' : Math.round(an.rating.get(id))}</b></div>
-    <div class="tiles"><div class="tile"><b>${me_.p}</b>${t('matches')}</div><div class="tile"><b>${Math.round(100 * pct(me_))}%</b>${t('win rate')}</div><div class="tile"><b>${b.bestStreak}</b>${t('best streak')}</div></div>
+    ${playerCardHtml(cardSpec(id, an, badges))}<button class="add" style="margin-top:10px" onclick="sharePlayerCard(${id})">📤 ${t('Share card')}</button>
     <h2 class="sec">${t('Badges')}</h2>${badges.map(x => `<span class="badge">${x}</span>`).join('') || `<p class="mut">${t('None yet. They come for wins, streaks and simply showing up.')}</p>`}
     ${ratingHidden(id) ? '' : `<h2 class="sec">${t('Rating over time')}</h2><div class="card" style="color:var(--mut)">${ratingChart(h.map(x => x.r), 320, 150, t('Rating over time')) || `<p class="mut" style="margin:0">${t('Play a few more matches to see the chart.')}</p>`}</div>`}
     <h2 class="sec">${t('Partners')}</h2><div class="card" style="padding:4px 16px">${mates.map(x => `<div class="member"><span>${line(x)}</span></div>`).join('') || `<p class="mut">${t('No partners yet.')}</p>`}</div>
@@ -345,6 +343,23 @@ function statsView() {
     <h2 class="sec">${t('Best pair in the group')}</h2><div class="card">${pair_ ? `${pair(pair_.ids)} <span class="mut">${t('{record} together', { record: `${pair_.w}-${pair_.g - pair_.w}` })}</span>` : `<span class="mut">${t('needs 3 games together')}</span>`}</div>`;
 }
 
+
+// player card: the same facts for the screen and for the shared picture (drawPlayerCard in fx.js)
+const TITLES = () => ({ clutch: ['🧊', t('Clutch'), t('wins the deciding games')], giant: ['😈', t('Giant slayer'), t('beats the favourites')], glue: ['🤝', t('Glue'), t('partners win more with them')],
+  comeback: ['🔄', t('Comeback kid'), t('never gives up on a night')], ironman: ['🔋', t('Ironman'), t('hardly ever misses a night')], rollercoaster: ['🎢', t('Rollercoaster'), t('win, lose, win, lose…')],
+  rookie: ['🌱', t('Rookie'), t('just getting started')], allround: ['⚖️', t('All-rounder'), t('a bit of everything')] });
+function cardSpec(id, an = analyse(db.days, db.players), badges = []) {
+  const c = playerCard(db.days, db.players, id, an), s = seasonOf(tzParts().date), [te, tn, td] = TITLES()[c.title], hid = ratingHidden(id);
+  return { id, tier: c.tier, tierLabel: { gold: '🥇 ' + t('Gold'), silver: '🥈 ' + t('Silver'), bronze: '🥉 ' + t('Bronze') }[c.tier],
+    rating: hid ? '🙈' : String(Math.round(an.rating.get(id))), ratingLabel: hid ? t('just playing') : t('Rating'), name: player(id).name, title: `${te} ${tn} · ${td}`,
+    stats: [[c.matches, t('matches')], [Math.round(100 * c.rate) + '%', t('win rate')], [c.bestRun, t('best run')], [c.deciders.p ? `${c.deciders.w}/${c.deciders.p}` : '–', t('deciders')],
+      [c.partner ? player(c.partner).name : '–', t('fav partner')], [c.nights, t('nights')]].map(([v, l]) => [String(v), l]),
+    badges: badges.map(x => x.split(' ')[0]).join(' '), footer: `🏸 ${t('Badminton Thursdays')} · ${{ winter: t('Winter {y}', s), spring: t('Spring {y}', s), summer: t('Summer {y}', s), autumn: t('Autumn {y}', s) }[s.k]}` };
+}
+const playerCardHtml = c => `<div class="pcard ${c.tier}"><div class="pc-top"><div class="pc-rt">${esc(c.rating)}<small>${esc(c.ratingLabel)}</small></div><span class="pc-tier">${esc(c.tierLabel)}</span></div>
+  <div class="pc-photo">${av(c.id, 128)}</div><div class="pc-name">${esc(c.name)}</div><div class="pc-title">${esc(c.title)}</div>
+  <div class="pc-stats">${c.stats.map(([v, l]) => `<div><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join('')}</div>
+  ${c.badges ? `<div class="pc-badges">${c.badges}</div>` : ''}<div class="pc-foot">${esc(c.footer)}</div></div>`;
 
 // this week's mini-challenge: the goal, how far you are, and who has done it
 function challengeCard() {

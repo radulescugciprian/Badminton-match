@@ -125,4 +125,20 @@ assert(ratingChart([1000, 1032, 1010]).includes('1032'));
   assert.equal(challengeWins([before, night(2, day(w, 2), [[[1, 4], [3, 2], 1]])], P).get(1), 1);
 }
 
+// player card
+{
+  const { playerCard, seasonOf } = require('../analytics.js');
+  const P = [1, 2, 3, 4, 5].map(id => ({ id })), night = (id, date, ms) => ({ id, date, matches: ms.map(([t1, t2, win], i) => ({ n: i + 1, t1, t2, win })) });
+  // 4 players, best of 3: 1&2 v 3&4 goes 1–1, player 1 wins the decider; then a 2–0 with other teams
+  const d = [night(1, '2026-11-05', [[[1, 2], [3, 4], 1], [[1, 2], [3, 4], 2], [[1, 2], [3, 4], 1], [[1, 3], [2, 4], 1], [[1, 3], [2, 4], 1]])];
+  const c = playerCard(d, P, 1);
+  assert.deepEqual([c.matches, c.nights, c.bestRun, c.deciders.w, c.deciders.p, c.partner, c.tier], [5, 1, 3, 1, 1, 2, 'bronze']);
+  assert.equal(playerCard(d, P, 4).deciders.p, 1, 'the losers of a decider played one too');
+  assert.equal(c.title, 'rookie', 'fewer than 10 matches');
+  const many = Array.from({ length: 4 }, (_, i) => night(10 + i, `2026-10-0${i + 1}`, [[[1, 2], [3, 4], 1], [[1, 2], [3, 4], 2], [[1, 2], [3, 4], 1]]));
+  assert.equal(playerCard(many, P, 1).title, 'clutch', 'wins the deciders');
+  assert.equal(playerCard(Array.from({ length: 25 }, (_, i) => night(100 + i, '2026-01-01', [[[1, 2], [3, 4], 1]])), P, 3).tier, 'gold');
+  assert.deepEqual([seasonOf('2026-11-10'), seasonOf('2026-12-03'), seasonOf('2027-02-01'), seasonOf('2027-04-01')].map(x => x.k + ' ' + x.y), ['autumn 2026', 'winter 2026/27', 'winter 2026/27', 'spring 2027']);
+}
+
 console.log('analytics tests passed');

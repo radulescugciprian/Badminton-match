@@ -128,6 +128,34 @@ function recap(days, players, ym, pid, allow = () => true) {
   return { nights: md.length, matches: ms.length, most: { id: mostId, n: mostN }, streak, upset, duo: bestPair(md, 2, allow), bigNight, me };
 }
 
+// ---- player card: six stats, a fun title from how the player plays, and a colour for loyalty (nights played)
+function playerCard(days, players, pid, a = analyse(days, players)) {
+  const inM = (m, id) => m.t1.includes(id) || m.t2.includes(id), won = (m, id) => (m.win === 1 ? m.t1 : m.t2).includes(id);
+  const played = days.filter(d => d.matches.length), mine = played.flatMap(d => d.matches.filter(m => inM(m, pid)));
+  const nights = played.filter(d => d.matches.some(m => inM(m, pid))).length, w = mine.filter(m => won(m, pid)).length;
+  // deciders: the third game of a best of 3 at 1–1 (same teams as the two before)
+  const dec = { w: 0, p: 0 }, key = ids => [...ids].sort((x, y) => x - y).join('-');
+  for (const d of played) { let k = null, sc = {}; for (const m of d.matches) {
+    const mk = [key(m.t1), key(m.t2)].sort().join('|'); if (mk !== k) { k = mk; sc = {}; }
+    const [a1, a2] = [sc[key(m.t1)] || 0, sc[key(m.t2)] || 0];
+    if (a1 === 1 && a2 === 1 && inM(m, pid)) { dec.p++; if (won(m, pid)) dec.w++; }
+    const wk = key(m.win === 1 ? m.t1 : m.t2); sc[wk] = (sc[wk] || 0) + 1; if (sc[wk] >= 2) sc = {};
+  } }
+  const rel = relations(days, pid), fav = [...rel.mate].sort((x, y) => y[1].g - x[1].g)[0];
+  // glue: partners win more often with this player than they do overall
+  const overall = id => { const ms = played.flatMap(d => d.matches.filter(m => inM(m, id))); return ms.length ? ms.filter(m => won(m, id)).length / ms.length : 0; };
+  let lift = 0, liftG = 0; for (const [q, x] of rel.mate) if (x.g >= 3) { lift += (x.w / x.g - overall(q)) * x.g; liftG += x.g; }
+  const res = mine.map(m => won(m, pid)), flips = res.filter((r, i) => i && r !== res[i - 1]).length;
+  const b = a.badges.get(pid) || {}, upsets = a.log.filter(x => x.won.includes(pid) && x.chance < 0.4).length;
+  const title = dec.p >= 3 && dec.w / dec.p >= 0.6 ? 'clutch' : upsets >= 3 ? 'giant' : liftG >= 10 && lift / liftG >= 0.1 ? 'glue' : b.comeback >= 2 ? 'comeback'
+    : nights >= 8 && nights / played.length >= 0.8 ? 'ironman' : res.length >= 10 && flips / (res.length - 1) >= 0.6 ? 'rollercoaster' : mine.length < 10 ? 'rookie' : 'allround';
+  return { matches: mine.length, rate: mine.length ? w / mine.length : 0, bestRun: b.bestStreak || 0, deciders: dec, partner: fav ? fav[0] : null, nights,
+    tier: nights >= 25 ? 'gold' : nights >= 10 ? 'silver' : 'bronze', title };
+}
+// the season of a date: winter (Dec–Feb), spring, summer, autumn; winter spans two years
+const seasonOf = iso => { const y = +iso.slice(0, 4), m = +iso.slice(5, 7);
+  return m === 12 ? { k: 'winter', y: `${y}/${String(y + 1).slice(2)}` } : m <= 2 ? { k: 'winter', y: `${y - 1}/${String(y).slice(2)}` } : { k: m <= 5 ? 'spring' : m <= 8 ? 'summer' : 'autumn', y: String(y) }; };
+
 // ---- weekly mini-challenge: the same light goal for everyone, a new one every Monday, checked from the match log
 const CHALLENGES = ['newpartner', 'partners3', 'streak2', 'upset', 'six', 'bounce', 'opponents4'];
 const NEED = { newpartner: 1, partners3: 3, streak2: 2, upset: 1, six: 6, bounce: 1, opponents4: 4 };
@@ -187,4 +215,4 @@ function ratingChart(vals, w = 320, h = 150, label = 'Rating over time') {
     <text x="8" y="${h - 3}" font-size="11" fill="currentColor" fill-opacity=".7">${Math.round(Math.min(...vals))}</text></svg>`;
 }
 
-if (typeof module !== 'undefined') module.exports = { winnerStays, recap, challenge, challengeWins, challengeFor, mondayOf, analyse, playerOfNight, nightAwards, relations, bestPair, ratingChart, START_RATING };
+if (typeof module !== 'undefined') module.exports = { winnerStays, recap, playerCard, seasonOf, challenge, challengeWins, challengeFor, mondayOf, analyse, playerOfNight, nightAwards, relations, bestPair, ratingChart, START_RATING };

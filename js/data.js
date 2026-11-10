@@ -228,7 +228,11 @@ const rulesHtml = () => `<h2 class="sec">${t('Badminton rules')}</h2>
       <li>${t('When your side wins a rally while serving, the same player serves again from the other court and the two partners swap sides.')}</li>
       <li>${t('During a rally either partner may hit the shuttle. Only the serve and the return of serve are fixed by the diagonal.')}</li></ul></details>`;
 // ---- release notes, newest first. A new id shows "What's new" once to everyone who used the app before (new people get the tour instead).
-const NEWS = () => [{ id: '2026-11-06', items: [
+const NEWS = () => [{ id: '2026-11-10', items: [
+  ['🎯', t('Challenge of the week: one light goal for everyone, a new one every Monday. Do it and collect the badge.')],
+  ['🃏', t('Player cards on the Stats tab: your title, six stats and badges. Bronze, silver or gold depends on how many nights you played. Share yours on WhatsApp.')],
+  ['📷', t('Admins can add or replace the group photo of an earlier day.')],
+] }, { id: '2026-11-06', items: [
   ['🎬', t('Video tips: Group → Videos has short videos to get better (serve, smash, footwork…). Tap one to watch it in the app.')],
   ['📋', t('Every match of the night: open Matches on the closed-day screen, or any day later under Board → Day.')],
 ] }, { id: '2026-11-05', items: [
@@ -760,6 +764,16 @@ const react = (day, kind) => { const had = mineOn(day, kind), uid = session.user
 const reactionBar = day => KINDS.map(([k, e]) => { const n = reactions.filter(r => r.day_id === day && r.kind === k).length;
   return `<button class="rx ${mineOn(day, k) ? 'on' : ''}" onclick="react(${day},'${k}')" aria-pressed="${mineOn(day, k)}" aria-label="${k}">${e}${n ? ' ' + n : ''}</button>`; }).join('');
 
+// ---- shareable player card (a picture for WhatsApp)
+async function sharePlayerCard(id) {
+  const p = player(id), an = analyse(db.days, db.players), b = an.badges.get(id), crowns = monthChamps().filter(c => c.id === id).length, me_ = stats(db.days.flatMap(d => d.matches)).find(r => r.id === id) || { p: 0 };
+  const em = [crowns && '👑', b.potn && '⭐', b.perfect && '💯', b.fire && '🔥', b.comeback && '🔄', b.improved && '📈', b.nightsRun >= 5 && '🗓', me_.p >= 50 && '🎖', b.everyone && '🤝', b.everyMonth && '📆', earlyBird(id) && '🐦', challengeWins(db.days, db.players).get(id) && '🎯'].filter(Boolean);
+  let img = null; if (p.avatar) try { img = await createImageBitmap(await (await fetch(p.avatar)).blob()); } catch {}
+  const blob = await drawPlayerCard({ ...cardSpec(id, an, em), hue: id * 67 % 360, initial: p.name[0].toUpperCase(), img });
+  const file = new File([blob], `badminton-${p.name}.png`, { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: p.name }).catch(() => {});
+  else saveFile(blob, file.name);
+}
 // ---- shareable result card
 async function shareCard(dayId) {
   const d = db.days.find(x => x.id === dayId), an = analyse(db.days, db.players), top = playerOfNight(an, dayId);

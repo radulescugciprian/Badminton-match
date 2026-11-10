@@ -77,6 +77,36 @@ async function drawCard({ title, subtitle, rows, potn, potnTitle, footer, bg }) 
   return new Promise(res => c.toBlob(res, 'image/png'));
 }
 
+// a player card as a 1080×1600 picture: tier colour frame, rating, photo, name, title, six stats, badges, season
+async function drawPlayerCard({ tier, tierLabel, rating, ratingLabel, name, title, stats, badges, footer, hue, initial, img }) {
+  const W = 1080, H = 1600, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d'), font = 'system-ui, "Segoe UI Emoji", "Apple Color Emoji", sans-serif', col = { gold: '#facc15', silver: '#cbd5e1', bronze: '#d97706' }[tier];
+  const text = (s, x, y, size, weight = 700, color = '#fff', align = 'center') => { g.font = `${weight} ${size}px ${font}`; g.fillStyle = color; g.textAlign = align; g.fillText(s, x, y); };
+  const fit = (s, max, size, weight) => { g.font = `${weight} ${size}px ${font}`; while (size > 20 && g.measureText(s).width > max) { size -= 2; g.font = `${weight} ${size}px ${font}`; } return size; };
+  g.fillStyle = '#0b1220'; g.fillRect(0, 0, W, H);
+  const bg = g.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#16382c'); bg.addColorStop(.7, '#0b1220');
+  g.fillStyle = bg; g.beginPath(); g.roundRect(30, 30, W - 60, H - 60, 70); g.fill();
+  const glow = g.createRadialGradient(W / 2, 430, 20, W / 2, 430, 520); glow.addColorStop(0, col + '55'); glow.addColorStop(1, col + '00');
+  g.fillStyle = glow; g.fillRect(30, 30, W - 60, H - 60);
+  g.lineWidth = 14; g.strokeStyle = col; g.beginPath(); g.roundRect(37, 37, W - 74, H - 74, 64); g.stroke();
+  text(rating, 110, 200, rating.length > 2 ? 140 : 120, 900, col, 'left'); text(ratingLabel.toUpperCase(), 112, 252, 34, 700, '#cfe6da', 'left');
+  g.font = `800 34px ${font}`; const tw = g.measureText(tierLabel.toUpperCase()).width + 60;
+  g.fillStyle = 'rgba(190,242,100,.18)'; g.beginPath(); g.roundRect(W - 100 - tw, 130, tw, 66, 33); g.fill(); text(tierLabel.toUpperCase(), W - 100 - tw / 2, 175, 34, 800, '#bef264');
+  const cx = W / 2, cy = 520, r = 200;
+  g.save(); g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.clip();
+  if (img) { const k = Math.max(2 * r / img.width, 2 * r / img.height); g.drawImage(img, cx - img.width * k / 2, cy - img.height * k / 2, img.width * k, img.height * k); }
+  else { g.fillStyle = `hsl(${hue} 50% 36%)`; g.fillRect(cx - r, cy - r, 2 * r, 2 * r); text(initial, cx, cy + r * .36, r * 1.05, 800); }
+  g.restore(); g.lineWidth = 12; g.strokeStyle = col; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.stroke();
+  text(name.toUpperCase(), W / 2, 850, fit(name.toUpperCase(), W - 200, 96, 900), 900);
+  text(title, W / 2, 925, fit(title, W - 180, 44, 700), 700, '#bef264');
+  stats.forEach(([v, l], i) => { const x = 110 + (i % 3) * 293, y = 985 + Math.floor(i / 3) * 210;
+    g.fillStyle = 'rgba(255,255,255,.08)'; g.beginPath(); g.roundRect(x, y, 273, 185, 32); g.fill();
+    text(v, x + 136, y + 98, fit(v, 240, 64, 800), 800); text(l.toUpperCase(), x + 136, y + 150, fit(l.toUpperCase(), 245, 28, 700), 700, '#cfe6da'); });
+  if (badges) text(badges, W / 2, 1460, 56, 400);
+  text(footer.toUpperCase(), W / 2, 1530, fit(footer.toUpperCase(), W - 200, 32, 600), 600, '#9fb3a8');
+  return new Promise(res => c.toBlob(res, 'image/png'));
+}
+
 function saveFile(blob, name) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.append(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
