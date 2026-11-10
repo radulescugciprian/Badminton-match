@@ -79,8 +79,8 @@ run('sign-up list, ratings, badges, result card and reactions', async h => {
   await A.click('nav >> text=Board'); await A.click('.seg >> text=Points'); await A.waitForSelector('text=How points work');
   assert((await A.textContent('.calnav')).includes('2026'), 'the season is shown');
   const n = await A.locator('.card .rank').count(); assert(n >= 4, 'everyone who played has points: ' + n);
-  const top = await A.evaluate(() => seasonPoints(db.days, db.players, seasonKey(tzParts().date), saidIn)[0]);
-  assert(top.show >= 10 && top.pts === top.show + top.perf + top.bonus, JSON.stringify(top));
+  const top = await A.evaluate(() => seasonPoints(db.days, db.players, seasonKey(tzParts().date))[0]);
+  assert(top.show >= 5 && top.pts === top.show + top.perf + top.bonus, JSON.stringify(top));
   await A.click('nav >> text=Stats'); await A.waitForSelector('text=Head-to-head');
   await A.click('nav >> text=Board'); await A.click('.seg >> text=Rating');
   await A.click('.seg >> text=Day'); await A.click('summary:has-text("Matches")'); await A.waitForSelector('.mrow');                                        // the match list opens

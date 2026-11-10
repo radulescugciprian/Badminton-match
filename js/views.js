@@ -185,7 +185,7 @@ function closedExtras(d) {
   return `<div class="card potn">${av(top.id, 56)}<div><div class="mut">⭐ ${t('Player of the night')}</div><b style="font-size:var(--fs-lg)">${name(top.id)}</b>
       <div class="mut">${canSee(top.id) && !ratingHidden(top.id) ? `${top.delta >= 0 ? '+' : ''}${Math.round(top.delta)} ${t('rating')} · ` : ''}${t('{w} of {p} won', { w: top.w, p: top.p })}</div></div></div>
     ${(() => { const mine = db.players.find(p => p.user === session.user.id), r = mine && (an.night.get(d.id) || new Map()).get(mine.id); if (!r) return '';
-      const n = nightPoints(r, saidIn(d.date, mine.id)); return `<p class="ptsnight">🏅 ${t('Your points tonight: +{n}', { n: n.show + n.perf })} <span class="mut">(${t('{a} showing up · {b} rating', { a: n.show, b: n.perf })})</span></p>`; })()}
+      const n = nightPoints(r); return `<p class="ptsnight">🏅 ${t('Your points tonight: +{n}', { n: n.show + n.perf })} <span class="mut">(${t('{a} showing up · {b} rating', { a: n.show, b: n.perf })})</span></p>`; })()}
     ${nightAwards(an, d.id).map(x => `<span class="badge">${name(x.id)}: ${AWARD[x.kind]()}</span>`).join('')}<div style="height:10px"></div>`;
 }
 
@@ -303,13 +303,13 @@ function board() {
 
 // Board → Points: the season table (showing up + rating gained), with how it works
 function pointsList() {
-  const ss = seasonsPlayed(), cur_ = seasonKey(tzParts().date), s = ss.includes(ptSeason) ? ptSeason : cur_, i = ss.indexOf(s), rows = seasonPoints(db.days, db.players, s, saidIn);
+  const ss = seasonsPlayed(), cur_ = seasonKey(tzParts().date), s = ss.includes(ptSeason) ? ptSeason : cur_, i = ss.indexOf(s), rows = seasonPoints(db.days, db.players, s);
   const mine = db.players.find(p => p.user === session.user.id);
   const nav = `<div class="calnav"><button onclick="ptSeason='${ss[i - 1] || ''}';render()" aria-label="${t('Previous season')}" ${i > 0 ? '' : 'disabled'}>‹</button><b>${esc(seasonLabel(s))}</b>
     <button onclick="ptSeason='${ss[i + 1] || ''}';render()" aria-label="${t('Next season')}" ${i < ss.length - 1 ? '' : 'disabled'}>›</button></div>`;
   const how = `<details class="fold" ${matchesOpen.points ? 'open' : ''} ontoggle="matchesOpen.points=this.open"><summary>${t('How points work')}</summary><div class="card"><ul class="howpts">
     <li><b>+${POINTS.night}</b> ${t('for every night you play')}</li><li><b>+${POINTS.match}</b> ${t('for each match, at most {n} a night', { n: POINTS.maxMatches })}</li>
-    <li><b>+${POINTS.answered}</b> ${t('if you said "I\'m in" for that night')}</li><li><b>+${POINTS.challenge}</b> ${t('for each weekly challenge you complete')}</li>
+<li><b>+${POINTS.challenge}</b> ${t('for each weekly challenge you complete')}</li>
     <li><b>+1</b> ${t('for every {n} rating points you gain in a night (a bad night never costs points)', { n: POINTS.perRating })}</li></ul>
     <p class="mut" style="margin:8px 0 0">${t('Each season starts at 0. The top 3 get the Loyal player badge.')}</p></div></details>`;
   if (!rows.length) return nav + emptyState('board', t('No points yet this season.'), t('Play a night to get your first points.'), `<button class="primary" onclick="go('play')">${t('Go to Play')}</button>`) + how;

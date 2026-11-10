@@ -149,14 +149,14 @@ assert(ratingChart([1000, 1032, 1010]).includes('1032'));
 {
   const { seasonPoints, nightPoints, analyse } = require('../analytics.js');
   const P = [1, 2, 3, 4, 5].map(id => ({ id })), night = (id, date, ms) => ({ id, date, matches: ms.map(([t1, t2, win], i) => ({ n: i + 1, t1, t2, win })) });
-  assert.deepEqual(nightPoints({ p: 7, delta: 23 }, true), { show: 17, perf: 5 }, '10 + 5 (capped) + 2, and 23/4 → 5');
-  assert.deepEqual(nightPoints({ p: 2, delta: -30 }, false), { show: 12, perf: 0 }, 'a bad night never costs points');
+  assert.deepEqual(nightPoints({ p: 7, delta: 23 }), { show: 10, perf: 11 }, '5 + 5 (capped), and 23/2 → 11: a good night beats just showing up');
+  assert.deepEqual(nightPoints({ p: 2, delta: -30 }), { show: 7, perf: 0 }, 'a bad night never costs points');
   const days = [night(1, '2026-10-01', [[[1, 2], [3, 4], 1], [[1, 3], [2, 4], 1]]), night(2, '2026-10-08', [[[1, 2], [3, 4], 1]]), night(3, '2026-07-01', [[[1, 2], [3, 4], 1]])];
-  const t = seasonPoints(days, P, 'autumn 2026', (date, id) => id === 2 && date === '2026-10-01');
+  const t = seasonPoints(days, P, 'autumn 2026');
   assert.deepEqual(t.map(x => x.id), [1, 2, 3, 4], 'only autumn nights; player 5 never played');
   const p2 = t.find(x => x.id === 2), p3 = t.find(x => x.id === 3);
-  assert.equal(p2.nights, 2); assert.equal(p2.show, 10 + 2 + 2 + 10 + 1, 'two nights, three matches, answered once');
-  assert.equal(p3.perf, 0, 'player 3 lost everything: no performance points, but still the showing-up ones'); assert(p3.show >= 20);
+  assert.equal(p2.nights, 2); assert.equal(p2.show, 5 + 2 + 5 + 1, 'two nights, three matches');
+  assert.equal(p3.perf, 0, 'player 3 lost everything: no performance points, but still the showing-up ones'); assert(p3.show >= 10);
 }
 
 console.log('analytics tests passed');
