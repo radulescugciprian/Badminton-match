@@ -10,9 +10,9 @@ run('admin views the app as a member', async h => {
   await A.waitForFunction(() => (members.find(m => m.username === 'Bob') || {}).share_stats === false);
 
   // as admin: guest controls, remove buttons, a start button that always works
-  await A.click('[aria-label="Admin tools"]'); await A.click('[data-adm=players]'); assert((await A.locator('[aria-label^="Remove"]').count()) > 0 ); await A.click('nav >> text=Play');
+  await h.menu(A); await A.click('[aria-label="Admin tools"]'); await A.click('[data-adm=players]'); assert((await A.locator('[aria-label^="Remove"]').count()) > 0 ); await A.click('nav >> text=Play');
   assert(await A.locator('button:has-text("Start playing")').isEnabled());
-  await A.click('[aria-label="View as member"]');
+  await h.menu(A); await A.click('[aria-label="View as member"]');
   await A.waitForSelector('.strip');
   assert((await A.textContent('.strip')).includes('viewing the app as a member'));
   assert.equal(await A.locator('[aria-label="Admin tools"]').count(), 0, 'no admin button in the preview');
@@ -42,7 +42,7 @@ run('admin views the app as a member', async h => {
   await A.evaluate(() => go('play'));
   assert((await A.locator('[aria-label="Admin tools"]').count()) === 1 && await A.locator('button:has-text("Start playing")').isEnabled(), 'admin tools are back');
   // it is only a preview: the choice is not kept after logging out
-  await A.click('[aria-label="View as member"]'); await A.click('text=Log out'); await A.waitForSelector('text=Log in to see the scores');
+  await h.menu(A); await A.click('[aria-label="View as member"]'); await h.menu(A); await A.click('text=Log out'); await A.waitForSelector('text=Log in to see the scores');
   await A.fill('[name=login]', 'a@x.com'); await A.fill('[name=password]', 'secret1'); await A.click('button[type=submit]'); await A.waitForSelector('text=Next match day');
   assert.equal(await A.locator('.strip').count(), 0, 'back to the admin view after logging in again');
   assert(A.errs.length + B.errs.length === 0, [A.errs, B.errs].join());

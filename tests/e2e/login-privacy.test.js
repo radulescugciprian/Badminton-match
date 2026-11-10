@@ -3,7 +3,7 @@ const { run } = require('./harness');
 run('login privacy', async h => {
   const { mk, signup, st, assert, calls } = h;
   const A = await mk(); await signup(A, 'Anna', 'a@x.com', '1');
-  await A.click('text=Log out'); await A.waitForSelector('text=Log in to see the scores');
+  await h.menu(A); await A.click('text=Log out'); await A.waitForSelector('text=Log in to see the scores');
   const asked = () => calls.filter(c => c === 'email_for_username');
   const login = async (who, pw) => { await A.fill('[name=login]', who); await A.fill('[name=password]', pw); await A.click('button[type=submit]'); };
 
@@ -15,18 +15,18 @@ run('login privacy', async h => {
   assert.equal(asked().length, 0, 'the old lookup that returned emails is not used any more');
   assert(calls.includes('login_email'), 'username login goes through the password-checked lookup');
 
-  await A.click('text=Log out'); const before = calls.filter(c => c === 'login_email').length;
+  await h.menu(A); await A.click('text=Log out'); const before = calls.filter(c => c === 'login_email').length;
   await login('a@x.com', 'secret1'); await A.waitForSelector('text=Next match day');                               // an email needs no lookup at all
   assert.equal(calls.filter(c => c === 'login_email').length, before, 'email login does not touch the lookup');
 
   // five wrong guesses lock the username (even for the right password) but the email still works
-  await A.click('text=Log out');
+  await h.menu(A); await A.click('text=Log out');
   for (let i = 0; i < 5; i++) { await login('anna', 'guess' + i); await A.waitForSelector('text=Wrong username/email or password'); await A.fill('[name=password]', ''); }
   await login('anna', 'secret1'); await A.waitForSelector('text=Too many wrong passwords for this username');
   await login('a@x.com', 'secret1'); await A.waitForSelector('text=Next match day');
 
   // the sign-up form checks usernames without exposing emails; password reset is by email only
-  await A.click('text=Log out'); await A.click('text=Create an account');
+  await h.menu(A); await A.click('text=Log out'); await A.click('text=Create an account');
   await A.fill('[name=username]', 'ANNA'); await A.fill('[name=email]', 'z@x.com'); await A.fill('[name=password]', 'secret1'); await A.click('button[type=submit]');
   await A.waitForSelector('text=That username is taken');
   assert(calls.includes('username_taken') && asked().length === 0);
@@ -35,8 +35,8 @@ run('login privacy', async h => {
 
   // before the database has been updated the app still works (it falls back to the old lookup)
   await A.click('text=Back to log in'); await login('a@x.com', 'secret1'); await A.waitForSelector('text=Next match day');
-  st.legacyDb = true; await A.click('text=Log out'); await login('anna', 'secret1'); await A.waitForSelector('text=Next match day');
-  await A.click('text=Log out'); await login('anna', 'wrongpw'); await A.waitForSelector('text=Wrong username/email or password');
+  st.legacyDb = true; await h.menu(A); await A.click('text=Log out'); await login('anna', 'secret1'); await A.waitForSelector('text=Next match day');
+  await h.menu(A); await A.click('text=Log out'); await login('anna', 'wrongpw'); await A.waitForSelector('text=Wrong username/email or password');
   assert(calls.includes('email_for_username'), 'fallback used');
   // simpler log in: the last name is remembered, the password can be shown, or log in with an email link (no password)
   st.legacyDb = false; await A.click('text=Back to log in').catch(() => {});

@@ -19,10 +19,10 @@ run('stay signed in', async h => {
   st.emptyProfiles = false;
 
   // logging out by choice: the box remembers the name (not the password) and does not claim you were thrown out
-  await A.click('text=Log out'); await A.waitForSelector('text=Log in to see the scores');
+  await h.menu(A); await A.click('text=Log out'); await A.waitForSelector('text=Log in to see the scores');
   assert.equal(await A.inputValue('[name=login]'), '', 'nothing remembered before a login by username');
   await A.fill('[name=login]', 'anna'); await A.fill('[name=password]', 'secret1'); await A.click('button[type=submit]'); await A.waitForSelector('text=Next match day');
-  await A.click('text=Log out'); await A.waitForSelector('text=Log in to see the scores');
+  await h.menu(A); await A.click('text=Log out'); await A.waitForSelector('text=Log in to see the scores');
   assert.equal(await A.inputValue('[name=login]'), 'anna', 'name pre-filled');
   assert.equal(await A.inputValue('[name=password]'), '', 'password never stored');
   assert.equal(await A.locator('text=You were signed out').count(), 0, 'no warning after a normal logout');

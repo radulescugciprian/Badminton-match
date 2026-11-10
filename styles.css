@@ -308,3 +308,16 @@
   .potn,.chal,.recapbtn{border-color:var(--gold)} .chalme{color:var(--gold)} .badge{border-color:var(--gold)} .potn .mut:first-child,.chal .mut:first-child{color:var(--gold)}
   body[data-view=board]::before,body[data-view=stats]::before{filter:blur(7px) brightness(.6);transform:scale(1.06)} :root[data-theme=light] body[data-view=board]::before,:root[data-theme=light] body[data-view=stats]::before{filter:blur(7px) brightness(.8)}
   .recapbtn{background:var(--card)} :root[data-theme=light] .recapbtn{--text:#10231a;color:#10231a}
+  /* ---- group C: the ⋯ menu, press feedback, a toast, loading placeholders, empty screens, player chips */
+  .tmenu{position:relative} .tmenu>summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center} .tmenu>summary::-webkit-details-marker{display:none}
+  .tpop{position:absolute;right:0;top:calc(100% + 6px);z-index:20;min-width:210px;display:flex;flex-direction:column;padding:6px;border-radius:14px;background:var(--bg);border:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.4)}
+  .tpop .link{display:flex;flex-direction:row;justify-content:flex-start;gap:10px;font-size:var(--fs-md);padding:10px 12px;color:var(--text);text-align:left} .tpop .lic{width:22px;height:22px}
+  button,summary{transition:transform .12s ease,background-color .15s ease} button:not(:disabled):active,summary:active{transform:scale(.96)}
+  #toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translate(-50%,20px);opacity:0;pointer-events:none;z-index:50;background:var(--text);color:var(--bg);font-weight:700;padding:10px 18px;border-radius:999px;transition:opacity .2s,transform .2s;text-shadow:none;max-width:90vw}
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+  .skel{display:flex;flex-direction:column;gap:12px;padding-top:8px} .skel i{display:block;border-radius:14px;background:linear-gradient(90deg,var(--chip) 25%,rgba(255,255,255,.14) 50%,var(--chip) 75%);background-size:200% 100%;animation:shimmer 1.2s infinite}
+  @keyframes shimmer{to{background-position:-200% 0}}
+  .empty{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:36px 16px} .empty .lic{width:56px;height:56px;color:var(--acc)} .empty b{font-size:var(--fs-lg)} .empty .primary{width:auto;padding:12px 22px}
+  .pchoose{display:flex;gap:10px;overflow-x:auto;padding:4px 2px 8px;scrollbar-width:none} .pchoose::-webkit-scrollbar{display:none}
+  .pchoose button{flex:none;display:flex;flex-direction:column;align-items:center;gap:4px;background:none;padding:4px;min-width:64px;color:var(--mut);font-size:var(--fs-xs);font-weight:600}
+  .pchoose button .av{border:3px solid transparent} .pchoose button[aria-pressed=true]{color:var(--text)} .pchoose button[aria-pressed=true] .av{border-color:var(--acc)}

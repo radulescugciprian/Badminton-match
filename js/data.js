@@ -42,6 +42,9 @@ const av = (id, s = 40) => {
 };
 const who = id => `<div class="who">${av(id, 34)}<b>${name(id)}</b></div>`;
 const slots = (order, ids) => ids.map(s => order[s - 1]);
+// a short "✓ done" note at the bottom instead of a pop-up that has to be closed
+const toast = m => { let el = document.getElementById('toast'); if (!el) { el = document.createElement('div'); el.id = 'toast'; el.setAttribute('role', 'status'); document.body.append(el); }
+  el.textContent = '✓ ' + m; el.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), 2500); };
 const ok = r => { if (r.error) throw r.error; return r.data; };
 const dayName = dow => new Date(Date.UTC(2024, 0, 7 + dow)).toLocaleDateString(LOCALE[lang], { weekday: 'long', timeZone: 'UTC' }); // 7 Jan 2024 was a Sunday
 const niceDate = (iso, o = { weekday: 'long', day: 'numeric', month: 'short' }) => new Date(iso + 'T12:00:00Z').toLocaleDateString(LOCALE[lang], { ...o, timeZone: 'UTC' });
@@ -83,8 +86,9 @@ async function refresh() {
   db.days = ok(d).sort((a, b) => a.closed === b.closed ? (a.closed ? (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) : 0) : a.closed ? -1 : 1).map(x => ({ id: x.id, date: x.date, order: x.player_order, mode: x.mode, rotFrom: x.rot_from || 0, started: x.started, closed: x.closed,
     photo: x.photo_path, matches: x.matches.sort((a, b) => a.n - b.n) }));
   if (!session) return; // logged out while loading
-  members = ok(m); me = members.find(x => x.id === session.user.id);
-  if (!me && !members.length) return; // an empty answer is a hiccup, not a removed account: never log anyone out because of it
+  const ms = ok(m), mine = ms.find(x => x.id === session.user.id);
+  if (!mine && !ms.length) return; // an empty answer is a hiccup, not a removed account: never log anyone out, and keep what we knew
+  members = ms; me = mine;
   if (!me) { me = {}; manualLogout = true; await sb.auth.signOut(); return; } // an admin removed this account
   if (me.lang && me.lang !== lang) setLangLocal(me.lang); // the language follows the account
   if (me.is_admin) { const v = await sb.rpc('db_version'); dbBehind = !!v.error || v.data < DB_VERSION; }
@@ -175,7 +179,7 @@ async function newPassword(e) {
   e.preventDefault();
   const { error } = await sb.auth.updateUser({ password: new FormData(e.target).get('password') });
   if (error) return showMsg(friendly(error));
-  alert(t('Password changed.')); go('play');
+  toast(t('Password changed.')); go('play');
 }
 const logout = () => { manualLogout = true; return sb.auth.signOut(); };
 const lastLogin = () => { try { return localStorage.getItem('lastLogin') || ''; } catch { return ''; } };
@@ -640,6 +644,7 @@ const pushToggle = () => act(async () => {
 });
 const pushTest = () => act(async () => { const r = await sb.functions.invoke('remind', { body: { test: true } }); if (r.error || !r.data.sent) alert(t('The test notification could not be sent.')); });
 // ---- group chat (newest 200 messages); "seen" is remembered per phone
+let topMenu = false;   // the ⋯ menu at the top (admin tools, view as member, log out)
 let chatOn = false;   // the chat is switched off for now (messages are kept); true brings it back in the Group tab
 let chat = [], chatRx = [], chatOpen = null, chatJump = false, chatMark = 0, groupTab = 'tips';   // groupTab: the Group tab remembers Chat or Members   // chatMark: the last message read before opening the chat
 const chatSeen = () => { try { return +localStorage.getItem('chatSeen') || 0; } catch { return 0; } };
@@ -837,7 +842,7 @@ const mergePlayers = e => {
   if (keep === dup) return showMsg(t('Pick two different players.'));
   const v = { keep: player(keep).name, dup: player(dup).name };
   if (!confirm(t('Merge {dup} into {keep}? All matches, answers and the account of {dup} move to {keep}, and {dup} disappears. This cannot be undone.', v))) return;
-  act(async () => { ok(await sb.rpc('merge_players', { keep, dup })); alert(t('{dup} is now part of {keep}.', v)); });
+  act(async () => { ok(await sb.rpc('merge_players', { keep, dup })); toast(t('{dup} is now part of {keep}.', v)); });
 };
 const toggleAdmin = (id, v) => act(async () => ok(await sb.from('profiles').update({ is_admin: v }).eq('id', id)));
 function saveSchedule(e) { // admins only; the database also refuses unknown time zones
@@ -854,7 +859,7 @@ function saveSchedule(e) { // admins only; the database also refuses unknown tim
   }
   act(async () => {
     ok(await sb.from('schedule').update(row).eq('id', true));
-    alert(t('Schedule saved.'));
+    toast(t('Schedule saved.'));
   });
 }
 

@@ -295,13 +295,13 @@ function board() {
       ${few.length ? `<h2 class="sgroup">${t('Not enough games (fewer than {n})', { n: min })}</h2><div class="card" style="padding:4px 16px">${few.map(r => rowOf(r, null)).join('')}</div>` : ''}
       ${myRow && myIdx > 2 ? `<div class="youbar">${t('You')}: ${myIdx + 1}. · ${myRow.w}–${myRow.p - myRow.w} · ${tab === 'month' ? (myRow.gain >= 0 ? '+' : '') + Math.round(myRow.gain) + ' ' + t('pts') : Math.round(pct(myRow) * 100) + '%'}</div>` : ''}
       ${tab === 'day' && sel ? matchList(sel, 'board') : ''}`
-      : `<div class="empty">${t('No matches yet.')}<br>${t('Play one and the podium shows up here.')}</div>`}`;
+      : emptyState('board', t('No matches yet.'), t('Play one and the podium shows up here.'), `<button class="primary" onclick="go('play')">${t('Go to Play')}</button>`)}`;
 }
 
 function ratingList() {
   const an = analyse(db.days, db.players), lastDay = [...an.night.keys()].pop(), ranked = db.players.filter(p => an.hist.get(p.id).length)
     .sort((x, y) => an.rating.get(y.id) - an.rating.get(x.id));
-  if (!ranked.length) return `<div class="empty">${t('No matches yet.')}<br>${t('Ratings start at 1000 and move with every result.')}</div>`;
+  if (!ranked.length) return emptyState('board', t('No matches yet.'), t('Ratings start at 1000 and move with every result.'), `<button class="primary" onclick="go('play')">${t('Go to Play')}</button>`);
   const shown = ranked.filter(p => canSee(p.id) && !ratingHidden(p.id)), hidden = ranked.filter(p => !canSee(p.id) && !ratingHidden(p.id)), relaxed = ranked.filter(p => ratingHidden(p.id));
   const pod = [[0, '🥇', '#facc15', 120], [1, '🥈', '#cbd5e1', 90], [2, '🥉', '#d97706', 64]].map(([i, medal, c, h]) => shown[i] ? `<div class="pod" onclick="openStats(${shown[i].id})"><div class="medal">${medal}</div>${av(shown[i].id)}<div class="pn">${esc(shown[i].name)}</div>
     <div class="pw">${Math.round(an.rating.get(shown[i].id))}</div><div class="bar" style="--c:${c};--h:${h}px">${i + 1}</div></div>` : '<div class="pod"></div>');
@@ -315,7 +315,7 @@ function ratingList() {
 
 function statsView() {
   const an = analyse(db.days, db.players), mine = db.players.find(p => p.user === session.user.id), played = db.players.filter(p => an.hist.get(p.id).length && canSee(p.id));
-  if (!played.length) return `<h1>${t('Stats')}</h1><div class="empty">${t('Stats appear after the first match.')}</div>`;
+  if (!played.length) return `<h1>${t('Stats')}</h1>` + emptyState('stats', t('No matches yet.'), t('Stats appear after the first match.'), `<button class="primary" onclick="go('play')">${t('Go to Play')}</button>`);
   const id = played.some(p => p.id === statsId) ? statsId : mine && played.some(p => p.id === mine.id) ? mine.id : played[0].id;
   const h = an.hist.get(id), b = an.badges.get(id), rel = relations(db.days, id), me_ = stats(db.days.flatMap(d => d.matches)).find(r => r.id === id);
   const rate = x => Math.round(100 * x.w / x.g), byRate = (m, min) => [...m].filter(([pid, x]) => x.g >= min && canSee(pid)).sort((p, q) => rate(q[1]) - rate(p[1]) || q[1].g - p[1].g);
@@ -330,7 +330,7 @@ function statsView() {
     b.everyone && `🤝 ${t('Played with everyone')}`, b.everyMonth && `📆 ${t('Never missed a month')}`, earlyBird(id) && `🐦 ${t('Early bird')} ×${earlyBird(id)}`, challengeWins(db.days, db.players).get(id) && `🎯 ${t('Weekly challenges')} ×${challengeWins(db.days, db.players).get(id)}`].filter(Boolean);
   const rm = recapDefault();
   return `<h1>${t('Stats')}</h1>${rm ? `<button class="add recapbtn" onclick="openRecap()">🎁 ${t('{month} recap', { month: monthLabel(rm) })}</button>` : ''}${challengeCard()}
-    <select onchange="statsId=+this.value;render()" aria-label="${t('Player')}">${played.map(p => `<option value="${p.id}" ${p.id === id ? 'selected' : ''}>${esc(p.name)}${sharing(p.id) ? '' : ' 🔒'}</option>`).join('')}</select>
+    <div class="pchoose" role="group" aria-label="${t('Player')}">${played.map(p => `<button aria-pressed="${p.id === id}" onclick="statsId=${p.id};render()">${av(p.id, 48)}<span>${esc(p.name)}${sharing(p.id) ? '' : ' 🔒'}</span></button>`).join('')}</div>
     ${sharing(id) ? '' : `<p class="mut" role="status">🔒 ${t('{name} keeps these stats private. You can see them because you are an admin or it is you.', { name: esc(player(id).name) })}</p>`}
     ${playerCardHtml(cardSpec(id, an, badges))}<button class="add" style="margin-top:10px" onclick="sharePlayerCard(${id})">📤 ${t('Share card')}</button>
     <h2 class="sec">${t('Badges')}</h2>${badges.map(x => `<span class="badge">${x}</span>`).join('') || `<p class="mut">${t('None yet. They come for wins, streaks and simply showing up.')}</p>`}
@@ -528,7 +528,7 @@ async function gallery() {
       <button class="primary" onclick="photo(+document.getElementById('oldday').value)">📷 ${t('Choose photo')}</button></div>` : '') + (days.length ? `<div class="grid">${days.map(d => `<div class="cell"><button onclick="openPhoto(${d.id})">
       <img src="${urls[d.photo]}" alt=""><span>${esc(d.date)} · ${tp('{n} matches', d.matches.length)}<br>🏆 ${esc((stats(d.matches)[0] || { name: '-' }).name)}${KINDS.map(([k, e]) => { const n = reactions.filter(r => r.day_id === d.id && r.kind === k).length; return n ? ` ${e}${n}` : ''; }).join('')}</span></button>
       ${isAdmin() ? `<button class="x" onclick="removePhoto(${d.id})" aria-label="${t('Delete photo of {date}', { date: esc(d.date) })}">✕</button>` : ''}</div>`).join('')}</div>`
-    : `<div class="empty">${t('No photos yet.')}<br>${t('Close the day and take the group photo.')}</div>`);
+    : emptyState('photos', t('No photos yet.'), t('Close the day and take the group photo.')));
   minimalize(gal);
 }
 // Group → Videos: topic filter, a card per video (thumbnail for YouTube), and the add form for admins
@@ -541,7 +541,7 @@ function tipsView() {
           : `<a class="thumb other" href="${esc(x.url)}" target="_blank" rel="noopener" aria-label="${esc(x.title)}"><span>▶</span><small>${esc(new URL(x.url).hostname.replace(/^www\./, ''))}</small></a>`}
         <div class="tbody"><b>${esc(x.title)}</b><small class="mut">${T[x.topic] || ''}</small>${x.note ? `<p>${esc(x.note)}</p>` : ''}</div>
         ${isAdmin() ? `<button class="link danger tdel" onclick="delTip(${x.id})" aria-label="${t('Remove this video tip?')}">✕</button>` : ''}</div>`; }).join('')}</div>`
-      : `<div class="empty">${t('No video tips yet.')}${isAdmin() ? '<br>' + t('Add the first one above: paste a link to a video.') : ''}</div>`);
+      : emptyState('video', t('No video tips yet.'), isAdmin() ? t('Add the first one above: paste a link to a video.') : t('Your admins can add videos here.')));
 }
 async function receiptList() {
   const sig = {}, paths = receipts.map(r => r.photo_path).filter(Boolean);
@@ -553,7 +553,7 @@ async function receiptList() {
         ${sig[r.photo_path] ? `<img src="${sig[r.photo_path]}" alt="${t('Receipt')}" style="width:52px;height:52px;object-fit:cover;border-radius:8px">` : '🧾'}
         <span style="min-width:0"><b>${esc(r.note || t('Receipt'))}</b>${r.amount != null ? ` · ${(+r.amount).toFixed(2)}` : ''}<br><span class="mut" style="margin:0">${who(r)} · ${esc(niceDate(r.created_at.slice(0, 10), { day: 'numeric', month: 'short', year: 'numeric' }))}</span></span></a>
       ${r.created_by === session.user.id || isAdmin() ? `<button class="link danger" onclick="removeReceipt(${r.id})" aria-label="${t('Delete this receipt?')}">✕</button>` : ''}</div>`).join('')}</div>`
-    : `<div class="empty">${t('No receipts yet.')}<br>${t('Add one when you pay for an extra court or shuttles.')}</div>`);
+    : emptyState('receipt', t('No receipts yet.'), t('Add one when you pay for an extra court or shuttles.')));
   minimalize(gal);
 }
 async function openPhoto(id) {
@@ -577,6 +577,7 @@ async function openPhoto(id) {
 const drawReactions = () => { const el = document.getElementById('rx'); if (el && lbDay) el.innerHTML = reactionBar(lbDay); };
 // two icon sets, chosen by an admin for everyone: the neon pictures, or minimal line icons that take the text colour
 const LINE = {
+  more: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
   play: '<circle cx="12" cy="18" r="3"/><path d="M9.6 16.2 6 4h12l-3.6 12.2M7.2 8.5h9.6M10.2 4l.9 11.2M13.8 4l-.9 11.2"/>',
   board: '<path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3.5 3.8M16 6h3a3 3 0 0 1-3.5 3.8M12 13v4M8.5 20h7M10 17h4"/>',
   photos: '<path d="M4 8h3.2l1.8-2.8h6L16.8 8H20v11H4z"/><circle cx="12" cy="13.2" r="3.3"/>',
@@ -619,6 +620,10 @@ const ICON = svgIcon, topIcon = svgIcon;   // one icon family: line icons that f
 const NAV = { play: () => ICON('play') + '<span>' + t('Play') + (session && loaded && invites().length ? ' •' : '') + '</span>', board: () => ICON('board') + '<span>' + t('Board') + '</span>',
   group: () => svgIcon(chatOn ? 'chat' : 'members') + '<span>' + t('Group') + '</span>' + (session && loaded && chatOn && chatUnread() ? `<i class="cbadge">${chatUnread()}</i>` : ''), photos: () => ICON('photos') + '<span>' + t('Photos') + '</span>', stats: () => ICON('stats') + '<span>' + t('Stats') + '</span>' };
 
+// an empty screen: an icon, what is missing, how it fills up, and the next step
+const emptyState = (icon, title, text, action = '') => `<div class="empty">${svgIcon(icon)}<b>${title}</b><span class="mut">${text}</span>${action}</div>`;
+// grey placeholder blocks while the data loads (the screen reader hears "Loading…")
+const skeleton = () => `<div class="skel" role="status" aria-label="${t('Loading…')}"><i style="width:55%;height:34px"></i><i style="height:120px"></i><i style="height:64px"></i><i style="height:64px"></i><i style="height:64px"></i></div>`;
 function render() {
   if (session && loaded && view !== lastTracked) { lastTracked = view; track(view); }
   if (view === 'admin' && !isAdmin()) view = 'play';
@@ -629,12 +634,16 @@ function render() {
   document.documentElement.lang = lang;
   document.querySelectorAll('nav button').forEach(b => { b.innerHTML = NAV[b.dataset.v](); b.setAttribute('aria-current', b.dataset.v === view || (b.dataset.v === 'group' && (view === 'chat' || view === 'tips' || view === 'members')) ? 'page' : ''); });
   if (!sb) { app.innerHTML = `<h1>${t('Almost there')}</h1><p class="mut">${t('Add your Supabase URL and key to config.js (see SETUP.md).')}</p>`; return; }
-  if (!authReady) { app.innerHTML = `<p class="mut">${t('Loading…')}</p>`; return; }
+  if (!authReady) { app.innerHTML = skeleton(); return; }
   if (!session) { app.innerHTML = login_(); return; }
-  if (!loaded) { app.innerHTML = `<p class="mut">${t('Loading…')}</p>`; return; }
+  if (!loaded) { app.innerHTML = skeleton(); return; }
   const mp = db.players.find(p => p.user === session.user.id);
   const top = `<div class="top"><button class="me" onclick="go('profile')" aria-label="${t('Profile')}">${mp ? av(mp.id, 44) : '👤'}<span class="col"><span class="n">${esc(me.username || '')}</span></span></button>
-    <span class="bar">${me.is_admin && !asMember ? `<button class="link ico" onclick="toggleView()" aria-label="${t('View as member')}" title="${t('View as member')}">👁</button>` : ''}<button class="link ico" id="helpbtn" onclick="showHelp()" aria-label="${t('How it works')}" title="${t('How it works')}">${topIcon('help')}</button>${isAdmin() ? `<button class="link" onclick="adminPage='';admPanel='';go('admin')" aria-label="${t('Admin tools')}" title="${t('Admin tools')}">${topIcon('admin')}${t('admin')}</button>` : ''}<button class="link" onclick="logout()">${topIcon('logout')}${t('Log out')}</button></span></div>`;
+    <span class="bar"><button class="link ico" id="helpbtn" onclick="showHelp()" aria-label="${t('How it works')}" title="${t('How it works')}">${topIcon('help')}</button>
+      <details class="tmenu" ${topMenu ? 'open' : ''} ontoggle="topMenu=this.open"><summary class="link ico" aria-label="${t('More')}" title="${t('More')}">${svgIcon('more')}</summary><div class="tpop">
+        ${isAdmin() ? `<button class="link" onclick="topMenu=false;adminPage='';admPanel='';go('admin')" aria-label="${t('Admin tools')}">${topIcon('admin')}<span>${t('Admin tools')}</span></button>` : ''}
+        ${me.is_admin && !asMember ? `<button class="link" onclick="topMenu=false;toggleView()" aria-label="${t('View as member')}">${svgIcon('eye')}<span>${t('View as member')}</span></button>` : ''}
+        <button class="link" onclick="topMenu=false;logout()">${topIcon('logout')}<span>${t('Log out')}</span></button></div></details></span></div>`;
   const behind = isAdmin() && dbBehind ? `<div class="strip"><span>⚠️ ${t('The database is missing updates, so some buttons may fail. Apply the newest migrations in Supabase (see SETUP.md).')}</span></div>` : '';
   const strip = behind + (me.is_admin && asMember ? `<div class="strip"><span>👁 ${t('You are viewing the app as a member. Admin tools are hidden.')}</span><button onclick="toggleView()">${t('Back to admin')}</button></div>` : '');
   const nearEnd = view === 'chat' && innerHeight + scrollY >= document.body.scrollHeight - 120;   // reading older messages: do not jump
@@ -671,7 +680,7 @@ const TOUR = () => [
   ['nav [data-v=photos]', '📷 ' + t('Photos'), t('The group photo of each day, and receipts for extra courts or shuttles.')],
   ['nav [data-v=stats]', '📊 ' + t('Stats'), t('Your rating over time, badges, best partners and head-to-head records.')],
   ['.top .me', '🙂 ' + t('Your profile'), t('Tap your photo for your profile: picture, language, light or dark theme and privacy.')],
-  ['[aria-label="Admin tools"]', '🔑 ' + t('Admin tools'), t('Players, accounts, the play schedule and times, reminders, the background, icons and the activity log.')],
+  ['.tmenu', '⋯ ' + t('More'), t('Log out is in this menu, and for admins also the admin tools and "view as member".')],
   ['#helpbtn', '❔ ' + t('Help'), t('Badminton rules, the rotation and this tour are always here.')],
 ];
 function startTour() {

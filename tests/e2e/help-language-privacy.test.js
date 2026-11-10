@@ -20,7 +20,7 @@ run('help, plain errors, languages, privacy and the schedule editor', async h =>
   await A.click('[aria-label="How it works"]'); await A.waitForSelector('#help'); await A.click('#gotit');
   
   // ---- friendly errors
-  await A.click('text=Log out'); await A.click('text=Forgot password?'); st.rateLimit = true;
+  await h.menu(A); await A.click('text=Log out'); await A.click('text=Forgot password?'); st.rateLimit = true;
   await A.fill('[name=login]', 'a@x.com'); await A.click('button[type=submit]'); await A.waitForSelector('text=Too many emails were sent just now');
   st.rateLimit = false;
   await A.click('text=Back to log in'); await A.fill('[name=login]', 'anna'); await A.fill('[name=password]', 'secret1'); await A.click('button[type=submit]'); await A.waitForSelector('text=Next match day');
@@ -34,7 +34,7 @@ run('help, plain errors, languages, privacy and the schedule editor', async h =>
   assert((await A.textContent('#app')).includes('Răspunde înainte de') || true);
   for (const [code, word] of [['hr', 'Sljedeći dan igranja'], ['sv', 'Nästa matchdag']]) { await A.click('.top .me'); await A.selectOption('.field select', code); await A.click('nav >> text=' + { hr: 'Igra', sv: 'Spela' }[code]); await A.waitForSelector('text=' + word); }
   await A.click('.top .me'); await A.selectOption('.field select', 'en'); await A.waitForSelector('text=Your profile');
-  await A.click('text=Log out'); await A.waitForSelector('text=Log in to see the scores');   // login page language is a local choice
+  await h.menu(A); await A.click('text=Log out'); await A.waitForSelector('text=Log in to see the scores');   // login page language is a local choice
   await A.selectOption('select.lang', 'ro'); await A.waitForSelector('text=Conectare'); await A.selectOption('select.lang', 'en');
   await A.fill('[name=login]', 'anna'); await A.fill('[name=password]', 'secret1'); await A.click('button[type=submit]'); await A.waitForSelector('text=Next match day');
   
@@ -53,13 +53,13 @@ run('help, plain errors, languages, privacy and the schedule editor', async h =>
   const ratingC = await C.textContent('#app');
   assert(ratingC.includes('private') && !(await C.locator('.rank:has-text("Dani") b >> nth=-1').textContent()).match(/\d{4}/), 'Dani hidden from members');
   await C.click('nav >> text=Stats'); await C.waitForSelector('text=Rating over time');
-  assert(!(await C.locator('select[aria-label=Player] option').allTextContents()).some(x => x.includes('Dani')), 'not in the stats picker');
+  assert(!(await C.locator('.pchoose button').allTextContents()).some(x => x.includes('Dani')), 'not in the stats picker');
   // Bob sees himself, admin Anna sees everything (marked with a lock)
   await B.click('nav >> text=Stats'); await B.waitForSelector('text=Rating over time');
-  assert((await B.locator('select[aria-label=Player] option').allTextContents()).some(x => x.includes('Dani')), 'owner sees own stats');
+  assert((await B.locator('.pchoose button').allTextContents()).some(x => x.includes('Dani')), 'owner sees own stats');
   await A.click('nav >> text=Stats'); await A.waitForSelector('text=Rating over time');
-  assert((await A.locator('select[aria-label=Player] option').allTextContents()).some(x => x.includes('Dani') && x.includes('🔒')), 'admin sees all');
-  await A.selectOption('select[aria-label=Player]', { label: 'Dani 🔒' }); await A.waitForSelector('text=keeps these stats private');
+  assert.equal(await A.locator('.pchoose button:has-text("Dani") svg.lic').count(), 1, 'admin sees all, private ones marked with a lock');
+  await A.click('.pchoose button:has-text("Dani")'); await A.waitForSelector('text=keeps these stats private');
   // the leaderboard still shows results for everyone
   await C.click('nav >> text=Board'); await C.click('.seg >> text=All time');
   assert((await C.textContent('#app')).includes('Dani'), 'results stay visible');
@@ -67,7 +67,7 @@ run('help, plain errors, languages, privacy and the schedule editor', async h =>
   await C.click('.seg >> text=Rating'); await C.waitForFunction(() => !document.getElementById('app').textContent.includes('private'));
   
   // ---- admin edits the schedule in the app
-  await A.click('[aria-label="Admin tools"]'); await A.click('[data-adm=schedule]'); await A.waitForSelector('[name=dow]');
+  await h.menu(A); await A.click('[aria-label="Admin tools"]'); await A.click('[data-adm=schedule]'); await A.waitForSelector('[name=dow]');
   assert((await B.locator('text=Play schedule').count()) === 0);
   await B.click('nav [data-v=group]'); await B.click('.seg >> text=Members'); await B.waitForSelector('text=Accounts'); assert((await B.locator('form >> text=Save schedule').count()) === 0, 'members have no schedule form');
   await A.fill('[name=tz]', 'Mars/Olympus'); await A.click('text=Save schedule'); await A.waitForSelector('text=Unknown time zone');
@@ -76,6 +76,6 @@ run('help, plain errors, languages, privacy and the schedule editor', async h =>
   await A.click('text=Save schedule'); await A.waitForFunction(() => document.querySelector('[name=dow]').value === '5');
   await A.click('[data-adm=times]'); await A.fill('[name=mins]', '30'); await A.click('text=Save schedule'); await h.until(() => st.schedule[0].opens_minutes === 30, 'times saved');
   assert(st.schedule[0].dow === 5 && st.schedule[0].play_time === '19:00' && st.schedule[0].opens_minutes === 30 && st.schedule[0].tz === 'Europe/Zagreb', 'saved: ' + JSON.stringify(st.schedule[0]));
-  assert(A.alerts.includes('Schedule saved.'));
+  await A.waitForSelector('#toast.show:has-text("Schedule saved.")');
 
 });
