@@ -354,7 +354,7 @@ function cardSpec(id, an = analyse(db.days, db.players), badges = []) {
   return { id, tier: c.tier, edition: { gold: t('Gold edition'), silver: t('Silver edition'), bronze: t('Bronze edition') }[c.tier], group: dayName(sched ? sched.dow : 4).slice(0, 3).toUpperCase(),
     rating: hid ? '🙈' : String(Math.round(an.rating.get(id))), ratingLabel: hid ? t('just playing') : t('Rating'), name: player(id).name, titleEmoji: te, titleWord: tn, titleLine: td,
     stats: [[Math.round(100 * c.rate) + '%', t('win rate')], [c.bestRun, t('best run')], [c.matches, t('matches')], [c.nights, t('nights')], [c.deciders.p ? `${c.deciders.w}/${c.deciders.p}` : '–', t('deciders')]].map(([x, l]) => [String(x), l]),
-    partner: c.partner ? `🤝 ${t('fav partner')}: ${player(c.partner).name}` : '', badges: badges.map(x => x.split(' ')[0]).join(' '),
+    partner: c.partner ? `🤝 ${t('best partner')}: ${player(c.partner).name}${c.partnerGames >= 3 ? ` · ${Math.round(100 * c.partnerRate)}%` : ''}` : '', badges: badges.map(x => x.split(' ')[0]).join(' '),
     season: [seasonName.replace(s.y, '').trim(), s.y], footer: `🏸 ${t('Badminton Thursdays')} · ${seasonName}` };
 }
 // the card is drawn once as a picture (drawPlayerCard in fx.js) and the same picture is shown here and shared;

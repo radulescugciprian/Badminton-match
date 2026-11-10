@@ -141,7 +141,9 @@ function playerCard(days, players, pid, a = analyse(days, players)) {
     if (a1 === 1 && a2 === 1 && inM(m, pid)) { dec.p++; if (won(m, pid)) dec.w++; }
     const wk = key(m.win === 1 ? m.t1 : m.t2); sc[wk] = (sc[wk] || 0) + 1; if (sc[wk] >= 2) sc = {};
   } }
-  const rel = relations(days, pid), fav = [...rel.mate].sort((x, y) => y[1].g - x[1].g)[0];
+  // best partner: the highest win rate together, at least 3 matches (ties: more matches); until then, the most matches together
+  const rel = relations(days, pid), mates = [...rel.mate], enough = mates.filter(([, x]) => x.g >= 3);
+  const fav = (enough.length ? enough.sort((a, b) => b[1].w / b[1].g - a[1].w / a[1].g || b[1].g - a[1].g) : mates.sort((a, b) => b[1].g - a[1].g))[0];
   // glue: partners win more often with this player than they do overall
   const overall = id => { const ms = played.flatMap(d => d.matches.filter(m => inM(m, id))); return ms.length ? ms.filter(m => won(m, id)).length / ms.length : 0; };
   let lift = 0, liftG = 0; for (const [q, x] of rel.mate) if (x.g >= 3) { lift += (x.w / x.g - overall(q)) * x.g; liftG += x.g; }
@@ -149,7 +151,7 @@ function playerCard(days, players, pid, a = analyse(days, players)) {
   const b = a.badges.get(pid) || {}, upsets = a.log.filter(x => x.won.includes(pid) && x.chance < 0.4).length;
   const title = dec.p >= 3 && dec.w / dec.p >= 0.6 ? 'clutch' : upsets >= 3 ? 'giant' : liftG >= 10 && lift / liftG >= 0.1 ? 'glue' : b.comeback >= 2 ? 'comeback'
     : nights >= 8 && nights / played.length >= 0.8 ? 'ironman' : res.length >= 10 && flips / (res.length - 1) >= 0.6 ? 'rollercoaster' : mine.length < 10 ? 'rookie' : 'allround';
-  return { matches: mine.length, rate: mine.length ? w / mine.length : 0, bestRun: b.bestStreak || 0, deciders: dec, partner: fav ? fav[0] : null, nights,
+  return { matches: mine.length, rate: mine.length ? w / mine.length : 0, bestRun: b.bestStreak || 0, deciders: dec, partner: fav ? fav[0] : null, partnerRate: fav ? fav[1].w / fav[1].g : 0, partnerGames: fav ? fav[1].g : 0, nights,
     tier: nights >= 25 ? 'gold' : nights >= 10 ? 'silver' : 'bronze', title };
 }
 // the season of a date: winter (Dec–Feb), spring, summer, autumn; winter spans two years

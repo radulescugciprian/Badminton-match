@@ -134,6 +134,9 @@ assert(ratingChart([1000, 1032, 1010]).includes('1032'));
   const c = playerCard(d, P, 1);
   assert.deepEqual([c.matches, c.nights, c.bestRun, c.deciders.w, c.deciders.p, c.partner, c.tier], [5, 1, 3, 1, 1, 2, 'bronze']);
   assert.equal(playerCard(d, P, 4).deciders.p, 1, 'the losers of a decider played one too');
+  // best partner: win rate with at least 3 together beats playing together most often
+  const bp = [night(5, '2026-11-01', [[[1, 2], [3, 4], 2], [[1, 2], [3, 4], 2], [[1, 2], [3, 4], 2], [[1, 2], [3, 4], 1], [[1, 3], [2, 4], 1], [[1, 3], [2, 4], 1], [[1, 3], [2, 4], 1]])];
+  assert.deepEqual([playerCard(bp, P, 1).partner, Math.round(100 * playerCard(bp, P, 1).partnerRate)], [3, 100], '3 of 3 with Costi beats 1 of 4 with Dani');
   assert.equal(c.title, 'rookie', 'fewer than 10 matches');
   const many = Array.from({ length: 4 }, (_, i) => night(10 + i, `2026-10-0${i + 1}`, [[[1, 2], [3, 4], 1], [[1, 2], [3, 4], 2], [[1, 2], [3, 4], 1]]));
   assert.equal(playerCard(many, P, 1).title, 'clutch', 'wins the deciders');
