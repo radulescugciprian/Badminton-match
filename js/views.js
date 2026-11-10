@@ -311,7 +311,8 @@ function pointsList() {
     <li><b>+${POINTS.night}</b> ${t('for every night you play')}</li><li><b>+${POINTS.match}</b> ${t('for each match, at most {n} a night', { n: POINTS.maxMatches })}</li>
 <li><b>+${POINTS.challenge}</b> ${t('for each weekly challenge you complete')}</li>
     <li><b>+1</b> ${t('for every {n} rating points you gain in a night (a bad night never costs points)', { n: POINTS.perRating })}</li></ul>
-    <p class="mut" style="margin:8px 0 0">${t('Each season starts at 0. The top 3 get the Loyal player badge.')}</p></div></details>`;
+    <p class="mut" style="margin:8px 0 0">${t('Each season starts at 0. The top 3 get the Loyal player badge.')}</p>
+    <button class="add" style="margin:12px 0 0" onclick="shareRules()">📤 ${t('Share the rules')}</button></div></details>`;
   if (!rows.length) return nav + emptyState('board', t('No points yet this season.'), t('Play a night to get your first points.'), `<button class="primary" onclick="go('play')">${t('Go to Play')}</button>`) + how;
   return nav + `<div class="card" style="padding:4px 16px">${rows.map((r, k) => `<div class="rank tap ${mine && r.id === mine.id ? 'me' : ''}" role="button" tabindex="0" onclick="openStats(${r.id})"><span class="r">${['🥇', '🥈', '🥉'][k] || k + 1}</span>${av(r.id, 32)}
       <span class="bn"><b>${name(r.id)}</b><small class="mut">${tp('{n} nights', r.nights)} · ${t('{a} showing up · {b} rating · {c} challenges', { a: r.show, b: r.perf, c: r.bonus })}</small></span><b>${r.pts}</b></div>`).join('')}</div>` + how;

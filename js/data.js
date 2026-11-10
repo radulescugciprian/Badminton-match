@@ -791,6 +791,19 @@ async function sharePlayerCard(id) {
   if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: p.name }).catch(() => {});
   else saveFile(blob, file.name);
 }
+// ---- the points rules as a picture for WhatsApp (drawRulesCard in fx.js)
+async function shareRules() {
+  const good = nightPoints({ p: 5, delta: 23 }), plain = nightPoints({ p: 5, delta: 0 });
+  const blob = await drawRulesCard({ title: t('How points work'), season: seasonLabel(seasonKey(tzParts().date)),
+    rules: [[`+${POINTS.night}`, t('Play a night'), t('just by showing up')], [`+${POINTS.match}`, t('Each match'), t('at most {n} a night', { n: POINTS.maxMatches })],
+      [`+${POINTS.challenge}`, t('Weekly challenge'), t('complete it, any week')], ['+1', t('Every {n} rating points', { n: POINTS.perRating }), t('gained in a night: beat stronger players, get more')]],
+    compare: { title: t('Two nights, 5 matches each'), showLabel: t('showing up'), perfLabel: t('performance'),
+      rows: [{ label: t('Good night'), show: good.show, perf: good.perf }, { label: t('Just playing'), show: plain.show, perf: plain.perf }] },
+    notes: [t('A bad night never costs points.'), t('Each season starts at 0. The top 3 get the Loyal player badge.')], footer: t('Badminton Thursdays') });
+  const file = new File([blob], 'badminton-points.png', { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: t('How points work') }).catch(() => {});
+  else saveFile(blob, file.name);
+}
 // ---- shareable result card
 async function shareCard(dayId) {
   const d = db.days.find(x => x.id === dayId), an = analyse(db.days, db.players), top = playerOfNight(an, dayId);

@@ -81,6 +81,8 @@ run('sign-up list, ratings, badges, result card and reactions', async h => {
   const n = await A.locator('.card .rank').count(); assert(n >= 4, 'everyone who played has points: ' + n);
   const top = await A.evaluate(() => seasonPoints(db.days, db.players, seasonKey(tzParts().date))[0]);
   assert(top.show >= 5 && top.pts === top.show + top.perf + top.bonus, JSON.stringify(top));
+  await A.click('summary:has-text("How points work")'); const [rules] = await Promise.all([A.waitForEvent('download'), A.click('text=Share the rules')]);
+  assert.equal(rules.suggestedFilename(), 'badminton-points.png', 'the rules as a picture to share');
   await A.click('nav >> text=Stats'); await A.waitForSelector('text=Head-to-head');
   await A.click('nav >> text=Board'); await A.click('.seg >> text=Rating');
   await A.click('.seg >> text=Day'); await A.click('summary:has-text("Matches")'); await A.waitForSelector('.mrow');                                        // the match list opens
