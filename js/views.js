@@ -350,16 +350,17 @@ const TITLES = () => ({ clutch: ['🧊', t('Clutch'), t('wins the deciding games
   rookie: ['🌱', t('Rookie'), t('just getting started')], allround: ['⚖️', t('All-rounder'), t('a bit of everything')] });
 function cardSpec(id, an = analyse(db.days, db.players), badges = []) {
   const c = playerCard(db.days, db.players, id, an), s = seasonOf(tzParts().date), [te, tn, td] = TITLES()[c.title], hid = ratingHidden(id);
-  return { id, tier: c.tier, group: dayName(sched ? sched.dow : 4).slice(0, 3).toUpperCase(),
+  const seasonName = { winter: t('Winter {y}', s), spring: t('Spring {y}', s), summer: t('Summer {y}', s), autumn: t('Autumn {y}', s) }[s.k];
+  return { id, tier: c.tier, edition: { gold: t('Gold edition'), silver: t('Silver edition'), bronze: t('Bronze edition') }[c.tier], group: dayName(sched ? sched.dow : 4).slice(0, 3).toUpperCase(),
     rating: hid ? '🙈' : String(Math.round(an.rating.get(id))), ratingLabel: hid ? t('just playing') : t('Rating'), name: player(id).name, titleEmoji: te, titleWord: tn, titleLine: td,
-    stats: [[c.matches, t('matches')], [Math.round(100 * c.rate) + '%', t('win rate')], [c.bestRun, t('best run')], [c.deciders.p ? `${c.deciders.w}/${c.deciders.p}` : '–', t('deciders')],
-      [c.partner ? player(c.partner).name : '–', t('fav partner')], [c.nights, t('nights')]].map(([v, l]) => [String(v), l]),
-    badges: badges.map(x => x.split(' ')[0]).join(' '), footer: `🏸 ${t('Badminton Thursdays')} · ${{ winter: t('Winter {y}', s), spring: t('Spring {y}', s), summer: t('Summer {y}', s), autumn: t('Autumn {y}', s) }[s.k]}` };
+    stats: [[Math.round(100 * c.rate) + '%', t('win rate')], [c.bestRun, t('best run')], [c.matches, t('matches')], [c.nights, t('nights')], [c.deciders.p ? `${c.deciders.w}/${c.deciders.p}` : '–', t('deciders')]].map(([x, l]) => [String(x), l]),
+    partner: c.partner ? `🤝 ${t('fav partner')}: ${player(c.partner).name}` : '', badges: badges.map(x => x.split(' ')[0]).join(' '),
+    season: [seasonName.replace(s.y, '').trim(), s.y], footer: `🏸 ${t('Badminton Thursdays')} · ${seasonName}` };
 }
 // the card is drawn once as a picture (drawPlayerCard in fx.js) and the same picture is shown here and shared;
 // it is kept per player until something on it changes
 let cardCache = {};
-const playerCardHtml = c => `<div class="pcslot" data-key="${esc(JSON.stringify(c))}"><img class="pcimg" alt="${esc(`${c.name}: ${c.titleWord} · ${c.stats.map(([x, l]) => `${l} ${x}`).join(', ')}`)}" ${cardCache[JSON.stringify(c)] ? `src="${cardCache[JSON.stringify(c)]}"` : ''}></div>`;
+const playerCardHtml = c => `<div class="pcslot" data-key="${esc(JSON.stringify(c))}"><img class="pcimg" alt="${esc(`${c.name}: ${c.titleWord} · ${c.stats.map(([x, l]) => `${l} ${x}`).join(', ')}${c.partner ? ' · ' + c.partner : ''}`)}" ${cardCache[JSON.stringify(c)] ? `src="${cardCache[JSON.stringify(c)]}"` : ''}></div>`;
 async function fillCards() {
   for (const el of document.querySelectorAll('.pcslot')) {
     const key = el.dataset.key, img = el.querySelector('img'); if (cardCache[key]) { img.src = cardCache[key]; continue; }

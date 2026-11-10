@@ -11,7 +11,7 @@ run('hide rating, showing-up badges, monthly recap', async h => {
   await A.click('nav >> text=Stats'); await A.waitForSelector('.badge:has-text("5 nights in a row")');
   // the player card: bronze for 5 nights, its stats, and a picture to share
   await A.waitForSelector('img.pcimg[src^="blob:"]');
-  assert(/matches 10, win rate 100%/.test(await A.getAttribute('img.pcimg', 'alt')), 'the card picture, described for screen readers');
+  assert(/win rate 100%, best run 10, matches 10/.test(await A.getAttribute('img.pcimg', 'alt')), 'the card picture, described for screen readers');
   assert.equal(await A.evaluate(() => cardSpec(1).tier), 'bronze', 'bronze under 10 nights');
   assert((await A.evaluate(() => cardSpec(1).footer)).includes('Autumn 2026'), 'the season');
   const [dl] = await Promise.all([A.waitForEvent('download'), A.click('text=Share card')]);
