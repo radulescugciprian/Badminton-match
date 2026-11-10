@@ -298,3 +298,13 @@
   .top .link{min-width:44px;min-height:44px} .seg button,select{min-height:44px} .fold>summary,.more summary{min-height:44px;display:flex;align-items:center;gap:6px} .actions .link,button.link.danger{min-height:44px}
   :focus-visible{outline:3px solid var(--acc);outline-offset:2px;border-radius:8px} :focus:not(:focus-visible){outline:none}
   @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+  /* ---- group B: a sports look. Bebas Neue for headings and big numbers, gold only for achievements, calmer photo behind Board and Stats */
+  @font-face{font-family:'Bebas Neue';src:url(fonts/bebas-neue-latin.woff2) format('woff2');font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2212}
+  @font-face{font-family:'Bebas Neue';src:url(fonts/bebas-neue-latin-ext.woff2) format('woff2');font-display:swap;unicode-range:U+0100-02AF,U+1E00-1E9F,U+1EF2-1EFF,U+2C60-2C7F,U+A720-A7FF}
+  :root{--disp:'Bebas Neue','Arial Narrow',system-ui,sans-serif;--gold:#facc15} :root[data-theme=light]{--gold:#a16207}
+  h1,.num,.tile b,.podium .bar,.pod .pw,.rank .r,.rank>b:last-child,.pchips span,#recap .rtop b,.rcard h2{font-family:var(--disp);font-weight:400;letter-spacing:.03em}
+  h1{font-size:34px;line-height:1.05} .num{font-size:56px;line-height:1} .tile b{font-size:30px;line-height:1.1} .podium .bar{font-size:26px} .pod .pw{font-size:var(--fs-md)} .rank .r{font-size:20px} .rank>b:last-child{font-size:22px}
+  .pchips span{font-size:15px;letter-spacing:.05em} .rcard h2{font-size:34px}
+  .potn,.chal,.recapbtn{border-color:var(--gold)} .chalme{color:var(--gold)} .badge{border-color:var(--gold)} .potn .mut:first-child,.chal .mut:first-child{color:var(--gold)}
+  body[data-view=board]::before,body[data-view=stats]::before{filter:blur(7px) brightness(.6);transform:scale(1.06)} :root[data-theme=light] body[data-view=board]::before,:root[data-theme=light] body[data-view=stats]::before{filter:blur(7px) brightness(.8)}
+  .recapbtn{background:var(--card)} :root[data-theme=light] .recapbtn{--text:#10231a;color:#10231a}

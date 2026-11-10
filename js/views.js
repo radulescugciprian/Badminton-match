@@ -599,11 +599,13 @@ Object.assign(LINE, {
   lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>', mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
   flag: '<path d="M5 21V4h12l-2 4 2 4H5"/>', warn: '<path d="M12 3l10 18H2zM12 10v5M12 18h.01"/>', save: '<path d="M12 4v11M8 11l4 4 4-4M5 20h14"/>',
   gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>', video: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5v5l4.5-2.5z"/>',
+  target: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/>', link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
 });
 // minimal set: the emoji used as icons anywhere in the app become line icons (reactions, medals and badges stay as they are)
 const EMO = { '👁': 'eye', '💬': 'chat', '📅': 'calendar', '✅': 'check', '❌': 'cross', '✕': 'cross', '⏳': 'clock', '✎': 'pencil', '📤': 'share', '🔔': 'bell',
   '🧾': 'receipt', '🖼': 'image', '🚫': 'ban', '↺': 'undo', '↶': 'undo', '🗑': 'trash', '▶': 'go', '🔒': 'lock', '✉': 'mail', '🏁': 'flag', '📷': 'photos',
-  '📊': 'stats', '🏆': 'board', '🏸': 'play', '👥': 'members', '❔': 'help', '❓': 'help', '⚙': 'gear', '⚠': 'warn', '🔑': 'admin', '⬇': 'save' };
+  '📊': 'stats', '🏆': 'board', '🏸': 'play', '👥': 'members', '❔': 'help', '❓': 'help', '⚙': 'gear', '⚠': 'warn', '🔑': 'admin', '⬇': 'save', '➕': 'plus', '🎬': 'video', '🎯': 'target', '🔗': 'link' };
 const EMO_RE = new RegExp('(' + Object.keys(EMO).join('|') + ')\uFE0F?', 'gu');
 function minimalize(root) {
   if (!root) return;
