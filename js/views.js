@@ -284,7 +284,7 @@ function board() {
   if (tab === 'rating') return head + ratingList();
   const nav = tab === 'day' ? (days.length ? `<div class="calnav"><button onclick="dayShift(-1)" aria-label="${t('Previous day')}" ${di <= 0 ? 'disabled' : ''}>‹</button><b>${esc(niceDate(sel.date))} · ${tp('{n} matches', sel.matches.length)}<br><span class="kind ${sel.matches.some(m => m.t1.length === 1) ? 'single' : 'double'}">${sel.matches.every(m => m.t1.length === 1) ? '1 vs 1 · ' + t('Singles') : sel.matches.some(m => m.t1.length === 1) ? t('Singles') + ' + ' + t('Doubles') : '2 vs 2 · ' + t('Doubles')}</span></b>
       <button onclick="dayShift(1)" aria-label="${t('Next day')}" ${di >= days.length - 1 ? 'disabled' : ''}>›</button>
-      ${isAdmin() ? `<details class="more" ${dayMore ? 'open' : ''} ontoggle="dayMore=this.open"><summary aria-label="${t('More')}">⋯</summary><button class="link danger" onclick="deleteDay(${sel.id})">🗑 ${t("Delete this day's leaderboard")}</button></details>` : ''}</div>` : '')
+      ${isAdmin() ? `<details class="more" ${dayMore ? 'open' : ''} ontoggle="dayMore=this.open"><summary aria-label="${t('More')}">⋯</summary><button class="link" onclick="dayMore=false;photo(${sel.id})">📷 ${sel.photo ? t('Replace the group photo') : t('Add a group photo')}</button><button class="link danger" onclick="deleteDay(${sel.id})">🗑 ${t("Delete this day's leaderboard")}</button></details>` : ''}</div>` : '')
     : tab === 'month' ? `<div class="calnav"><button onclick="monthShift(-1)" aria-label="${t('Previous month')}">‹</button><b>${esc(monthName(ym))}</b><button onclick="monthShift(1)" aria-label="${t('Next month')}">›</button></div>
       ${champ ? `<p class="mut" style="text-align:center">👑 ${t('Champion of {month}: {name}', { month: esc(monthName(ym)), name: name(champ.id) })}</p>` : ''}` : '';
   const kindSeg = tab === 'all' && (hasSingles || boardKind === 'singles') ? `<div class="seg mini2">${[['doubles', t('Doubles')], ['singles', t('Singles')]].map(([k, l]) => `<button class="${boardKind === k ? 'on' : ''}" onclick="boardKind='${k}';render()">${l}</button>`).join('')}</div>` : '';
@@ -488,10 +488,13 @@ async function gallery() {
   urls = {};
   if (days.length) for (const x of ok(await sb.storage.from('photos').createSignedUrls(days.map(d => d.photo), 3600))) urls[x.path] = x.signedUrl;
   if (view !== 'photos') return;
-  gal.innerHTML = days.length ? `<div class="grid">${days.map(d => `<div class="cell"><button onclick="openPhoto(${d.id})">
+  // admins: add a photo to an earlier day that has none (or replace one from the Board's Day view)
+  const missing = isAdmin() ? db.days.filter(d => d.closed && d.matches.length && !d.photo).sort((a, b) => a.date < b.date ? 1 : -1) : [];
+  gal.innerHTML = (missing.length ? `<div class="card addold"><label class="field" style="margin:0">📷 ${t('Add a photo to an earlier day')}<select id="oldday">${missing.map(d => `<option value="${d.id}">${esc(niceDate(d.date, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }))} · ${tp('{n} matches', d.matches.length)}</option>`).join('')}</select></label>
+      <button class="primary" onclick="photo(+document.getElementById('oldday').value)">📷 ${t('Choose photo')}</button></div>` : '') + (days.length ? `<div class="grid">${days.map(d => `<div class="cell"><button onclick="openPhoto(${d.id})">
       <img src="${urls[d.photo]}" alt=""><span>${esc(d.date)} · ${tp('{n} matches', d.matches.length)}<br>🏆 ${esc((stats(d.matches)[0] || { name: '-' }).name)}${KINDS.map(([k, e]) => { const n = reactions.filter(r => r.day_id === d.id && r.kind === k).length; return n ? ` ${e}${n}` : ''; }).join('')}</span></button>
       ${isAdmin() ? `<button class="x" onclick="removePhoto(${d.id})" aria-label="${t('Delete photo of {date}', { date: esc(d.date) })}">✕</button>` : ''}</div>`).join('')}</div>`
-    : `<div class="empty">${t('No photos yet.')}<br>${t('Close the day and take the group photo.')}</div>`;
+    : `<div class="empty">${t('No photos yet.')}<br>${t('Close the day and take the group photo.')}</div>`);
   minimalize(gal);
 }
 // Group → Videos: topic filter, a card per video (thumbnail for YouTube), and the add form for admins
