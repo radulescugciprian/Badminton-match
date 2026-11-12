@@ -363,3 +363,10 @@
   .cbar{display:flex;justify-content:space-between;align-items:center;margin:-4px 0 4px} .cbar span{font-size:var(--fs-sm);font-weight:700} .cbar .up{color:var(--acc)} .cbar .down{color:var(--danger)}
   :root:not([data-theme=light]) img.pcimg{filter:brightness(.9)}
   @media (prefers-reduced-motion:reduce){.cslide{transition:none}}
+  /* coins: things you earn (medals, badges, stickers, records) as a metal-style disc in their colour, with a solid white icon or a place number */
+  .coin{--s:40px;display:inline-grid;place-items:center;flex:none;width:var(--s);height:var(--s);border-radius:50%;color:#fff;vertical-align:middle;
+    background:linear-gradient(145deg,color-mix(in srgb,var(--c) 65%,#fff),var(--c) 55%,color-mix(in srgb,var(--c) 70%,#000));box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 1px 2px rgba(0,0,0,.25)}
+  .coin svg{width:56%;height:56%} .coin b{font:800 calc(var(--s) * .45)/1 system-ui,sans-serif;text-shadow:0 1px 1px rgba(0,0,0,.3)}
+  .coin.sm{--s:22px;margin:-2px 2px 0 -4px} .coin.off{background:none;box-shadow:none;border:1.5px dashed var(--line);color:var(--mut)}
+  .rank .r .coin{--s:28px} .pod .medal .coin{--s:36px} .hof .stk .coin{--s:36px} .album .stk .si{filter:none;opacity:1;font-size:0} .album .stk .si .coin{--s:44px}
+  .newrec .coin.sm{margin:-3px 4px 0 0}

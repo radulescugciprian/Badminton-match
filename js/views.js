@@ -180,7 +180,7 @@ function setup(d) {
       : admin ? `<button class="link" style="display:block;margin:0 auto" onclick="start()">▶ ${t('Start playing')} (${t('admin')})</button>` : ''}`;
 }
 
-const AWARD = { perfect: () => '💯 ' + t('Perfect night'), comeback: () => '🔄 ' + t('Comeback') };
+const AWARD = { perfect: () => coin('check', 'green', 'sm') + ' ' + t('Perfect night'), comeback: () => coin('comeback', 'teal', 'sm') + ' ' + t('Comeback') };
 function closedExtras(d, part) {
   const an = analyse(db.days, db.players), top = playerOfNight(an, d.id);
   if (!top) return '';
@@ -188,7 +188,7 @@ function closedExtras(d, part) {
       <div class="mut">${canSee(top.id) && !ratingHidden(top.id) ? `${top.delta >= 0 ? '+' : ''}${Math.round(top.delta)} ${t('rating')} · ` : ''}${t('{w} of {p} won', { w: top.w, p: top.p })}</div></div></div>`;
   return `${(() => { const mine = db.players.find(p => p.user === session.user.id), r = mine && (an.night.get(d.id) || new Map()).get(mine.id);
       return r ? `<p class="ptsnight">🏅 ${t('+{n} loyalty bonus tonight', { n: nightBonus(r) })}</p>` : ''; })()}
-    ${db.days.find(x => x.matches.length) !== d ? (rs => rs.length ? `<p class="ptsnight newrec"><button class="link" onclick="go('records')">🎉 ${t('New record')}: ${rs.map(r => `${RECS()[r.key][1]} (${pair(r.ids)})`).join(' · ')}</button></p>` : '')(shownRecords(an).filter(r => r.day === d.id && !['deciders', 'pair'].includes(r.key))) : ''}
+    ${db.days.find(x => x.matches.length) !== d ? (rs => rs.length ? `<p class="ptsnight newrec"><button class="link" onclick="go('records')">${coin('confetti', 'pink', 'sm')} ${t('New record')}: ${rs.map(r => `${RECS()[r.key][1]} (${pair(r.ids)})`).join(' · ')}</button></p>` : '')(shownRecords(an).filter(r => r.day === d.id && !['deciders', 'pair'].includes(r.key))) : ''}
     ${nightAwards(an, d.id).map(x => `<span class="badge">${name(x.id)}: ${AWARD[x.kind]()}</span>`).join('')}<div style="height:10px"></div>`;
 }
 
@@ -206,7 +206,7 @@ function play() {
   if (d.closed) {
     return `<h1>${t('Results')}</h1><p class="mut">${esc(niceDate(d.date))} · ${tp('{n} matches', n)}</p>
       ${closedExtras(d, 'potn')}
-      <div class="card" style="padding:4px 16px;margin-bottom:16px">${stats(d.matches).slice(0, 3).map((r, i) => `<div class="rank"><span class="r">${['🥇', '🥈', '🥉'][i]}</span>${av(r.id, 32)}
+      <div class="card" style="padding:4px 16px;margin-bottom:16px">${stats(d.matches).slice(0, 3).map((r, i) => `<div class="rank"><span class="r">${medal(i)}</span>${av(r.id, 32)}
         <b>${esc(r.name)}</b><span class="mut" style="margin:0">${r.w}/${r.p}</span><b>${Math.round(pct(r) * 100)}%</b></div>`).join('')}</div>
       <div class="nextup"><button class="primary" onclick="photo(${d.id})">📷 ${d.photo ? t('Retake group photo') : t('Take group photo')}</button>
         <button class="add" onclick="shareCard(${d.id})">📤 ${t('Share result card')}</button></div>
@@ -247,9 +247,9 @@ function play() {
 // Chat: messages (yours on the right), the app's own notes in the middle, tap a message to react or delete it
 const groupSeg = () => `<div class="seg" style="margin:0 0 12px">${chatOn ? `<button class="${view === 'chat' ? 'on' : ''}" onclick="go('chat')">💬 ${t('Chat')}</button>` : ''}<button class="${view === 'tips' ? 'on' : ''}" onclick="go('tips')">🎬 ${t('Videos')}</button><button class="${view === 'records' ? 'on' : ''}" onclick="go('records')">🏆 ${t('Records')}</button><button class="${view === 'members' ? 'on' : ''}" onclick="go('members')">👥 ${t('Members')}</button></div>`;
 // Records: the group's records, who holds them and since when (the best night is a rating number, so hidden ratings are left out)
-const RECS = () => ({ streak: ['🔥', t('Longest win streak'), v => tp('{n} wins', v)], upset: ['😈', t('Biggest upset'), v => v + '%'],
-  night: ['📈', t('Best night'), v => `+${v} ${t('rating')}`], wins: ['🏆', t('Most wins in one night'), v => tp('{n} wins', v)],
-  deciders: ['🧊', t('Most deciders won'), v => tp('{n} wins', v)], pair: ['🤝', t('Best pair'), v => v + '%'] });
+const RECS = () => ({ streak: [coin('flame', 'orange'), t('Longest win streak'), v => tp('{n} wins', v)], upset: [coin('bolt', 'violet'), t('Biggest upset'), v => v + '%'],
+  night: [coin('trend', 'green'), t('Best night'), v => `+${v} ${t('rating')}`], wins: [coin('trophy', 'gold'), t('Most wins in one night'), v => tp('{n} wins', v)],
+  deciders: [coin('snow', 'blue'), t('Most deciders won'), v => tp('{n} wins', v)], pair: [coin('handshake', 'teal'), t('Best pair'), v => v + '%'] });
 const shownRecords = (an = analyse(db.days, db.players)) => records(db.days, db.players, an).filter(r => r.key !== 'night' || (canSee(r.ids[0]) && !ratingHidden(r.ids[0])));
 function recordsView() {
   const rs = shownRecords(), R = RECS();
@@ -285,8 +285,8 @@ function board() {
   const move = (id, i) => { const p = prevRank.get(id); return !p || p === i + 1 ? '' : p > i + 1 ? `<span class="up">▲${p - i - 1}</span>` : `<span class="down">▼${i + 1 - p}</span>`; };
   const rowOf = (r, i) => `<button class="rank brow ${mine && r.id === mine.id ? 'me' : ''}" onclick="boardOpen=boardOpen===${r.id}?null:${r.id};render()"><span class="r">${i === null ? '–' : i + 1}</span>${av(r.id, 32)}
       <span class="bn"><b>${esc(r.name)}</b>${tab === 'day' ? `<span class="form">${form(r.id)}</span>` : `<small class="mut">${tp('{n} matches', r.p)}</small>`}</span><span class="mut" style="margin:0">${r.w}–${r.p - r.w}</span><b>${sign(r.gain)}</b>${i === null ? '' : move(r.id, i)}</button>${boardOpen === r.id ? miniProfile(player(r.id)) : ''}`;
-  const podium = [[0, '🥇', '#facc15', 120], [1, '🥈', '#cbd5e1', 90], [2, '🥉', '#d97706', 64]].map(([i, medal, c, h]) => ranked[i] ?
-    `<div class="pod" onclick="boardOpen=boardOpen===${ranked[i].id}?null:${ranked[i].id};render()"><div class="medal">${medal}</div>${av(ranked[i].id)}<div class="pn">${esc(ranked[i].name)}</div>
+  const podium = [[0, '#facc15', 120], [1, '#cbd5e1', 90], [2, '#d97706', 64]].map(([i, c, h]) => ranked[i] ?
+    `<div class="pod" onclick="boardOpen=boardOpen===${ranked[i].id}?null:${ranked[i].id};render()"><div class="medal">${coin('medal', ['gold', 'silver', 'bronze'][i])}</div>${av(ranked[i].id)}<div class="pn">${esc(ranked[i].name)}</div>
      <div class="pw">${sign(ranked[i].gain)} · ${ranked[i].w}–${ranked[i].p - ranked[i].w}</div>
      <div class="bar" style="--c:${c};--h:${h}px">${i + 1}</div></div>` : '<div class="pod"></div>');
   const head = `<h1>${t('Leaderboard')}</h1>
@@ -320,7 +320,7 @@ function ratingList() {
   const kindSeg = hasS ? `<div class="seg mini2">${[['doubles', t('Doubles')], ['singles', t('Singles')]].map(([k, l]) => `<button class="${kind === k ? 'on' : ''}" onclick="boardKind='${k}';render()">${l}</button>`).join('')}</div>` : '';
   if (!ranked.length) return kindSeg + emptyState('board', t('No matches yet.'), t('Ratings start at 1000 and move with every result.'), `<button class="primary" onclick="go('play')">${t('Go to Play')}</button>`);
   const shown = ranked.filter(p => canSee(p.id) && !ratingHidden(p.id)), hidden = ranked.filter(p => !canSee(p.id) && !ratingHidden(p.id)), relaxed = ranked.filter(p => ratingHidden(p.id));
-  const pod = [[0, '🥇', '#facc15', 120], [1, '🥈', '#cbd5e1', 90], [2, '🥉', '#d97706', 64]].map(([i, medal, c, h]) => shown[i] ? `<div class="pod" onclick="openStats(${shown[i].id})"><div class="medal">${medal}</div>${av(shown[i].id)}<div class="pn">${esc(shown[i].name)}</div>
+  const pod = [[0, '#facc15', 120], [1, '#cbd5e1', 90], [2, '#d97706', 64]].map(([i, c, h]) => shown[i] ? `<div class="pod" onclick="openStats(${shown[i].id})"><div class="medal">${coin('medal', ['gold', 'silver', 'bronze'][i])}</div>${av(shown[i].id)}<div class="pn">${esc(shown[i].name)}</div>
     <div class="pw">${Math.round(shownR(shown[i].id))}</div><div class="bar" style="--c:${c};--h:${h}px">${i + 1}</div></div>` : '<div class="pod"></div>');
   return kindSeg + `<div class="podium">${pod[1]}${pod[0]}${pod[2]}</div><p class="mut">${t('Everyone starts at 1000. Beat a stronger team and you gain more.')}</p><div class="card" style="padding:4px 16px">${shown.map((p, i) => {
     const dl = lastMove(p.id);
@@ -339,11 +339,11 @@ function ratingList() {
 function badgesOf(an, id) {
   const b = an.badges.get(id), me_ = stats(db.days.flatMap(d => d.matches)).find(r => r.id === id) || { p: 0 };
   const crowns = monthChamps().filter(c => c.id === id).length;
-  return [crowns && `👑 ${t('Champion of the month')} ×${crowns}`, b.potn && `⭐ ${t('Player of the night')} ×${b.potn}`, b.perfect && `💯 ${t('Perfect night')} ×${b.perfect}`, b.fire && `🔥 ${t('5 in a row')} ×${b.fire}`,
-    b.comeback && `🔄 ${t('Comeback')} ×${b.comeback}`, b.improved && `📈 ${t('Most improved')}`,
+  return [crowns && `${coin('crown', 'gold', 'sm')} ${t('Champion of the month')} ×${crowns}`, b.potn && `${coin('star', 'gold', 'sm')} ${t('Player of the night')} ×${b.potn}`, b.perfect && `${coin('check', 'green', 'sm')} ${t('Perfect night')} ×${b.perfect}`, b.fire && `${coin('flame', 'orange', 'sm')} ${t('5 in a row')} ×${b.fire}`,
+    b.comeback && `${coin('comeback', 'teal', 'sm')} ${t('Comeback')} ×${b.comeback}`, b.improved && `${coin('trend', 'green', 'sm')} ${t('Most improved')}`,
     // showing up counts too
-    b.nightsRun >= 5 && `🗓 ${t('{n} nights in a row', { n: b.nightsRun })}`, me_.p >= 50 && `🎖 ${t('{n} matches played', { n: [250, 100, 50].find(x => me_.p >= x) })}`,
-    b.everyone && `🤝 ${t('Played with everyone')}`, b.everyMonth && `📆 ${t('Never missed a month')}`, earlyBird(id) && `🐦 ${t('Early bird')} ×${earlyBird(id)}`, loyal(id) && `🏅 ${t('Loyal player')} ×${loyal(id)}`, challengeWins(db.days, db.players).get(id) && `🎯 ${t('Weekly challenges')} ×${challengeWins(db.days, db.players).get(id)}`].filter(Boolean);
+    b.nightsRun >= 5 && `${coin('nights', 'green', 'sm')} ${t('{n} nights in a row', { n: b.nightsRun })}`, me_.p >= 50 && `${coin('medal', 'bronze', 'sm')} ${t('{n} matches played', { n: [250, 100, 50].find(x => me_.p >= x) })}`,
+    b.everyone && `${coin('handshake', 'teal', 'sm')} ${t('Played with everyone')}`, b.everyMonth && `${coin('calendar', 'blue', 'sm')} ${t('Never missed a month')}`, earlyBird(id) && `${coin('sunrise', 'orange', 'sm')} ${t('Early bird')} ×${earlyBird(id)}`, loyal(id) && `${coin('heart', 'pink', 'sm')} ${t('Loyal player')} ×${loyal(id)}`, challengeWins(db.days, db.players).get(id) && `${coin('target', 'violet', 'sm')} ${t('Weekly challenges')} ×${challengeWins(db.days, db.players).get(id)}`].filter(Boolean);
 }
 function statsView() {
   const an = analyse(db.days, db.players), mine = db.players.find(p => p.user === session.user.id), played = db.players.filter(p => (an.hist.get(p.id).length || an.histS.get(p.id).length) && canSee(p.id));
@@ -383,15 +383,15 @@ function statsView() {
 
 
 // player card: the same facts for the screen and for the shared picture (drawPlayerCard in fx.js)
-const TITLES = () => ({ clutch: ['🧊', t('Clutch'), t('wins the deciding games')], giant: ['😈', t('Giant slayer'), t('beats the favourites')], glue: ['🤝', t('Glue'), t('partners win more with them')],
-  comeback: ['🔄', t('Comeback kid'), t('never gives up on a night')], ironman: ['🔋', t('Ironman'), t('hardly ever misses a night')], rollercoaster: ['🎢', t('Rollercoaster'), t('win, lose, win, lose…')],
-  machine: ['🤖', t('The Machine'), t('wins 7 out of 10')], hotstreak: ['🔥', t('Hot streak'), t('won 8 or more in a row')], onrise: ['📈', t('On the rise'), t('climbing fastest lately')],
-  lonewolf: ['🐺', t('Lone wolf'), t('loves a 1 vs 1')], teamplayer: ['👥', t('Team player'), t('has partnered everyone')], workhorse: ['🐎', t('Workhorse'), t('plays the most games a night')],
-  rookie: ['🌱', t('Rookie'), t('just getting started')], allround: ['⚖️', t('All-rounder'), t('a bit of everything')] });
+const TITLES = () => ({ clutch: [['snow', 'blue'], t('Clutch'), t('wins the deciding games')], giant: [['bolt', 'violet'], t('Giant slayer'), t('beats the favourites')], glue: [['handshake', 'teal'], t('Glue'), t('partners win more with them')],
+  comeback: [['comeback', 'teal'], t('Comeback kid'), t('never gives up on a night')], ironman: [['battery', 'green'], t('Ironman'), t('hardly ever misses a night')], rollercoaster: [['wave', 'pink'], t('Rollercoaster'), t('win, lose, win, lose…')],
+  machine: [['robot', 'teal'], t('The Machine'), t('wins 7 out of 10')], hotstreak: [['flame', 'orange'], t('Hot streak'), t('won 8 or more in a row')], onrise: [['trend', 'green'], t('On the rise'), t('climbing fastest lately')],
+  lonewolf: [['user', 'slate'], t('Lone wolf'), t('loves a 1 vs 1')], teamplayer: [['team', 'blue'], t('Team player'), t('has partnered everyone')], workhorse: [['horse', 'bronze'], t('Workhorse'), t('plays the most games a night')],
+  rookie: [['plant', 'green'], t('Rookie'), t('just getting started')], allround: [['scales', 'slate'], t('All-rounder'), t('a bit of everything')] });
 // season album (stickers) and card collection (players you have beaten or won with), under Stats → Collection
-const STICKERS = () => ({ nights5: ['🗓', t('Play 5 nights')], matches20: ['🏸', t('Play 20 matches')], partners5: ['🤝', t('Win with 5 different partners')],
-  beat5: ['🎯', t('Beat 5 different opponents')], streak3: ['🔥', t('Win 3 in a row')], decider: ['🧊', t('Win a deciding game')], singles: ['🐺', t('Win a singles match')],
-  perfect: ['💯', t('Win every match of a night')], challenge: ['⭐', t('Complete a weekly challenge')] });
+const STICKERS = () => ({ nights5: [['nights', 'green'], t('Play 5 nights')], matches20: [['sneaker', 'blue'], t('Play 20 matches')], partners5: [['handshake', 'teal'], t('Win with 5 different partners')],
+  beat5: [['target', 'violet'], t('Beat 5 different opponents')], streak3: [['flame', 'orange'], t('Win 3 in a row')], decider: [['snow', 'blue'], t('Win a deciding game')], singles: [['user', 'slate'], t('Win a singles match')],
+  perfect: [['check', 'green'], t('Win every match of a night')], challenge: [['star', 'gold'], t('Complete a weekly challenge')] });
 // the rating line under the player picker opens this player's loyalty bonus, worked out step by step
 function loyaltyHtml(an, id) {
   const L = loyaltyOf(an, id), row = (l, calc, v) => `<div class="member"><span>${l}${calc ? `<br><small class="mut">${calc}</small>` : ''}</span><b>${v}</b></div>`;
@@ -408,7 +408,7 @@ function loyaltyHtml(an, id) {
 function cardDeck(an, played, id) {
   const k = played.findIndex(p => p.id === id), lastDay = [...db.days].reverse().find(d => (an.night.get(d.id) || new Map()).has(id)), r = lastDay && an.night.get(lastDay.id).get(id);
   const g = r && !ratingHidden(id) ? Math.round(r.delta + (seasonKey(lastDay.date) === seasonKey(tzParts().date) ? nightBonus(r) : 0)) : 0;
-  return `<div class="cdeck" onscroll="onDeck(this)">${played.map((p, i) => `<div class="cslide ${i === k ? 'on' : ''}" onclick="if(${i}!==deckIdx())deckTo(${i})">${playerCardHtml(cardSpec(p.id, an, badgesOf(an, p.id)))}</div>`).join('')}</div>
+  return `<div class="cdeck" onscroll="onDeck(this)">${played.map((p, i) => `<div class="cslide ${i === k ? 'on' : ''}" onclick="if(${i}!==deckIdx())deckTo(${i})">${playerCardHtml(cardSpec(p.id, an))}</div>`).join('')}</div>
     ${played.length > 1 ? `<div class="dots">${played.map((_, i) => `<i class="${i === k ? 'on' : ''}"></i>`).join('')}</div>` : ''}
     <div class="cbar">${g ? `<span class="${g > 0 ? 'up' : 'down'}">${g > 0 ? '▲' : '▼'}${Math.abs(g)} ${t('last night')}</span>` : '<span></span>'}<button class="link" onclick="sharePlayerCard(${id})">📤 ${t('Share card')}</button></div>`;
 }
@@ -419,20 +419,20 @@ function collectionHtml(id, played) {
   const got = collection(db.days.filter(d => seasonKey(d.date) === season), id), others = played.filter(p => p.id !== id && !p.removed);
   return `<h2 class="sec">${t('Season album')} · ${esc(seasonLabel(season))}</h2>
     <p class="mut">${done === st.length ? '🏆 ' + t('Album complete: this season your card has a gold edge!') : t('{n} of {m} stickers. Fill the album for a gold-edge card this season.', { n: done, m: st.length })}</p>
-    <div class="album">${st.map(x => `<div class="stk ${x.done ? 'done' : ''}"><span class="si">${S[x.k][0]}</span><span>${S[x.k][1]}</span><small>${x.done ? '✓' : `${x.have}/${x.need}`}</small></div>`).join('')}</div>
+    <div class="album">${st.map(x => `<div class="stk ${x.done ? 'done' : ''}"><span class="si">${coin(S[x.k][0][0], x.done ? S[x.k][0][1] : 'slate', x.done ? '' : 'off')}</span><span>${S[x.k][1]}</span><small>${x.done ? '✓' : `${x.have}/${x.need}`}</small></div>`).join('')}</div>
     <h2 class="sec">${t('Card collection')} · ${others.filter(p => got.has(p.id)).length}/${others.length}</h2>
     <p class="mut">${t('Collect a card by beating that player or winning together this season.')}</p>
     <div class="cards">${others.map(p => { const g = got.get(p.id);
       return `<div class="ccard ${g ? 'got' : ''}">${av(p.id, 44)}<b>${esc(p.name)}</b><small class="mut">${g ? (g.how === 'beat' ? t('beaten') : t('won together')) : '🔒'}</small></div>`; }).join('')}</div>`;
 }
-function cardSpec(id, an = analyse(db.days, db.players), badges = []) {
+function cardSpec(id, an = analyse(db.days, db.players)) {
   const c = playerCard(db.days, db.players, id, an), s = seasonOf(tzParts().date), [te, tn, td] = TITLES()[c.title], hid = ratingHidden(id);
   const seasonName = { winter: t('Winter {y}', s), spring: t('Spring {y}', s), summer: t('Summer {y}', s), autumn: t('Autumn {y}', s) }[s.k];
   const full = album(db.days, db.players, seasonKey(tzParts().date), id).every(x => x.done), tier = full ? 'gold' : c.tier;
   return { id, tier, edition: full ? t('Album edition') : { gold: t('Gold edition'), silver: t('Silver edition'), bronze: t('Bronze edition') }[c.tier], group: dayName(sched ? sched.dow : 4).slice(0, 3).toUpperCase(),
-    rating: hid ? '🙈' : String(Math.round(ratingOf(an, id))), ratingLabel: hid ? t('just playing') : `${t('Rating')} · ${an.main(id) === 'singles' ? t('Singles') : t('Doubles')}`, name: player(id).name, titleEmoji: te, titleWord: tn, titleLine: td,
+    rating: hid ? '🙈' : String(Math.round(ratingOf(an, id))), ratingLabel: hid ? t('just playing') : `${t('Rating')} · ${an.main(id) === 'singles' ? t('Singles') : t('Doubles')}`, name: player(id).name, titleIcon: te[0], titleColor: COINC[te[1]], titleWord: tn, titleLine: td,
     stats: [[Math.round(100 * c.rate) + '%', t('win rate')], [c.bestRun, t('best run')], [c.matches, t('matches')], [c.nights, t('nights')], [c.deciders.p ? `${c.deciders.w}/${c.deciders.p}` : '–', t('deciders')]].map(([x, l]) => [String(x), l]),
-    partner: c.partner ? `🤝 ${t('best partner')}: ${player(c.partner).name}${c.partnerGames >= 3 ? ` · ${Math.round(100 * c.partnerRate)}%` : ''}` : '', badges: badges.map(x => x.split(' ')[0]).join(' '),
+    partner: c.partner ? `${t('best partner')}: ${player(c.partner).name}${c.partnerGames >= 3 ? ` · ${Math.round(100 * c.partnerRate)}%` : ''}` : '',
     season: [seasonName.replace(s.y, '').trim(), s.y], footer: `🏸 ${t('Badminton Thursdays')} · ${seasonName}` };
 }
 // the card is drawn once as a picture (drawPlayerCard in fx.js) and the same picture is shown here and shared;
@@ -657,44 +657,9 @@ async function openPhoto(id) {
 
 const drawReactions = () => { const el = document.getElementById('rx'); if (el && lbDay) el.innerHTML = reactionBar(lbDay); };
 // two icon sets, chosen by an admin for everyone: the neon pictures, or minimal line icons that take the text colour
-const LINE = {
-  more: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
-  play: '<circle cx="12" cy="18" r="3"/><path d="M9.6 16.2 6 4h12l-3.6 12.2M7.2 8.5h9.6M10.2 4l.9 11.2M13.8 4l-.9 11.2"/>',
-  board: '<path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3.5 3.8M16 6h3a3 3 0 0 1-3.5 3.8M12 13v4M8.5 20h7M10 17h4"/>',
-  photos: '<path d="M4 8h3.2l1.8-2.8h6L16.8 8H20v11H4z"/><circle cx="12" cy="13.2" r="3.3"/>',
-  stats: '<path d="M4 20h16M7 16.5V12M12 16.5V7.5M17 16.5V10"/>',
-  members: '<circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9" r="2.5"/><path d="M15.6 14.2A4.5 4.5 0 0 1 21 18.5"/>',
-  admin: '<circle cx="8" cy="12" r="4"/><path d="M12 12h9M17.5 12v3M20.5 12v2.2"/>',
-  logout: '<path d="M10 4H5v16h5M14 8l4 4-4 4M18 12H9"/>',
-  help: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.4c-.6.3-1 .8-1 1.4v.6"/><path d="M12 17h.01"/>',
-};
-Object.assign(LINE, {
-  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
-  chat: '<path d="M4 5h16v11H9l-5 4z"/>',
-  calendar: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',
-  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>', cross: '<path d="M6 6l12 12M18 6L6 18"/>',
-  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', pencil: '<path d="M4 20l1-4L16 5l3 3L8 19z"/>',
-  share: '<path d="M12 15V4M8 8l4-4 4 4M5 13v6h14v-6"/>', bell: '<path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0"/>',
-  receipt: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/>', image: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 8"/>',
-  ban: '<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>', undo: '<path d="M4 9h11a5 5 0 0 1 0 10h-4M8 5 4 9l4 4"/>',
-  trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>', go: '<path d="M8 5l11 7-11 7z"/>',
-  lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>', mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
-  flag: '<path d="M5 21V4h12l-2 4 2 4H5"/>', warn: '<path d="M12 3l10 18H2zM12 10v5M12 18h.01"/>', save: '<path d="M12 4v11M8 11l4 4 4-4M5 20h14"/>',
-  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/>',
-  plus: '<path d="M12 5v14M5 12h14"/>', video: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5v5l4.5-2.5z"/>',
-  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/>',
-  eyeoff: '<path d="M3 3l18 18M10.6 6.1A10 10 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-3.2 3.8M6.6 6.6A17 17 0 0 0 2 12s3.5 6 10 6a9.7 9.7 0 0 0 4.4-1"/>',
-  contrast: '<circle cx="12" cy="12" r="9"/><path d="M12 3v18a9 9 0 0 0 0-18z" fill="currentColor"/>', unlock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/>',
-  star: '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>', crown: '<path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z"/>',
-  gift: '<rect x="3" y="8" width="18" height="5" rx="1"/><path d="M5 13v8h14v-8M12 8v13M12 8S10.5 3 8 4s0 4 4 4zM12 8s1.5-5 4-4 0 4-4 4z"/>',
-  medal: '<circle cx="12" cy="15" r="5"/><path d="M8.5 11 6 3h4l2 5M15.5 11 18 3h-4l-2 5"/>', bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
-  flame: '<path d="M12 3c1 4 5 5.5 5 10a5 5 0 0 1-10 0c0-2.5 1.5-3.5 2-5 1 1.5 1.5 2 2 2.5C11.5 8 11 5.5 12 3z"/>', trend: '<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>',
-  snow: '<path d="M12 2v20M4.9 7l14.2 10M4.9 17L19.1 7M9 4l3 2 3-2M9 20l3-2 3 2"/>', sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
-  phone: '<rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/>', user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
-  target: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/>', link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
-});
+// LINE and COIN (the icon data) live in js/icons.js
 // minimal set: the emoji used as icons anywhere in the app become line icons (reactions, medals and badges stay as they are)
-const EMO = { '👁': 'eye', '💬': 'chat', '📅': 'calendar', '✅': 'check', '❌': 'cross', '✕': 'cross', '⏳': 'clock', '✎': 'pencil', '📤': 'share', '🔔': 'bell',
+const EMO = { '⏰': 'clock', '👁': 'eye', '💬': 'chat', '📅': 'calendar', '✅': 'check', '❌': 'cross', '✕': 'cross', '⏳': 'clock', '✎': 'pencil', '📤': 'share', '🔔': 'bell',
   '🧾': 'receipt', '🖼': 'image', '🚫': 'ban', '↺': 'undo', '↶': 'undo', '🗑': 'trash', '▶': 'go', '🔒': 'lock', '✉': 'mail', '🏁': 'flag', '📷': 'photos',
   '📊': 'stats', '🏆': 'board', '🏸': 'play', '👥': 'members', '❔': 'help', '❓': 'help', '⚙': 'gear', '⚠': 'warn', '🔑': 'admin', '⬇': 'save', '➕': 'plus', '🎬': 'video', '🎯': 'target', '🔗': 'link',
   '🌐': 'globe', '🙈': 'eyeoff', '🌗': 'contrast', '🎨': 'contrast', '🔓': 'unlock', '⭐': 'star', '👑': 'crown', '🎁': 'gift', '🏅': 'medal', '😈': 'bolt', '📱': 'phone', '👤': 'user',
@@ -707,6 +672,10 @@ function minimalize(root) {
   while (w.nextNode()) { EMO_RE.lastIndex = 0; if (EMO_RE.test(w.currentNode.data) && !skip(w.currentNode)) hits.push(w.currentNode); }
   for (const n of hits) { const s = document.createElement('span'); s.innerHTML = esc(n.data).replace(EMO_RE, (_, e) => svgIcon(EMO[e], 'inl i-' + EMO[e])); n.replaceWith(...s.childNodes); }
 }
+// a coin for something you earned: a solid icon (COIN) or a place number on a metal-style disc in the item's colour
+const COINC = { gold: '#c9a227', silver: '#9aa3ae', bronze: '#b8743a', orange: '#ea580c', violet: '#7c3aed', pink: '#db2777', blue: '#2563eb', teal: '#0f766e', green: '#16a34a', slate: '#475569' };
+const coin = (k, c, cls = '') => `<span class="coin ${cls}" style="--c:${COINC[c] || c}" aria-hidden="true">${/^\d$/.test(k) ? `<b>${k}</b>` : `<svg viewBox="0 0 256 256" fill="currentColor"><path d="${COIN[k]}"/></svg>`}</span>`;
+const medal = i => coin(String(i + 1), ['gold', 'silver', 'bronze'][i]);
 const svgIcon = (k, cls = '') => `<svg class="lic ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LINE[k]}</svg>`;
 const ICON = svgIcon, topIcon = svgIcon;   // one icon family: line icons that follow the light or dark theme
 const NAV = { play: () => ICON('play') + '<span>' + t('Play') + (session && loaded && invites().length ? ' •' : '') + '</span>', board: () => ICON('board') + '<span>' + t('Board') + '</span>',

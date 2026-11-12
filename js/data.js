@@ -824,9 +824,8 @@ const cardArt = async id => { const p = player(id); let img = null;
   for (const src of [bigAvatar[id], p.avatar]) if (src && !img) try { const res = await fetch(src); if (res.ok) img = await createImageBitmap(await res.blob()); } catch {}
   return { hue: id * 67 % 360, initial: p.name[0].toUpperCase(), img }; };
 async function sharePlayerCard(id) {
-  const p = player(id), an = analyse(db.days, db.players), b = an.badges.get(id), crowns = monthChamps().filter(c => c.id === id).length, me_ = stats(db.days.flatMap(d => d.matches)).find(r => r.id === id) || { p: 0 };
-  const em = [crowns && '👑', b.potn && '⭐', b.perfect && '💯', b.fire && '🔥', b.comeback && '🔄', b.improved && '📈', b.nightsRun >= 5 && '🗓', me_.p >= 50 && '🎖', b.everyone && '🤝', b.everyMonth && '📆', earlyBird(id) && '🐦', loyal(id) && '🏅', challengeWins(db.days, db.players).get(id) && '🎯'].filter(Boolean);
-  const blob = await drawPlayerCard({ ...cardSpec(id, an, em), ...(await cardArt(id)) });
+  const p = player(id), an = analyse(db.days, db.players);
+  const blob = await drawPlayerCard({ ...cardSpec(id, an), ...(await cardArt(id)) });
   const file = new File([blob], `badminton-${p.name}.png`, { type: 'image/png' });
   if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: p.name }).catch(() => {});
   else saveFile(blob, file.name);

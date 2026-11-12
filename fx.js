@@ -88,7 +88,7 @@ const loadCardFont = () => cardFont || (cardFont = Promise.all([
 // a player card as a 1080×1512 picture, in a clean "champions series" style: a light card with a navy frame, the edition on a
 // pill, the title big, a round badge, the photo in front of a light stadium drawing, a stats box, the rating on a shield and the
 // name on a pill; gold, silver or bronze (loyalty) only colours the accents
-async function drawPlayerCard({ tier, edition, rating, ratingLabel, name, titleEmoji, titleWord, titleLine, stats, partner, season, group, hue, initial, img }) {
+async function drawPlayerCard({ tier, edition, rating, ratingLabel, name, titleIcon, titleColor, titleWord, titleLine, stats, partner, season, group, hue, initial, img }) {
   await loadCardFont();
   const W = 1080, H = 1512, c = document.createElement('canvas'); c.width = W; c.height = H;
   const g = c.getContext('2d'), sans = 'system-ui, "Segoe UI Emoji", "Apple Color Emoji", sans-serif', disp = `"Bebas Neue", "Arial Narrow", ${sans}`;
@@ -127,7 +127,11 @@ async function drawPlayerCard({ tier, edition, rating, ratingLabel, name, titleE
   if (partner) say(partner, 114, 366, fit(partner, 640, 32, sans, 600), NAVY, { f: sans, w: 600, align: 'left' });
   g.fillStyle = PAPER; g.beginPath(); g.arc(900, 226, 96, 0, 6.3); g.fill(); g.lineWidth = 6; g.strokeStyle = NAVY; g.stroke();
   g.lineWidth = 3; g.strokeStyle = ACC; g.beginPath(); g.arc(900, 226, 82, 0, 6.3); g.stroke();
-  say(titleEmoji, 900, 228, 60, '#000', { f: sans }); say(group, 900, 284, fit(group, 110, 34), NAVY, { sp: '2px' });
+  // the title's coin: a metal-style disc in its colour with the solid icon (COIN, js/icons.js) in white
+  const mix = (hex, to, f) => '#' + [1, 3, 5].map(k => Math.round(parseInt(hex.slice(k, k + 2), 16) * (1 - f) + to * f).toString(16).padStart(2, '0')).join('');
+  const cg = g.createLinearGradient(870, 176, 930, 236); cg.addColorStop(0, mix(titleColor, 255, .35)); cg.addColorStop(.55, titleColor); cg.addColorStop(1, mix(titleColor, 0, .3));
+  g.beginPath(); g.arc(900, 206, 34, 0, Math.PI * 2); g.fillStyle = cg; g.fill();
+  g.save(); g.translate(880, 186); g.scale(40 / 256, 40 / 256); g.fillStyle = '#fff'; g.fill(new Path2D(COIN[titleIcon])); g.restore(); say(group, 900, 284, fit(group, 110, 34), NAVY, { sp: '2px' });
   // bottom: the stats box (left), the rating shield (right)
   g.fillStyle = '#ffffff'; rr(92, 1000, 340, 300, 28); g.fill(); g.lineWidth = 3; g.strokeStyle = GREY; g.stroke();
   stats.slice(0, 5).forEach(([v, l], i) => { const y = 1056 + i * 55; say(l.toUpperCase(), 122, y, fit(l.toUpperCase(), 190, 40), '#6b7383', { align: 'left', sp: '1px' }); say(v, 404, y, fit(v, 120, 46), NAVY, { align: 'right' }); });
