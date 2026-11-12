@@ -330,7 +330,7 @@
   body:not(.clean){--ovc:7,12,24;--ov1:rgba(var(--ovc),max(.35,var(--dim)));--ov2:rgba(var(--ovc),max(.5,var(--dim)))}
   body:not(.clean) .pchoose{background:var(--card);border-radius:14px;padding:6px}
   .stseg{margin:16px 0 4px}
-  .nextup{display:flex;gap:8px;margin:0 0 16px} .nextup>button{flex:1;margin:0}
+  .nextup{display:flex;gap:8px;margin:0 0 16px} .nextup>button{flex:1;margin:0;padding:10px 8px;min-height:44px;font-size:var(--fs-sm);font-weight:600;line-height:1.25}
   .quietacts{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;margin-top:8px}
   /* hall of fame, season album, card collection */
   .hof{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)} .hof:last-child{border-bottom:0}
