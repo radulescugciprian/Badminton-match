@@ -54,7 +54,7 @@ run('sign-up list, ratings, badges, result card and reactions', async h => {
   const [card] = await Promise.all([A.waitForEvent('download'), A.click('text=Share result card')]);
   await card.saveAs(require('os').tmpdir() + '/card.png');
   const png = fs.readFileSync(require('os').tmpdir() + '/card.png'); assert(png.slice(1, 4).toString() === 'PNG' && png.readUInt32BE(16) === 1080 && png.readUInt32BE(20) === 1350, 'PNG 1080x1350');
-  await C.click('nav >> text=Play'); await C.click('text=Take group photo'); await C.setInputFiles('#shot', S + 'red.png'); await C.waitForSelector('text=Photo saved');
+  await C.click('nav >> text=Play'); await C.click('text=Take group photo'); await C.setInputFiles('#shot', S + 'red.png'); await C.click('#crop [data-ok]'); await C.waitForSelector('text=Photo saved');
   
   // ---- reactions on the photo
   await A.click('nav >> text=Photos'); await B.click('nav >> text=Photos'); await A.waitForSelector('.grid img'); await B.waitForSelector('.grid img');

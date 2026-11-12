@@ -1,6 +1,7 @@
 const { run } = require('./harness');
 run('sign-in, rights, photos and the play schedule', async h => {
   const { mk, signup, st, rpc, S, assert, fs, sleep, pages, win } = h;
+  h.defaultNow = st.now = Date.parse('2026-11-12T16:30:00Z');   // a Thursday evening in Berlin, so the night does not end at midnight halfway through
   const A = await mk(), B = await mk();
   await A.waitForSelector('text=Log in to see the scores',{timeout:4000}).catch(async e=>{console.log(await A.textContent('body'), A.errs); throw e});
   await signup(A, 'Anna', 'a@x.com', '1'); await A.waitForSelector('text=Next match day');
@@ -17,7 +18,7 @@ run('sign-in, rights, photos and the play schedule', async h => {
   assert(h.rpc('u2', { table: 'players', op: 'update', payload: { name: 'Hacked' }, f: [['eq', 'id', 3]] }).error, 'the server refuses renaming someone else');
   assert((await B.locator('text=Add guest player').count()) === 1, 'members can add guests too');
   assert(st.players.length === 5, 'claiming existing players creates no duplicates');
-  await B.click('.top .me'); await B.click('text=Change photo'); await B.setInputFiles('#pick', S + 'red.png');
+  await B.click('.top .me'); await B.click('text=Change photo'); await B.setInputFiles('#pick', S + 'red.png'); await B.click('#crop [data-ok]');
   await A.waitForSelector('img.av'); // Dani's new avatar is visible to everyone
   assert(st.players[1].avatar && !st.players[0].avatar, 'avatar stored on the right player');
   await h.until(() => st.files['avatars/p2.jpg'], 'a sharp copy for the player card');
@@ -25,7 +26,7 @@ run('sign-in, rights, photos and the play schedule', async h => {
   assert(r.error, 'server refuses avatar change for someone else');
   await B.click('nav >> text=Play');
   // shared state: A changes mode, B sees it live
-  assert.equal(await B.locator('button:has-text("4 players")').count(), 1, 'members pick 4 or 5 too');
+  assert.equal(await B.locator('button:has-text("4 players")').count(), await B.evaluate(() => nextPlayDate() === tzParts().date) ? 1 : 0, 'members pick 4 or 5 on match day (admins any day)');
   await A.click('button:has-text("4 players")'); await B.waitForFunction(() => cur().mode === 4);
   await A.click('button:has-text("5 players")'); await B.waitForFunction(() => cur().mode === 5);
   await A.click('text=Start playing'); await B.waitForSelector('text=Match 1');
@@ -43,7 +44,7 @@ run('sign-in, rights, photos and the play schedule', async h => {
   assert(st.matches.length === 2, 'no duplicate match stored');
   // close day (admin) -> member photo -> shared library
   await A.click('nav >> text=Play'); await h.more(A); await A.click('text=Close day'); await B.waitForSelector('h1:has-text("Results")');
-  await B.click('text=Take group photo'); await B.setInputFiles('#shot', S + 'red.png');
+  await B.click('text=Take group photo'); await B.setInputFiles('#shot', S + 'red.png'); await B.click('#crop [data-ok]');
   await B.waitForSelector('text=Photo saved'); await A.waitForSelector('text=Photo saved');
   await A.click('nav >> text=Photos'); await A.waitForSelector('.grid img');
   await B.click('nav >> text=Photos'); await B.waitForSelector('.grid img');
@@ -95,7 +96,7 @@ run('sign-in, rights, photos and the play schedule', async h => {
   // delete a photo (card button) and delete single days (admin)
   await A.click('nav >> text=Play'); await A.waitForSelector('text=Next match day');
   await A.click('text=Start playing'); await win(A, 1); await h.more(A); await A.click('text=Close day'); await A.waitForSelector('h1:has-text("Results")');
-  await A.click('text=Take group photo'); await A.setInputFiles('#shot', S + 'red.png'); await A.waitForSelector('text=Photo saved');
+  await A.click('text=Take group photo'); await A.setInputFiles('#shot', S + 'red.png'); await A.click('#crop [data-ok]'); await A.waitForSelector('text=Photo saved');
   await A.click('nav >> text=Photos'); await A.waitForSelector('.grid img');
   await A.click('.grid .x'); await A.waitForSelector('text=No photos yet');
   assert(Object.keys(st.files).filter(k => !k.startsWith('avatars/')).length === 0 && st.days.every(d => !d.photo_path), 'photo deleted from storage and day');

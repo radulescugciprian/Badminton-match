@@ -66,7 +66,7 @@ run('admin tools', async h => {
   await B.reload(); await B.waitForSelector('text=Next match day').catch(() => {});
   // receipts on the Photos tab: a member adds one, everyone sees it, the member deletes it again
   await B.click('nav >> text=Photos'); await B.click('.seg >> text=Receipts'); await B.waitForSelector('text=Add a receipt');
-  B.promptAnswer = '12.50'; await B.setInputFiles('#rcpt', h.S + 'red.png');
+  B.promptAnswer = '12.50'; await B.setInputFiles('#rcpt', h.S + 'red.png'); await B.click('#crop [data-ok]');
   await h.until(() => st.receipts.length === 1 && st.receipts[0].amount === 12.5 && st.files[st.receipts[0].photo_path], 'receipt saved with its photo');
   await A.click('nav >> text=Photos'); await A.click('.seg >> text=Receipts'); await A.waitForSelector('#gal .member');
   await B.waitForSelector('#gal .member'); await B.click('[aria-label="Delete this receipt?"]');

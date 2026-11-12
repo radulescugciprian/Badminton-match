@@ -385,8 +385,65 @@ const shrink = (file, max, q, square) => new Promise(ok => {
   img.src = URL.createObjectURL(file);
 });
 const toDataUrl = b => new Promise(ok => { const r = new FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(b); });
+// ---- crop a picture before it is uploaded: drag to move, pinch / slider / wheel to zoom, turn by 90°, pick a shape.
+// Resolves with the cropped JPEG (or the file as it is, if the browser cannot read it), or null when cancelled.
+const SHAPES = () => ({ free: t('Original'), '1:1': t('Square'), '4:3': '4:3', '3:4': '3:4', '9:16': '9:16' });
+function cropPhoto(file, { shapes = ['free', '1:1', '4:3', '3:4'], round = false } = {}) {
+  return new Promise(async done => {
+    let img;
+    try { img = await createImageBitmap(file, { imageOrientation: 'from-image' }); } catch { try { img = await createImageBitmap(file); } catch { return done(file); } }
+    const el = document.createElement('div'); el.id = 'crop'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', t('Crop photo'));
+    el.innerHTML = `<div class="cstage"><canvas></canvas></div><div class="ctools">
+      ${shapes.length > 1 ? `<div class="seg">${shapes.map(k => `<button type="button" data-shape="${k}">${SHAPES()[k]}</button>`).join('')}</div>` : ''}
+      <div class="crow"><button type="button" class="link ico" data-turn aria-label="${t('Turn')}">${svgIcon('undo')}</button>
+        <input type="range" min="1" max="4" step="0.01" value="1" aria-label="${t('Zoom')}"></div>
+      <div class="cact"><button type="button" class="link" data-no>${t('Cancel')}</button><button type="button" class="primary" data-ok>${t('Use photo')}</button></div></div>`;
+    document.body.append(el);
+    const cv = el.querySelector('canvas'), g = cv.getContext('2d'), zoom = el.querySelector('input'), dpr = devicePixelRatio || 1;
+    let shape = shapes[0], rot = 0, z = 1, tx = 0, ty = 0, W = 0, H = 0, fw = 0, fh = 0;
+    const iw = () => rot % 2 ? img.height : img.width, ih = () => rot % 2 ? img.width : img.height;
+    const ratio = () => shape === 'free' ? iw() / ih() : (([a, b]) => a / b)(shape.split(':').map(Number));
+    const base = () => Math.max(fw / iw(), fh / ih());   // the scale at which the picture just covers the frame
+    const clamp = () => { const s = base() * z, mx = Math.max(0, (iw() * s - fw) / 2), my = Math.max(0, (ih() * s - fh) / 2); tx = Math.min(mx, Math.max(-mx, tx)); ty = Math.min(my, Math.max(-my, ty)); };
+    const layout = () => { const r = cv.parentNode.getBoundingClientRect(); W = r.width; H = r.height; cv.width = W * dpr; cv.height = H * dpr;
+      const k = ratio(), m = 24; fw = Math.min(W - 2 * m, (H - 2 * m) * k); fh = fw / k; clamp(); draw(); };
+    const paint = (c, s) => { c.save(); c.translate(W / 2 + tx, H / 2 + ty); c.rotate(rot * Math.PI / 2); c.scale(s, s); c.drawImage(img, -img.width / 2, -img.height / 2); c.restore(); };
+    const draw = () => {
+      g.setTransform(dpr, 0, 0, dpr, 0, 0); g.fillStyle = '#05080f'; g.fillRect(0, 0, W, H); paint(g, base() * z);
+      const x = (W - fw) / 2, y = (H - fh) / 2;
+      g.beginPath(); g.rect(0, 0, W, H); round ? g.arc(W / 2, H / 2, fw / 2, 0, Math.PI * 2, true) : g.rect(x + fw, y, -fw, fh); g.fillStyle = 'rgba(5,8,15,.62)'; g.fill('evenodd');
+      g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 2; round ? (g.beginPath(), g.arc(W / 2, H / 2, fw / 2, 0, Math.PI * 2), g.stroke()) : g.strokeRect(x, y, fw, fh);
+      if (!round) { g.strokeStyle = 'rgba(255,255,255,.28)'; g.lineWidth = 1; g.beginPath(); for (const k of [1, 2]) { g.moveTo(x + fw * k / 3, y); g.lineTo(x + fw * k / 3, y + fh); g.moveTo(x, y + fh * k / 3); g.lineTo(x + fw, y + fh * k / 3); } g.stroke(); }
+      el.querySelectorAll('[data-shape]').forEach(b => b.classList.toggle('on', b.dataset.shape === shape));
+    };
+    const setZoom = v => { z = Math.min(4, Math.max(1, v)); zoom.value = z; clamp(); draw(); };
+    // dragging with one finger moves the picture, two fingers pinch to zoom
+    const pts = new Map(); let pinch = 0;
+    cv.onpointerdown = e => { cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); pinch = 0; };
+    cv.onpointermove = e => { const p = pts.get(e.pointerId); if (!p) return;
+      if (pts.size === 1) { tx += e.clientX - p[0]; ty += e.clientY - p[1]; clamp(); draw(); }
+      pts.set(e.pointerId, [e.clientX, e.clientY]);
+      if (pts.size === 2) { const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (pinch) setZoom(z * d / pinch); pinch = d; } };
+    cv.onpointerup = cv.onpointercancel = e => { pts.delete(e.pointerId); pinch = 0; };
+    cv.onwheel = e => { e.preventDefault(); setZoom(z * (e.deltaY < 0 ? 1.08 : 1 / 1.08)); };
+    zoom.oninput = () => setZoom(+zoom.value);
+    el.querySelector('[data-turn]').onclick = () => { rot = (rot + 3) % 4; tx = ty = 0; layout(); };
+    el.querySelectorAll('[data-shape]').forEach(b => b.onclick = () => { shape = b.dataset.shape; tx = ty = 0; setZoom(1); layout(); });
+    const close = v => { removeEventListener('resize', layout); el.remove(); img.close && img.close(); done(v); };
+    el.querySelector('[data-no]').onclick = () => close(null);
+    el.onkeydown = e => { if (e.key === 'Escape') close(null); };
+    // the crop at the picture's own resolution (at most 2400 px on the long side); the upload shrinks it further as before
+    el.querySelector('[data-ok]').onclick = () => {
+      const s = base() * z, f = Math.min(1 / s, 2400 / Math.max(fw, fh));   // screen px → output px: the picture's own pixels, capped
+      const c = document.createElement('canvas'); c.width = Math.round(fw * f); c.height = Math.round(fh * f); const o = c.getContext('2d');
+      o.scale(f, f); o.translate(-(W - fw) / 2, -(H - fh) / 2); paint(o, s);
+      c.toBlob(b => close(b || file), 'image/jpeg', .92);
+    };
+    addEventListener('resize', layout); requestAnimationFrame(layout); el.querySelector('[data-ok]').focus();
+  });
+}
 pick.onchange = async () => {
-  const f = pick.files[0]; if (!f) return;
+  const f = pick.files[0] && await cropPhoto(pick.files[0], { shapes: ['1:1'], round: true }); if (!f) return;
   // a small square in the players table for the lists (sharp on phone screens), and a big one in storage for the player card
   const id = pickFor, url = await toDataUrl(await shrink(f, 160, .82, true)), big = await shrink(f, 640, .85, true);
   act(async () => { ok(await sb.from('players').update({ avatar: url }).eq('id', id));
@@ -396,8 +453,8 @@ let shotFor;
 const photo = id => { shotFor = id; shot.value = ''; shot.click(); };
 shot.onchange = async () => {
   track('act:photo');
-  const f = shot.files[0]; if (!f) return;
-  const blob = await shrink(f, 1280, .8), path = `days/${shotFor}.jpg`, id = shotFor;
+  const id = shotFor, f = shot.files[0] && await cropPhoto(shot.files[0], { shapes: ['free', '4:3', '1:1', '3:4'] }); if (!f) return;
+  const blob = await shrink(f, 1280, .8), path = `days/${id}.jpg`;
   act(async () => {
     ok(await sb.storage.from('photos').upload(path, blob, { upsert: true, contentType: 'image/jpeg' }));
     await patchDay(id, { photo_path: path })();
@@ -419,7 +476,7 @@ const saveDim = v => act(async () => ok(await sb.from('schedule').update({ bg_di
 // receipts: a photo of the bill, what it was for and (optionally) how much; whoever added it or an admin can delete it
 const addReceipt = () => { rcpt.value = ''; rcpt.click(); };
 rcpt.onchange = async () => {
-  const f = rcpt.files[0]; if (!f) return;
+  const f = rcpt.files[0] && await cropPhoto(rcpt.files[0], { shapes: ['free', '3:4', '1:1'] }); if (!f) return;
   const note = prompt(t('What was it for? (e.g. extra court on 12 Nov, shuttles)'));
   if (note === null) return;
   const amt = (prompt(t('Amount (optional)')) || '').replace(',', '.').trim(), amount = amt && isFinite(amt) ? Math.abs(+amt) : null;
@@ -437,7 +494,7 @@ const removeReceipt = id => { const r = receipts.find(x => x.id === id);
 };
 const pickBg = () => { bgpick.value = ''; bgpick.click(); };
 bgpick.onchange = async () => {
-  const f = bgpick.files[0]; if (!f) return;
+  const f = bgpick.files[0] && await cropPhoto(bgpick.files[0], { shapes: ['free', '9:16'] }); if (!f) return;
   const blob = await shrink(f, 1280, .8);
   act(async () => { ok(await sb.storage.from('photos').upload(BG, blob, { upsert: true, contentType: 'image/jpeg' })); await loadBg(); });
 };

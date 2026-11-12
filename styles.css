@@ -381,3 +381,13 @@
   .cback .bbad{display:flex;flex-wrap:wrap;gap:4px} .cback .badge{margin:0;font-size:var(--fs-xs);padding:3px 8px 3px 6px} .cback .brec{display:flex;align-items:center;gap:6px} .cback .brec .coin{--s:22px}
   .flipnote{text-align:center;font-size:var(--fs-xs);margin:-6px 0 8px}
   @media (prefers-reduced-motion:reduce){.flip{transition:none}}
+  /* crop a picture before upload: the picture fills the screen, the frame shows what is kept */
+  #crop{position:fixed;inset:0;z-index:40;display:flex;flex-direction:column;background:#05080f;color:#eefaf4;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+  #crop .cstage{flex:1;min-height:0;position:relative} #crop canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
+  #crop .ctools{display:flex;flex-direction:column;gap:12px;padding:12px 16px 16px;max-width:520px;width:100%;margin:0 auto}
+  #crop .seg{--text:#eefaf4;background:rgba(255,255,255,.08)} #crop .seg button{color:#eefaf4} #crop .seg button.on{background:rgba(255,255,255,.2)}
+  #crop .crow{display:flex;align-items:center;gap:12px} #crop .crow input{flex:1;accent-color:var(--acc)} #crop .crow .lic{color:#eefaf4;transform:scaleX(-1)}
+  #crop .cact{display:flex;gap:12px} #crop .cact .link{flex:1;color:#eefaf4;min-height:48px} #crop .cact .primary{flex:2}
+  /* #crop twice: beats the light theme's text colour on buttons (its selector list includes an id) */
+  #crop#crop button{color:#eefaf4;background:none;border:0} #crop#crop .seg button.on{background:rgba(255,255,255,.22)}
+  #crop#crop .cact [data-no]{border:1px solid rgba(255,255,255,.35)} #crop#crop .cact .primary{background:var(--acc);color:var(--on-acc)}

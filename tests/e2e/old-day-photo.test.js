@@ -9,13 +9,13 @@ run('photo for an earlier day', async h => {
   const B = await mk(); await signup(B, 'Bob', 'b@x.com', '2');
   const img = path.join(__dirname, '..', '..', 'icon-192.png');
   await A.click('nav >> text=Photos'); await A.waitForSelector('.addold >> text=Add a photo to an earlier day');
-  const [fc] = await Promise.all([A.waitForEvent('filechooser'), A.click('.addold >> text=Choose photo')]); await fc.setFiles(img);
+  const [fc] = await Promise.all([A.waitForEvent('filechooser'), A.click('.addold >> text=Choose photo')]); await fc.setFiles(img); await A.click('#crop [data-ok]');
   await until(() => st.days.find(d => d.id === 77).photo_path === 'days/77.jpg' && st.files['days/77.jpg'], 'photo stored for that day');
   await A.waitForSelector('.grid img'); assert.equal(await A.locator('.addold').count(), 0, 'no day left without a photo');
   // replace it later from the Board
   const before = st.files['days/77.jpg'].length;
   await A.click('nav >> text=Board'); await A.click('.seg >> text=Day'); await A.evaluate(() => { dayMore = true; render(); });
-  const [fc2] = await Promise.all([A.waitForEvent('filechooser'), A.click('text=Replace the group photo')]); await fc2.setFiles(path.join(__dirname, '..', '..', 'icon-512.png'));
+  const [fc2] = await Promise.all([A.waitForEvent('filechooser'), A.click('text=Replace the group photo')]); await fc2.setFiles(path.join(__dirname, '..', '..', 'icon-512.png')); await A.click('#crop [data-ok]');
   await until(() => st.files['days/77.jpg'].length !== before, 'replaced');
   // members do not get these options
   await B.click('nav >> text=Photos'); await B.waitForSelector('.grid img'); assert.equal(await B.locator('.addold').count(), 0);
