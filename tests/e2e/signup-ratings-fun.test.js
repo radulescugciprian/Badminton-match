@@ -96,7 +96,7 @@ run('sign-up list, ratings, badges, result card and reactions', async h => {
   await A.click('text=Reset answers');
   await A.waitForFunction(() => !document.getElementById('app').textContent.includes('Reset answers'));
   assert(st.rsvps.length === 0, 'all answers cleared');
-  await B.click('nav >> text=Play'); await B.waitForFunction(() => document.querySelector('.card').textContent.includes('0 in'));
+  await B.click('nav >> text=Play'); await B.waitForFunction(() => document.querySelector('.rsvp').textContent.includes('0 in'));
   assert(rpc('u2', { table: 'rsvps', op: 'delete', f: [['eq', 'day_date', '2026-10-15']] }) && true);
 
   // ---- sign-up window on the play day: answers close at 16:30, the section is gone for members at 17:00 (admins keep it)

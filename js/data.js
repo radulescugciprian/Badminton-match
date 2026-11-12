@@ -39,7 +39,7 @@ const pair = ids => ids.map(name).join(' &amp; ');
 const av = (id, s = 40) => {
   const p = player(id);
   return p.avatar ? `<img class="av" style="--s:${s}px" src="${p.avatar}" alt="">`
-    : `<span class="av" style="--s:${s}px;background:hsl(${id * 67 % 360} 50% 36%)">${esc(p.name[0].toUpperCase())}</span>`;
+    : `<span class="av" style="--s:${s}px;background:hsl(${id * 67 % 360} 50% 30%)">${esc(p.name[0].toUpperCase())}</span>`;
 };
 const who = id => `<div class="who">${av(id, 34)}<b>${name(id)}</b></div>`;
 const slots = (order, ids) => ids.map(s => order[s - 1]);
@@ -108,6 +108,9 @@ async function refresh() {
   if (me.is_admin) { const lg = await sb.from('admin_log').select('*').order('id', { ascending: false }).limit(40); adminLog = lg.error ? [] : lg.data; }
 
   if (!db.days.length) { ok(await sb.from('days').insert(dayRow(null))); return refresh(); }
+  // the morning after a closed night, Play moves on to the next match day by itself (the night's results stay on the Board)
+  // shortcut: two phones opening at the same moment can each add an empty day; harmless (empty days are never shown)
+  if (cur().closed && cur().matches.length && cur().date < tzParts().date && !(await sb.from('days').insert(dayRow(cur()))).error) return refresh();
   const day = cur(), missing = db.players.filter(x => !x.removed && !day.order.includes(x.id) && !staleGuest(x)).map(x => x.id);
   if (!day.started && missing.length) { await patchDay(day.id, { player_order: [...day.order, ...missing] })(); return refresh(); } // new accounts join today's setup
   // everyone's "I'm in / I'm out" answers fill the player list: in, then no answer, then out (stable, so manual order is kept inside each group)
@@ -848,7 +851,7 @@ const undo = () => { const d = cur(), last = d.matches[d.matches.length - 1], n 
   const back = d.rotFrom > n; // undoing the match before a line-up change: the new rotation starts one match earlier
   return act(async () => { ok(await sb.from('matches').delete().eq('day_id', d.id).eq('n', last.n)); if (back) await patchDay(d.id, { rot_from: n })(); },
     () => { d.matches.pop(); if (back) d.rotFrom = n; }); };
-const closeDay = () => { const d = cur(); return confirm(t('Close the day? No more matches can be added.')) && act(patchDay(d.id, { closed: true }), () => { d.closed = true; }); };
+const closeDay = () => { const d = cur(); return confirm(t('Close the day? No more matches can be added.')) && act(patchDay(d.id, { closed: true }), () => { d.closed = true; celebrate(); }); };
 const reopenDay = () => { const d = cur(); return act(patchDay(d.id, { closed: false }), () => { d.closed = false; }); };
 const dropPhotos = async paths => { paths = paths.filter(Boolean); if (paths.length) ok(await sb.storage.from('photos').remove(paths)); };
 const resetDay = () => confirm(t('Reset today? This deletes all matches of this day and goes back to player order.')) && act(async () => {

@@ -42,7 +42,7 @@ run('sign-in, rights, photos and the play schedule', async h => {
   assert(B.alerts.some(a => a.includes('already recorded')), 'duplicate warned: ' + B.alerts);
   assert(st.matches.length === 2, 'no duplicate match stored');
   // close day (admin) -> member photo -> shared library
-  await A.click('nav >> text=Play'); await h.more(A); await A.click('text=Close day'); await B.waitForSelector('text=Day closed');
+  await A.click('nav >> text=Play'); await h.more(A); await A.click('text=Close day'); await B.waitForSelector('h1:has-text("Results")');
   await B.click('text=Take group photo'); await B.setInputFiles('#shot', S + 'red.png');
   await B.waitForSelector('text=Photo saved'); await A.waitForSelector('text=Photo saved');
   await A.click('nav >> text=Photos'); await A.waitForSelector('.grid img');
@@ -56,23 +56,23 @@ run('sign-in, rights, photos and the play schedule', async h => {
   // logout / bad login / login
   await h.menu(A); await A.click('text=Log out'); await A.waitForSelector('text=Log in to see the scores',{timeout:4000}).catch(async e=>{console.log(await A.textContent('body'), A.errs); throw e});
   await A.fill('[name=login]', 'a@x.com'); await A.fill('[name=password]', 'nope123'); await A.click('button[type=submit]'); await A.waitForSelector('text=Wrong username');
-  await A.fill('[name=password]', 'secret1'); await A.click('button[type=submit]'); await A.waitForSelector('text=Day closed');
-  await A.reload(); await A.waitForSelector('text=Day closed'); // session survives reload
+  await A.fill('[name=password]', 'secret1'); await A.click('button[type=submit]'); await A.waitForSelector('h1:has-text("Results")');
+  await A.reload(); await A.waitForSelector('h1:has-text("Results")'); // session survives reload
   // username login (case-insensitive), unknown user, taken username, forgot password, recovery link
   await h.menu(A); await A.click('text=Log out'); await A.waitForSelector('text=Log in to see the scores');
   await A.fill('[name=login]', 'nobody'); await A.fill('[name=password]', 'secret1'); await A.click('button[type=submit]'); await A.waitForSelector('text=Wrong username/email or password');
-  await A.fill('[name=login]', 'ANNA'); await A.click('button[type=submit]'); await A.waitForSelector('text=Day closed');
+  await A.fill('[name=login]', 'ANNA'); await A.click('button[type=submit]'); await A.waitForSelector('h1:has-text("Results")');
   assert((await A.textContent('.top')).includes('Anna'), 'username shown');
   await h.menu(A); await A.click('text=Log out'); await A.click('text=Create an account'); await A.fill('[name=username]', 'anna'); await A.fill('[name=email]', 'z@x.com'); await A.fill('[name=password]', 'secret1'); await A.click('button[type=submit]'); await A.waitForSelector('text=username is taken');
   await A.click('text=Back to log in'); await A.click('text=Forgot password?');
   await A.fill('[name=login]', 'a@x.com'); await A.click('button[type=submit]'); await A.waitForSelector('text=reset link is on its way');
   assert(st.resets.includes('a@x.com'), 'reset mail requested for the right email');
   await A.fill('[name=login]', 'ghost@x.com'); await A.click('button[type=submit]'); await A.waitForSelector('text=reset link is on its way'); // same answer, no leak
-  await A.click('text=Back to log in'); await A.fill('[name=login]', 'a@x.com'); await A.fill('[name=password]', 'secret1'); await A.click('button[type=submit]'); await A.waitForSelector('text=Day closed');
+  await A.click('text=Back to log in'); await A.fill('[name=login]', 'a@x.com'); await A.fill('[name=password]', 'secret1'); await A.click('button[type=submit]'); await A.waitForSelector('h1:has-text("Results")');
   await A.evaluate(() => window.__recover()); await A.waitForSelector('text=New password');
-  await A.fill('[name=password]', 'brandnew1'); await A.click('button[type=submit]'); await A.waitForSelector('text=Day closed');
+  await A.fill('[name=password]', 'brandnew1'); await A.click('button[type=submit]'); await A.waitForSelector('h1:has-text("Results")');
   await A.waitForSelector('#toast.show:has-text("Password changed.")');
-  await h.menu(A); await A.click('text=Log out'); await A.fill('[name=login]', 'anna'); await A.fill('[name=password]', 'brandnew1'); await A.click('button[type=submit]'); await A.waitForSelector('text=Day closed');
+  await h.menu(A); await A.click('text=Log out'); await A.fill('[name=login]', 'anna'); await A.fill('[name=password]', 'brandnew1'); await A.click('button[type=submit]'); await A.waitForSelector('h1:has-text("Results")');
   // reset day (admin) clears matches + photo for everyone
   await A.click('text=Reopen day'); await h.more(A); await A.click('text=Reset day'); await B.waitForSelector('text=No photos yet'); await B.click('nav >> text=Play'); await B.waitForSelector('text=Next match day');
   assert(st.matches.length === 0 && Object.keys(st.files).filter(k => !k.startsWith('avatars/')).length === 0, 'reset cleaned matches and photo (profile photos stay)');
@@ -94,7 +94,7 @@ run('sign-in, rights, photos and the play schedule', async h => {
   assert(st.matches.length === 0 && st.players.length === 5 && st.profiles.length === 1, 'scores reset, players and accounts kept');
   // delete a photo (card button) and delete single days (admin)
   await A.click('nav >> text=Play'); await A.waitForSelector('text=Next match day');
-  await A.click('text=Start playing'); await win(A, 1); await h.more(A); await A.click('text=Close day'); await A.waitForSelector('text=Day closed');
+  await A.click('text=Start playing'); await win(A, 1); await h.more(A); await A.click('text=Close day'); await A.waitForSelector('h1:has-text("Results")');
   await A.click('text=Take group photo'); await A.setInputFiles('#shot', S + 'red.png'); await A.waitForSelector('text=Photo saved');
   await A.click('nav >> text=Photos'); await A.waitForSelector('.grid img');
   await A.click('.grid .x'); await A.waitForSelector('text=No photos yet');

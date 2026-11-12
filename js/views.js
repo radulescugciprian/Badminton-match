@@ -65,7 +65,7 @@ function rsvpCard(date = nextPlayDate(), first = true) {
   if (phase === 'hidden' && !admin) return '';
   const n = act_.filter(p => ans(p.id) === 'in').length;
   const open = rsvpIsOpen(date);
-  return `<div class="card rsvp ${dayTint(date)}" data-day="${date}"><div class="rhead"><div><div class="mut" style="margin:0;font-size:var(--fs-sm)">${first ? t('Next match day') : extraOf(date) ? t('Extra game') : t('Later')}</div><b>${niceDate(date)}${extraOf(date) && extraOf(date).play_time ? ' · ' + hhmm(playMinsOn(date)) : ''}</b>${movedNote(date)} <span class="mut">· ${t('{n} in', { n })}</span></div>
+  return `<div class="card rsvp ${dayTint(date)}" data-day="${date}"><div class="rhead"><div><div class="mut" style="margin:0;font-size:var(--fs-sm)">${first ? t('Next match day') : extraOf(date) ? t('Extra game') : t('Later')}</div><b>${niceDate(date)}${extraOf(date) && extraOf(date).play_time ? ' · ' + hhmm(playMinsOn(date)) : ''}</b>${movedNote(date)}<span class="mut rcount">${t('{n} in', { n })}</span></div>
       <span><button class="link" onclick="shareSignup('${date}')" aria-label="${t('Share on WhatsApp')}" title="${t('Share on WhatsApp')}">💬</button><button class="link" onclick="go('calendar')" aria-label="${t('Calendar')}">📅</button><button class="link" onclick="toggleRsvp('${date}')" aria-expanded="${open}">${open ? '▴' : '▾'} ${t('Details')}</button></span></div>
     ${extraOf(date) && canCallOff(date) ? `<button class="link" onclick="callOff('${date}', true)">🚫 ${t('Cancel this game')}</button>` : ''}
     ${mine && locked ? `<p class="mut" style="margin:8px 0 0">🔒 ${t('Answers closed at {time}.', { time: by })}</p>` : ''}
@@ -148,21 +148,23 @@ function backfillView() {
 function setup(d) {
   const m = d.mode, o = d.order, first = nextTeams(d), admin = isAdmin();
   const date = nextPlayDate(), ins = o.filter(id => answerOf(id, date) === 'in').length, auto = ins >= 3, icon = id => ({ in: '✅', out: '❌' }[answerOf(id, date)] || '⏳');
-  const open = admin || startOpen();
+  const open = admin || startOpen(), arrange = admin || date === tzParts().date;
   // the swipe cards pick the day; the list below belongs to that day (the editable line-up only exists for the next match day)
   const sd = slideDates(), sel = slideIdx && sd[Math.min(slideIdx, sd.length - 1)] || date;
   const rowOf = (id, i) => `<li class="row ${i >= m ? 'bench' : ''}">
         <span class="slot">${i + 1}</span>
         ${player(id).user === session.user.id ? `<button class="ph" onclick="avatar(${id})" aria-label="${t('Change your photo')}">${av(id, 36)}</button>` : `<span class="ph">${av(id, 36)}</span>`}
         <button class="nm" ${admin || player(id).user === session.user.id ? `onclick="rename(${id})" aria-label="${t('Rename {name}', { name: name(id) })}"` : 'tabindex="-1"'}>${icon(id)} ${name(id)}${admin || player(id).user === session.user.id ? ' ✎' : ''}${player(id).user ? '' : `<span class="tag">${t('no account')}</span>`}</button>
-        <button onclick="move(${i},-1)" aria-label="${t('Move up')}" ${i === 0 ? 'disabled' : ''}>▲</button>
-        <button onclick="move(${i},1)" aria-label="${t('Move down')}" ${i === o.length - 1 ? 'disabled' : ''}>▼</button>
+        ${arrange ? `<button onclick="move(${i},-1)" aria-label="${t('Move up')}" ${i === 0 ? 'disabled' : ''}>▲</button>
+        <button onclick="move(${i},1)" aria-label="${t('Move down')}" ${i === o.length - 1 ? 'disabled' : ''}>▼</button>` : ''}
         ${!admin && ownFreshGuest(player(id)) ? `<button class="danger" onclick="removePlayer(${id})" aria-label="${t('Remove {name}', { name: name(id) })}">✕</button>` : ''}</li>`;
   const idle = db.players.filter(p => !p.removed && !o.includes(p.id));
   // who plays with whom is shown from 15 minutes before play time (and on the match screen once started)
   // the sign-ups fill the list and decide 4 or 5 players; the date is today's. Only when nobody has answered can an admin pick 4 or 5 by hand.
-  return `${calledOffCards()}${inviteCards()}<div class="dayzone ${dayTint(sel)}">${rsvpSlides()}${sel !== date ? laterList(sel) : `${rsvps.some(x => x.day_date === date) && ins < 3 ? `<p class="mut">${t('Only {n} confirmed so far, you need at least 3.', { n: ins })}</p>` : ''}
-      ${auto ? '' : `<div class="seg pcount" style="margin:0 0 12px"><button class="${m === 3 ? 'on' : ''}" onclick="setMode(3)" ${o.length < 3 ? 'disabled' : ''}>${t('3 players')}</button><button class="${m === 4 ? 'on' : ''}" onclick="setMode(4)">${t('4 players')}</button>
+  const last = [...db.days].reverse().find(x => x.closed && x.matches.length), lastTop = last && last.date >= addDays(tzParts().date, -7) ? playerOfNight(analyse(db.days, db.players), last.id) : null;
+  const lastCard = lastTop ? `<button class="card lastnight" onclick="tab='day';selId=${last.id};go('board')"><span class="mut">${t('Last match day')} · ${esc(niceDate(last.date))}</span><span>⭐ <b>${name(lastTop.id)}</b> · ${tp('{n} matches', last.matches.length)}</span><span class="go">›</span></button>` : '';
+  return `${lastCard}${calledOffCards()}${inviteCards()}<div class="dayzone ${dayTint(sel)}">${rsvpSlides()}${sel !== date ? laterList(sel) : `${rsvps.some(x => x.day_date === date) && ins < 3 ? `<p class="mut">${t('Only {n} confirmed so far, you need at least 3.', { n: ins })}</p>` : ''}
+      ${auto || !arrange ? '' : `<div class="seg pcount" style="margin:0 0 12px"><button class="${m === 3 ? 'on' : ''}" onclick="setMode(3)" ${o.length < 3 ? 'disabled' : ''}>${t('3 players')}</button><button class="${m === 4 ? 'on' : ''}" onclick="setMode(4)">${t('4 players')}</button>
         <button class="${m === 5 ? 'on' : ''}" onclick="setMode(5)" ${o.length < 5 ? 'disabled' : ''}>${t('5 players')}</button></div>`}
       <ol>${o.slice(0, m).map((id, i) => rowOf(id, i)).join('')}</ol>
       ${!sched || minsUntilPlay(date) <= 15 ? `<div class="next"><small>${t('Match {n}', { n: 1 })}</small>
@@ -179,12 +181,12 @@ function setup(d) {
 }
 
 const AWARD = { perfect: () => '💯 ' + t('Perfect night'), comeback: () => '🔄 ' + t('Comeback') };
-function closedExtras(d) {
+function closedExtras(d, part) {
   const an = analyse(db.days, db.players), top = playerOfNight(an, d.id);
   if (!top) return '';
-  return `<div class="card potn">${av(top.id, 56)}<div><div class="mut">⭐ ${t('Player of the night')}</div><b style="font-size:var(--fs-lg)">${name(top.id)}</b>
-      <div class="mut">${canSee(top.id) && !ratingHidden(top.id) ? `${top.delta >= 0 ? '+' : ''}${Math.round(top.delta)} ${t('rating')} · ` : ''}${t('{w} of {p} won', { w: top.w, p: top.p })}</div></div></div>
-    ${(() => { const mine = db.players.find(p => p.user === session.user.id), r = mine && (an.night.get(d.id) || new Map()).get(mine.id);
+  if (part === 'potn') return `<div class="card potn">${av(top.id, 56)}<div><div class="mut">⭐ ${t('Player of the night')}</div><b style="font-size:var(--fs-lg)">${name(top.id)}</b>
+      <div class="mut">${canSee(top.id) && !ratingHidden(top.id) ? `${top.delta >= 0 ? '+' : ''}${Math.round(top.delta)} ${t('rating')} · ` : ''}${t('{w} of {p} won', { w: top.w, p: top.p })}</div></div></div>`;
+  return `${(() => { const mine = db.players.find(p => p.user === session.user.id), r = mine && (an.night.get(d.id) || new Map()).get(mine.id);
       return r ? `<p class="ptsnight">🏅 ${t('+{n} loyalty bonus tonight', { n: nightBonus(r) })}</p>` : ''; })()}
     ${db.days.find(x => x.matches.length) !== d ? (rs => rs.length ? `<p class="ptsnight newrec"><button class="link" onclick="go('records')">🎉 ${t('New record')}: ${rs.map(r => `${RECS()[r.key][1]} (${pair(r.ids)})`).join(' · ')}</button></p>` : '')(shownRecords(an).filter(r => r.day === d.id && !['deciders', 'pair'].includes(r.key))) : ''}
     ${nightAwards(an, d.id).map(x => `<span class="badge">${name(x.id)}: ${AWARD[x.kind]()}</span>`).join('')}<div style="height:10px"></div>`;
@@ -202,14 +204,14 @@ function play() {
   const d = cur(), n = d.matches.length, admin = isAdmin();
   if (!d.started) return setup(d);
   if (d.closed) {
-    return `<h1>${t('Day closed')} 🏁</h1><p class="mut">${esc(d.date)} · ${tp('{n} matches', n)}</p>
+    return `<h1>${t('Results')}</h1><p class="mut">${esc(niceDate(d.date))} · ${tp('{n} matches', n)}</p>
+      ${closedExtras(d, 'potn')}
       <div class="card" style="padding:4px 16px;margin-bottom:16px">${stats(d.matches).slice(0, 3).map((r, i) => `<div class="rank"><span class="r">${['🥇', '🥈', '🥉'][i]}</span>${av(r.id, 32)}
         <b>${esc(r.name)}</b><span class="mut" style="margin:0">${r.w}/${r.p}</span><b>${Math.round(pct(r) * 100)}%</b></div>`).join('')}</div>
-      ${closedExtras(d)}
       <div class="nextup"><button class="primary" onclick="photo(${d.id})">📷 ${d.photo ? t('Retake group photo') : t('Take group photo')}</button>
         <button class="add" onclick="shareCard(${d.id})">📤 ${t('Share result card')}</button></div>
       ${d.photo ? `<p class="mut" style="text-align:center;margin:-8px 0 12px">✓ ${t('Photo saved in Photos')}</p>` : ''}
-      ${rsvpCard()}${matchList(d, 'closed')}${challengeCard()}
+      ${closedExtras(d)}${rsvpCard()}${matchList(d, 'closed')}
       <div class="quietacts"><button class="link" onclick="newDayBtn()">${t('Start next match day')}</button>${admin ? `<button class="link" onclick="reopenDay()">${t('Reopen day')}</button>` : ''}</div>`;
   }
   const { t1, t2, rest } = nextTeams(d), ms = d.matches.slice(d.rotFrom || 0), bo3 = series(ms.map(m => m.win)).w;
@@ -227,10 +229,9 @@ function play() {
     ${rest ? `<div class="rest">${av(rest, 22)} ${t('Resting:')} <b>${name(rest)}</b></div>` : ''}
     ${lw ? `<div class="toast">✓ ${pair(lw.win === 1 ? lw.t1 : lw.t2)} <button class="link" onclick="lastRec=0;undo()">↶ ${t('Undo')}</button></div>` : ''}
     <div class="upnext"><b>${t('Next')}:</b> ${n1 === n2 ? n1 : `<div>${t('If team {n} wins: {m}', { n: 1, m: n1 })}</div><div>${t('If team {n} wins: {m}', { n: 2, m: n2 })}</div>`}</div>
-    <div class="pbtns"><button onclick="undo()" ${n ? '' : 'disabled'}>↶ ${t('Undo last')}</button>${admin ? `<button onclick="closeDay()" ${n ? '' : 'disabled'}>🏁 ${t('Close day')}</button>` : ''}</div>
+    <div class="pbtns">${lw ? '' : `<button onclick="undo()" ${n ? '' : 'disabled'}>↶ ${t('Undo last')}</button>`}${admin ? `<button class="link closeday" onclick="closeDay()" ${n ? '' : 'disabled'}>🏁 ${t('Close day')}</button>` : ''}</div>
     <details class="fold pmore" ${moreOpen ? 'open' : ''} ontoggle="moreOpen=this.open"><summary>⋯ ${t('More')}</summary>
       <div class="actions">
-        <button class="link" onclick="newDayBtn()">${t('Next match day')}</button>
         ${admin ? `<button class="link danger" onclick="resetDay()">${t('Reset day')}</button>` : ''}
       </div>
       <details class="fold lineup" ${lineupOpen ? 'open' : ''} ontoggle="lineupOpen=this.open"><summary>${t('Someone leaving or arriving?')}</summary>

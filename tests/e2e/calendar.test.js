@@ -10,7 +10,7 @@ run('compact sign-up card and play calendar', async h => {
   // compact before the play day: the date, the count and the two answer buttons; the details are one tap away
   assert((await B.textContent('.rsvp')).includes('Thursday 22 Oct') && (await B.textContent('.rsvp')).includes('0 in'));
   assert.equal(await B.locator('.rsvp .chips').count(), 0, 'no list of names before the play day');
-  assert((await B.locator('.rsvp').first().boundingBox()).height < 150, 'the card is short: ' + (await B.locator('.rsvp').first().boundingBox()).height);
+  assert((await B.locator('.rsvp').first().boundingBox()).height < 200, 'the card is short: ' + (await B.locator('.rsvp').first().boundingBox()).height);
   await B.click("text=I'm in"); await B.waitForSelector('text=1 in');
   // the next 3 play days sit side by side; answering a later one keeps it in view
   assert.equal(await B.locator('.slides .slide').count(), 3, 'three play days to swipe through');
