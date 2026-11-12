@@ -345,3 +345,4 @@
   .newrec .link{color:var(--acc);font-weight:700;min-height:0}
   .stseg:empty{display:none}
   .pchoose button span:last-child{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}   /* six players across */
+  .moved{display:inline-block;margin-left:4px;font-size:var(--fs-xs);font-weight:700;color:var(--danger)}

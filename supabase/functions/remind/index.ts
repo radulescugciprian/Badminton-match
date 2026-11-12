@@ -2,15 +2,16 @@
 // the database decides who gets what and when (claim_reminders), so calling it more often never sends twice.
 // POST {"test": true} with a user's login token sends a test notification to that user's phones.
 // POST {"chat": id} (from the chat_ping trigger) tells everyone who wants it about a new chat message, once (claim_chat).
+// POST {"moved": day, "by": user} (from the extra_moved trigger) tells the players who are in about a new start time, once (claim_moved).
 import webpush from "npm:web-push@3.6.7";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const TEXT: Record<string, Record<string, string>> = {
-  en: { day: "🏸 Badminton today at {time}. Are you coming? Tap to answer.", last: "🏸 Last call: answers close in 30 minutes. Are you coming?", test: "🏸 Notifications work!" },
-  ro: { day: "🏸 Badminton azi la {time}. Vii? Atinge ca să răspunzi.", last: "🏸 Ultima chemare: răspunsurile se închid în 30 de minute. Vii?", test: "🏸 Notificările funcționează!" },
-  hr: { day: "🏸 Badminton danas u {time}. Dolaziš? Dodirni za odgovor.", last: "🏸 Zadnji poziv: odgovori se zatvaraju za 30 minuta. Dolaziš?", test: "🏸 Obavijesti rade!" },
-  sv: { day: "🏸 Badminton i dag kl. {time}. Kommer du? Tryck för att svara.", last: "🏸 Sista chansen: svaren stängs om 30 minuter. Kommer du?", test: "🏸 Aviseringar fungerar!" },
+  en: { day: "🏸 Badminton today at {time}. Are you coming? Tap to answer.", last: "🏸 Last call: answers close in 30 minutes. Are you coming?", test: "🏸 Notifications work!", moved: "⏰ The extra game on {date} now starts at {time} (instead of {was})." },
+  ro: { day: "🏸 Badminton azi la {time}. Vii? Atinge ca să răspunzi.", last: "🏸 Ultima chemare: răspunsurile se închid în 30 de minute. Vii?", test: "🏸 Notificările funcționează!", moved: "⏰ Meciul extra din {date} începe acum la {time} (în loc de {was})." },
+  hr: { day: "🏸 Badminton danas u {time}. Dolaziš? Dodirni za odgovor.", last: "🏸 Zadnji poziv: odgovori se zatvaraju za 30 minuta. Dolaziš?", test: "🏸 Obavijesti rade!", moved: "⏰ Dodatni termin {date} sada počinje u {time} (umjesto u {was})." },
+  sv: { day: "🏸 Badminton i dag kl. {time}. Kommer du? Tryck för att svara.", last: "🏸 Sista chansen: svaren stängs om 30 minuter. Kommer du?", test: "🏸 Aviseringar fungerar!", moved: "⏰ Extramatchen {date} börjar nu kl. {time} (i stället för {was})." },
 };
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type" };
 
@@ -24,11 +25,11 @@ async function keys() {   // created once, on the first run
   webpush.setVapidDetails("https://github.com/radulescugciprian/Badminton-match", data.public, data.private);
 }
 
-type Row = { endpoint: string; p256dh: string; auth: string; kind: string; play?: string; lang?: string; title?: string; body?: string };
+type Row = { endpoint: string; p256dh: string; auth: string; kind: string; play?: string; was?: string; day?: string; lang?: string; title?: string; body?: string };
 async function send(rows: Row[]) {
   let sent = 0;
   for (const r of rows) {
-    const body = r.body ?? (TEXT[r.lang || "en"] || TEXT.en)[r.kind].replace("{time}", r.play || "");
+    const body = r.body ?? (TEXT[r.lang || "en"] || TEXT.en)[r.kind].replace("{time}", r.play || "").replace("{was}", r.was || "").replace("{date}", r.day || "");
     try {
       await webpush.sendNotification({ endpoint: r.endpoint, keys: { p256dh: r.p256dh, auth: r.auth } }, JSON.stringify({ title: r.title || "Badminton", body, kind: r.kind }));
       sent++;
@@ -57,6 +58,11 @@ Deno.serve(async (req) => {
     const { data, error } = await sb.rpc("claim_chat", { msg: body.chat });
     if (error) return new Response(error.message, { status: 500 });
     return Response.json({ sent: await send((data || []).map((r: Row) => ({ ...r, title: "💬 " + r.title, kind: "chat" }))) });
+  }
+  if (body.moved) {
+    const { data, error } = await sb.rpc("claim_moved", { d: body.moved, by_user: body.by ?? null });
+    if (error) return new Response(error.message, { status: 500 });
+    return Response.json({ sent: await send(data || []) });
   }
   const { data, error } = await sb.rpc("claim_reminders");
   if (error) return new Response(error.message, { status: 500 });

@@ -21,7 +21,7 @@ let db = { players: [], days: [] }, members = [], me = {}, session = null, loade
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
-const DB_VERSION = 20261114; // bump together with db_version() in the newest migration
+const DB_VERSION = 20261115; // bump together with db_version() in the newest migration
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
 let loyaltyOpen = false, statsSeg = 'badges', boardKind = 'doubles', boardOpen = null, memFilter = 'all', memSort = 'name', memOpen = null, adminPage = '', admPanel = '', prevView = 'play', profPanel = '', usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, lineupOpen = false, moreOpen = false, dayMore = false, matchesOpen = {}, lastRec = 0, bgLoaded = false, rsvps = [], reactions = [], statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
@@ -608,11 +608,17 @@ function extraForm(iso, old) {
     if (when <= new Date()) return msg.textContent = t('The answer deadline is already over.');
     const row = { day, kind: 'extra', play_time: time, answer_by: when.toISOString(), created_by: (old && old.created_by) || session.user.id };
     el.remove();
-    act(async () => {   // members have no right to edit a row, so a change is "remove the old one, add the new one"
+    // same date: change the row, keeping the old start time when it moves (the database then notifies the players who are in)
+    const was = old && old.play_time ? old.play_time.slice(0, 5) : '', moved = old && day === iso && was && was !== time.slice(0, 5);
+    if (old && day === iso) {
+      const ch = { play_time: time, answer_by: row.answer_by, time_was: moved ? was : old.time_was || null };
+      act(async () => ok(await sb.from('play_dates').update(ch).eq('day', iso)), () => Object.assign(old, ch));
+    } else act(async () => {   // a new date: remove the old one, add the new one
       if (old) ok(await sb.from('play_dates').delete().eq('day', iso));
       ok(await (isAdmin() ? sb.from('play_dates').upsert(row) : sb.from('play_dates').insert(row)));
     }, () => { playDates = playDates.filter(x => x.day !== iso && x.day !== day).concat(row); });
-    if (confirm(t('Tell the WhatsApp group?'))) shareExtra(day);
+    if (moved) { if (confirm(t('Tell the WhatsApp group about the new time?'))) waShare(t('⏰ The extra game on {date} now starts at {time} (instead of {was}).', { date: niceDate(day), time: time.slice(0, 5), was }) + ' ' + appLink()); }
+    else if (!old || day !== iso) { if (confirm(t('Tell the WhatsApp group?'))) shareExtra(day); }
   };
 }
 // extra games someone else added that I have not answered yet (the next play day already has its own sign-up card)
@@ -628,6 +634,8 @@ const toggleRsvp = (date = nextPlayDate()) => { rsvpOpen = { date, open: !rsvpIs
 // sign-up window on the play day: 'open' until the answers close, 'locked' (visible, read-only) until it is hidden. Later play days stay open.
 // an extra game can have its own start time and answer deadline; other play days use the weekly schedule
 const extraOf = d => playDates.find(p => p.day === d && p.kind === 'extra');
+// the start time of an extra game was changed: say so on its cards ("new time, was 19:00")
+const movedNote = d => { const p = extraOf(d); return p && p.time_was && p.play_time && p.time_was.slice(0, 5) !== p.play_time.slice(0, 5) ? ` <span class="moved">⏰ ${t('new time, was {was}', { was: p.time_was.slice(0, 5) })}</span>` : ''; };
 const playMinsOn = d => { const p = extraOf(d); return p && p.play_time ? +p.play_time.slice(0, 2) * 60 + +p.play_time.slice(3, 5) : playMins(); };
 const minsUntilPlay = date => { const n = tzParts(); return (Date.parse(date) - Date.parse(n.date)) / 6e4 + playMinsOn(date) - n.mins; };
 function deadlineText(date) {

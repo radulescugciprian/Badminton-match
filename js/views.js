@@ -65,7 +65,7 @@ function rsvpCard(date = nextPlayDate(), first = true) {
   if (phase === 'hidden' && !admin) return '';
   const n = act_.filter(p => ans(p.id) === 'in').length;
   const open = rsvpIsOpen(date);
-  return `<div class="card rsvp ${dayTint(date)}" data-day="${date}"><div class="rhead"><div><div class="mut" style="margin:0;font-size:var(--fs-sm)">${first ? t('Next match day') : extraOf(date) ? t('Extra game') : t('Later')}</div><b>${niceDate(date)}${extraOf(date) && extraOf(date).play_time ? ' · ' + hhmm(playMinsOn(date)) : ''}</b> <span class="mut">· ${t('{n} in', { n })}</span></div>
+  return `<div class="card rsvp ${dayTint(date)}" data-day="${date}"><div class="rhead"><div><div class="mut" style="margin:0;font-size:var(--fs-sm)">${first ? t('Next match day') : extraOf(date) ? t('Extra game') : t('Later')}</div><b>${niceDate(date)}${extraOf(date) && extraOf(date).play_time ? ' · ' + hhmm(playMinsOn(date)) : ''}</b>${movedNote(date)} <span class="mut">· ${t('{n} in', { n })}</span></div>
       <span><button class="link" onclick="shareSignup('${date}')" aria-label="${t('Share on WhatsApp')}" title="${t('Share on WhatsApp')}">💬</button><button class="link" onclick="go('calendar')" aria-label="${t('Calendar')}">📅</button><button class="link" onclick="toggleRsvp('${date}')" aria-expanded="${open}">${open ? '▴' : '▾'} ${t('Details')}</button></span></div>
     ${extraOf(date) && canCallOff(date) ? `<button class="link" onclick="callOff('${date}', true)">🚫 ${t('Cancel this game')}</button>` : ''}
     ${mine && locked ? `<p class="mut" style="margin:8px 0 0">🔒 ${t('Answers closed at {time}.', { time: by })}</p>` : ''}
@@ -106,7 +106,7 @@ function calledOffCards() {
 }
 function inviteCards() {
   const mine = db.players.find(p => p.user === session.user.id), by = p => esc((members.find(m => m.id === p.created_by) || {}).username || '?');
-  return invites().map(p => `<div class="card invite" data-day="${p.day}"><div>🏸 <b>${t('Extra game')}</b> · ${esc(niceDate(p.day))} ${sched ? esc(hhmm(playMinsOn(p.day))) : ''}
+  return invites().map(p => `<div class="card invite" data-day="${p.day}"><div>🏸 <b>${t('Extra game')}</b> · ${esc(niceDate(p.day))} ${sched ? esc(hhmm(playMinsOn(p.day))) : ''}${movedNote(p.day)}
       <div class="mut" style="margin:2px 0 8px">${t('Added by {name}. Do you want to join?', { name: by(p) })} ${t('Answer before {time}.', { time: esc(deadlineText(p.day)) })} · ${t('{n} in', { n: rsvps.filter(r => r.day_date === p.day && r.status === 'in').length })}</div></div>
     <div class="seg"><button onclick="setRsvp(${mine.id}, 'in', '${p.day}')">✅ ${t("I'm in")}</button><button onclick="setRsvp(${mine.id}, 'out', '${p.day}')">❌ ${t("I'm out")}</button></div>
     <button class="link wa" onclick="shareExtra('${p.day}')">💬 ${t('Share on WhatsApp')}</button></div>`).join('');

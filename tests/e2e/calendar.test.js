@@ -84,6 +84,13 @@ run('compact sign-up card and play calendar', async h => {
   await A.evaluate(() => go('play')); await A.waitForSelector('.invite'); assert((await A.textContent('.invite')).includes('Added by Bob') && (await A.textContent('.invite')).includes('19:15'), 'the invite shows who and when');
   await A.click('.invite >> text=I\'m in'); await until(() => st.rsvps.some(r => r.day_date === '2026-10-31' && r.status === 'in'), 'joined the extra game');
   await A.waitForFunction(() => !document.querySelector('.invite'));
+  // changing only the time keeps the answers; the old time is kept so the cards say so, and the WhatsApp text says the new time
+  await B.click('.cal button[aria-label*="31 October"]'); await B.selectOption('#xform [name=th]', '20'); await B.selectOption('#xform [name=tm]', '0'); await B.click('#xform button[type=submit]');
+  await until(() => st.play_dates.some(x => x.day === '2026-10-31' && x.play_time === '20:00' && x.time_was === '19:15'), 'new time, old one kept');
+  assert(st.rsvps.some(r => r.day_date === '2026-10-31' && r.status === 'in'), 'the answers stay');
+  assert(decodeURIComponent(await B.evaluate(() => window.__wa || '')).includes('now starts at 20:00 (instead of 19:15)'), 'WhatsApp message about the new time');
+  await A.evaluate(() => { slideIdx = 0; go('play'); }); await A.waitForFunction(() => playDates.some(x => x.time_was));
+  assert.equal(await A.evaluate(() => movedNote('2026-10-31').includes('was 19:15')), true, 'the cards say the time changed');
   // the member who added it can change its date and time, or remove it
   await B.click('.cal button[aria-label*="31 October"]'); await B.selectOption('#xform [name=day]', '2026-11-01'); await B.selectOption('#xform [name=th]', '10'); await B.selectOption('#xform [name=tm]', '0');
   await B.selectOption('#xform [name=bd]', '2026-10-31'); await B.selectOption('#xform [name=bh]', '20'); await B.selectOption('#xform [name=bm]', '0'); await B.click('#xform button[type=submit]');

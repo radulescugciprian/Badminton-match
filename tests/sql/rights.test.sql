@@ -219,6 +219,16 @@ update schedule set remind_minutes = 0;
 select check_that((select count(*) from claim_reminders('2099-01-01 14:05+00')) = 0, 'reminders can be turned off');
 set role authenticated; select as_user((select m1 from ids)); select drop_push('https://push/e1'); reset role;
 select check_that((select count(*) from push_subs) = 1, 'members remove their own phone');
+-- a new start time for an extra game: the players who are in get told once (not whoever changed it); only the server may ask
+insert into play_dates (day, kind, play_time, answer_by, created_by) values ('2099-01-09', 'extra', '19:00', '2099-01-09 10:00+00', (select m1 from ids));
+insert into rsvps (day_date, player_id, status) select '2099-01-09', id, 'in' from players where user_id = (select adm from ids);
+select check_that((select count(*) from claim_moved('2099-01-09')) = 0, 'nothing to tell before the time changes');
+update play_dates set play_time = '20:00', time_was = '19:00' where day = '2099-01-09';
+select check_that((select string_agg(endpoint || ' ' || kind || ' ' || play || ' ' || was, ',') from claim_moved('2099-01-09', (select m1 from ids))) = 'https://push/e2 moved 20:00 19:00', 'the player who is in hears about the new time');
+select check_that((select count(*) from claim_moved('2099-01-09')) = 0, 'only once per change');
+update play_dates set play_time = '21:00', time_was = '20:00' where day = '2099-01-09';
+select check_that((select count(*) from claim_moved('2099-01-09', (select adm from ids))) = 0, 'not the one who changed it');
+set role authenticated; select as_user((select m1 from ids)); select must_fail($$select * from claim_moved('2099-01-09')$$, 'permission denied'); reset role;
 
 -- chat: members write as themselves, the app adds its own notes, own messages (or admins) can be removed, notifications go out once
 set role authenticated; select as_user((select m1 from ids));
