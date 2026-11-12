@@ -23,6 +23,12 @@ run('hide rating, showing-up badges, monthly recap', async h => {
   await A.click('#recap [aria-label="Previous month"]'); await A.waitForSelector('#recap >> text=September 2026');
   await A.click('#rshare'); assert(decodeURIComponent(await A.evaluate(() => window.__wa || '')).includes('September 2026'), 'shared to WhatsApp');
   await A.click('#rclose'); assert.equal(await A.locator('#recap').count(), 0);
+  // hall of fame in the Group tab, and the season album + card collection under Stats
+  await A.click('nav >> text=Group'); await A.click('.seg >> text=Hall of fame'); await A.waitForSelector('.hof');
+  const hof = await A.textContent('#app'); assert(hof.includes('Longest win streak') && hof.includes('Most nights played'), hof.slice(0, 300));
+  await A.click('nav >> text=Stats'); await A.click('.stseg >> text=Collection'); await A.waitForSelector('.album .stk');
+  assert.equal(await A.locator('.album .stk').count(), 9, 'nine stickers'); assert(await A.locator('.ccard').count() >= 1, 'cards to collect');
+  await A.click('.stseg >> text=Badges');
   // hide my rating: no number and no rank, but the badges stay
   await A.click('.top .me'); await A.click('[data-row=hiderating]'); await A.click('text=Hide my rating number and rank');
   await until(() => st.profiles.find(p => p.username === 'Anna').hide_rating === true, 'saved');

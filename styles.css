@@ -157,7 +157,7 @@
   /* the neon icons are drawn for a dark ground: darken them on the light theme */
   /* light theme, photo shown as it is: text straight on the photo is white; light surfaces (cards, buttons, bars) keep dark text */
   :root[data-theme=light] body:not(.clean):is(.out,[data-view=play],[data-view=board],[data-view=photos],[data-view=stats]){--text:#fff;--mut:#eaf2ed;--ts:rgba(0,0,0,.8);--line-t:#c4d8cd}
-  :root[data-theme=light] :is(.card,.podium .bar,.pchoose,.stage,.toast,#tour .tip,button:not(.link,.primary),select,input,.row,.team,.rest,.seg,.tile,.badge,.cal .d,.top,nav,.rsvp,.rx){--text:#10231a;--mut:#3d5a4c;--ts:rgba(255,255,255,.95);color:var(--text)}
+  :root[data-theme=light] :is(.card,.podium .bar,.pchoose,.album .stk,.ccard,.stage,.toast,#tour .tip,button:not(.link,.primary),select,input,.row,.team,.rest,.seg,.tile,.badge,.cal .d,.top,nav,.rsvp,.rx){--text:#10231a;--mut:#3d5a4c;--ts:rgba(255,255,255,.95);color:var(--text)}
   .field select{width:100%;margin-top:6px}
   .next{margin:12px 0;padding:12px;border-radius:14px;background:var(--card);border:1px solid var(--line);text-align:center}
   .next small{display:block;color:var(--mut);font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:8px}
@@ -332,3 +332,14 @@
   .stseg{margin:16px 0 4px}
   .nextup{display:flex;gap:8px;margin:0 0 16px} .nextup>button{flex:1;margin:0}
   .quietacts{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;margin-top:8px}
+  /* hall of fame, season album, card collection */
+  .hof{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)} .hof:last-child{border-bottom:0}
+  .hof .stk{font-size:22px} .hof .hl{flex:1;display:flex;flex-direction:column;min-width:0} .hof .hv{font-family:var(--disp);font-weight:400;font-size:22px;white-space:nowrap}
+  .album{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .album .stk{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;padding:10px 6px;border-radius:14px;border:1px dashed var(--line);background:var(--card);color:var(--mut);font-size:var(--fs-xs);line-height:1.25}
+  .album .stk .si{font-size:26px;filter:grayscale(1);opacity:.45} .album .stk small{font-weight:700}
+  .album .stk.done{border:1px solid #c9a227;color:var(--text)} .album .stk.done .si{filter:none;opacity:1} .album .stk.done small{color:var(--acc)}
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .ccard{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:12px;background:var(--card);border:1px solid var(--line);font-size:var(--fs-xs);text-align:center;min-width:0}
+  .ccard b{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .ccard:not(.got) .av{filter:grayscale(1);opacity:.4}
+  .newrec .link{color:var(--acc);font-weight:700;min-height:0}

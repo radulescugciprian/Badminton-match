@@ -213,6 +213,53 @@ function challengeWins(days, players) {
   return out;
 }
 
+// ---- hall of fame: group records from the whole match log. Each names the day it was set (beaten only by a strictly better
+// value), so a closed night can say "new record". ids: the player(s), value: the number, day/date: when it was set.
+function records(days, players, a = analyse(days, players)) {
+  const ds = days.filter(d => d.matches.length), out = {}, set = (key, ids, value, d, better) => { if (!out[key] || better(value, out[key].value)) out[key] = { key, ids, value, day: d.id, date: d.date }; };
+  const gt = (x, y) => x > y, run = new Map(), pairs = new Map(), nights = new Map();
+  for (const d of ds) {
+    for (const m of d.matches) {
+      for (const [ids, won] of [[m.t1, m.win === 1], [m.t2, m.win === 2]]) {
+        for (const id of ids) { const r = won ? (run.get(id) || 0) + 1 : 0; run.set(id, r); if (r) set('streak', [id], r, d, gt); }
+        if (ids.length === 2) { const k = [...ids].sort((x, y) => x - y).join('-'), g = (pairs.get(k) || 0) + 1; pairs.set(k, g); set('pair', k.split('-').map(Number), g, d, gt); }
+      }
+    }
+    for (const [id, r] of a.night.get(d.id) || []) {
+      set('matches', [id], r.p, d, gt); set('night', [id], Math.round(r.delta), d, gt);
+      const n = (nights.get(id) || 0) + 1; nights.set(id, n); set('nights', [id], n, d, gt);
+    }
+  }
+  for (const x of a.log) if (x.chance < 0.5) { const d = ds.find(y => y.id === x.day); set('upset', x.won, Math.round(100 * x.chance), d, (v, old) => v < old); }
+  return ['streak', 'upset', 'night', 'matches', 'pair', 'nights'].filter(k => out[k]).map(k => out[k]);
+}
+
+// ---- card collection: you collect someone's card the first time you beat them or win with them as your partner
+function collection(days, pid) {
+  const got = new Map();
+  for (const d of days) for (const m of d.matches) {
+    const [w, l] = m.win === 1 ? [m.t1, m.t2] : [m.t2, m.t1];
+    if (w.includes(pid)) for (const [ids, how] of [[w, 'partner'], [l, 'beat']]) for (const id of ids) if (id !== pid && !got.has(id)) got.set(id, { how, date: d.date });
+  }
+  return got;
+}
+
+// ---- season album: stickers for one season; filling it gives that season's card a gold edge
+const ALBUM = { nights5: 5, matches20: 20, partners5: 5, beat5: 5, streak3: 3, decider: 1, singles: 1, perfect: 1, challenge: 1 };
+function album(days, players, season, pid) {
+  const ds = days.filter(d => d.matches.length && seasonKey(d.date) === season), inM = m => m.t1.includes(pid) || m.t2.includes(pid), won = m => (m.win === 1 ? m.t1 : m.t2).includes(pid);
+  const mine = ds.flatMap(d => d.matches.filter(inM)), wins = mine.filter(won);
+  let run = 0, best = 0; for (const m of mine) { run = won(m) ? run + 1 : 0; best = Math.max(best, run); }
+  const have = {
+    nights5: ds.filter(d => d.matches.some(inM)).length, matches20: mine.length,
+    partners5: new Set(wins.flatMap(m => (m.win === 1 ? m.t1 : m.t2).filter(x => x !== pid))).size,
+    beat5: new Set(wins.flatMap(m => m.win === 1 ? m.t2 : m.t1)).size, streak3: best,
+    decider: ds.length ? playerCard(ds, players, pid).deciders.w : 0, singles: wins.filter(m => m.t1.length === 1).length,
+    perfect: ds.filter(d => { const x = d.matches.filter(inM); return x.length >= 3 && x.every(won); }).length,
+    challenge: ds.length ? challengeWins(ds, players).get(pid) || 0 : 0 };
+  return Object.entries(ALBUM).map(([k, need]) => ({ k, need, have: Math.min(have[k], need), done: have[k] >= need }));
+}
+
 // 3 players play singles: the winner stays on, but after 3 games in a row they sit out one game.
 // order: the 3 player ids; matches: the day's matches so far. Returns the next match as { t1: [id], t2: [id], rest: id }.
 function winnerStays(order, matches) {
@@ -237,4 +284,4 @@ function ratingChart(vals, w = 320, h = 150, label = 'Rating over time') {
     <text x="8" y="${h - 3}" font-size="12" fill="currentColor" fill-opacity=".7">${Math.round(Math.min(...vals))}</text></svg>`;
 }
 
-if (typeof module !== 'undefined') module.exports = { winnerStays, recap, loyalty, nightBonus, seasonKey, LOYALTY, playerCard, seasonOf, challenge, challengeWins, challengeFor, mondayOf, analyse, playerOfNight, nightAwards, relations, bestPair, ratingChart, START_RATING };
+if (typeof module !== 'undefined') module.exports = { records, collection, album, ALBUM, winnerStays, recap, loyalty, nightBonus, seasonKey, LOYALTY, playerCard, seasonOf, challenge, challengeWins, challengeFor, mondayOf, analyse, playerOfNight, nightAwards, relations, bestPair, ratingChart, START_RATING };

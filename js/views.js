@@ -186,6 +186,7 @@ function closedExtras(d) {
       <div class="mut">${canSee(top.id) && !ratingHidden(top.id) ? `${top.delta >= 0 ? '+' : ''}${Math.round(top.delta)} ${t('rating')} · ` : ''}${t('{w} of {p} won', { w: top.w, p: top.p })}</div></div></div>
     ${(() => { const mine = db.players.find(p => p.user === session.user.id), r = mine && (an.night.get(d.id) || new Map()).get(mine.id);
       return r ? `<p class="ptsnight">🏅 ${t('+{n} loyalty bonus tonight', { n: nightBonus(r) })}</p>` : ''; })()}
+    ${db.days.find(x => x.matches.length) !== d ? (rs => rs.length ? `<p class="ptsnight newrec"><button class="link" onclick="go('records')">🎉 ${t('New record')}: ${rs.map(r => `${RECS()[r.key][1]} (${pair(r.ids)})`).join(' · ')}</button></p>` : '')(shownRecords(an).filter(r => r.day === d.id && r.key !== 'nights' && r.key !== 'pair')) : ''}
     ${nightAwards(an, d.id).map(x => `<span class="badge">${name(x.id)}: ${AWARD[x.kind]()}</span>`).join('')}<div style="height:10px"></div>`;
 }
 
@@ -243,7 +244,17 @@ function play() {
 // Board: Day / Month / All time with arrows, a podium, ranked rows (record, form, rank change), a minimum of 3 games
 // for Month and All time, your own row highlighted, and a mini profile on tap
 // Chat: messages (yours on the right), the app's own notes in the middle, tap a message to react or delete it
-const groupSeg = () => `<div class="seg" style="margin:0 0 12px">${chatOn ? `<button class="${view === 'chat' ? 'on' : ''}" onclick="go('chat')">💬 ${t('Chat')}</button>` : ''}<button class="${view === 'tips' ? 'on' : ''}" onclick="go('tips')">🎬 ${t('Videos')}</button><button class="${view === 'members' ? 'on' : ''}" onclick="go('members')">👥 ${t('Members')}</button></div>`;
+const groupSeg = () => `<div class="seg" style="margin:0 0 12px">${chatOn ? `<button class="${view === 'chat' ? 'on' : ''}" onclick="go('chat')">💬 ${t('Chat')}</button>` : ''}<button class="${view === 'tips' ? 'on' : ''}" onclick="go('tips')">🎬 ${t('Videos')}</button><button class="${view === 'records' ? 'on' : ''}" onclick="go('records')">🏆 ${t('Hall of fame')}</button><button class="${view === 'members' ? 'on' : ''}" onclick="go('members')">👥 ${t('Members')}</button></div>`;
+// Hall of fame: the group's records, who holds them and since when (the best night is a rating number, so hidden ratings are left out)
+const RECS = () => ({ streak: ['🔥', t('Longest win streak'), v => tp('{n} wins', v)], upset: ['😈', t('Biggest upset'), v => v + '%'],
+  night: ['📈', t('Best night'), v => `+${v} ${t('rating')}`], matches: ['🐎', t('Most matches in one night'), v => tp('{n} matches', v)],
+  pair: ['🤝', t('Longest partnership'), v => tp('{n} matches', v)], nights: ['🗓', t('Most nights played'), v => String(v)] });
+const shownRecords = (an = analyse(db.days, db.players)) => records(db.days, db.players, an).filter(r => r.key !== 'night' || (canSee(r.ids[0]) && !ratingHidden(r.ids[0])));
+function recordsView() {
+  const rs = shownRecords(), R = RECS();
+  return groupSeg() + (rs.length ? `<div class="card" style="padding:4px 16px">${rs.map(r => `<div class="hof"><span class="stk">${R[r.key][0]}</span><span class="hl"><b>${R[r.key][1]}</b><span class="mut">${pair(r.ids)}${r.key === 'upset' ? ' · ' + t('won with a {n}% chance', { n: r.value }) : ''} · ${t('since {date}', { date: esc(niceDate(r.date)) })}</span></span><b class="hv">${R[r.key][2](r.value)}</b></div>`).join('')}</div>`
+    : emptyState('board', t('No records yet.'), t('Play a match and the first records appear here.')));
+}
 function chatView() {
   const uid = session.user.id, pidOf = u => (db.players.find(p => p.user === u) || {}).id, nameOf = u => { const p = pidOf(u); return p ? name(p) : esc((members.find(x => x.id === u) || {}).username || '?'); };
   const when = m => new Date(m.created_at).toLocaleString(LOCALE[lang], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
@@ -339,7 +350,7 @@ function statsView() {
     b.nightsRun >= 5 && `🗓 ${t('{n} nights in a row', { n: b.nightsRun })}`, me_.p >= 50 && `🎖 ${t('{n} matches played', { n: [250, 100, 50].find(x => me_.p >= x) })}`,
     b.everyone && `🤝 ${t('Played with everyone')}`, b.everyMonth && `📆 ${t('Never missed a month')}`, earlyBird(id) && `🐦 ${t('Early bird')} ×${earlyBird(id)}`, loyal(id) && `🏅 ${t('Loyal player')} ×${loyal(id)}`, challengeWins(db.days, db.players).get(id) && `🎯 ${t('Weekly challenges')} ×${challengeWins(db.days, db.players).get(id)}`].filter(Boolean);
   const rm = recapDefault();
-  const seg = [['badges', t('Badges')], ['partners', t('Partners')], ['rivals', t('Rivals')]];
+  const seg = [['badges', t('Badges')], ['partners', t('Partners')], ['rivals', t('Rivals')], ['collection', t('Collection')]];
   return `<h1>${t('Stats')}</h1>
     <div class="pchoose" role="group" aria-label="${t('Player')}">${played.map(p => `<button aria-pressed="${p.id === id}" onclick="statsId=${p.id};render()">${av(p.id, 48)}<span>${esc(p.name)}${sharing(p.id) ? '' : ' 🔒'}</span></button>`).join('')}</div>
     ${ratingHidden(id) ? '' : `<p class="mut rbreak">${t('Rating')} <b>${Math.round(ratingOf(an, id))}</b> = ${Math.round(matchRatingOf(an, id))} ${t('match rating')} + ${bonusOf(an, id)} ${t('loyalty bonus')}</p>`}
@@ -354,6 +365,7 @@ function statsView() {
       <div class="member"><span>😈 ${t('Nemesis')}</span><span>${nemesis && rate(nemesis[1]) < 50 ? line(nemesis) : none}</span></div>
       <div class="member"><span>🎯 ${t('Favourite victim')}</span><span>${victim && rate(victim[1]) > 50 ? line(victim) : none}</span></div></div>
     <h2 class="sec">${t('Head-to-head')}</h2><div class="card" style="padding:4px 16px">${[...rel.foe].filter(([pid]) => canSee(pid)).sort((p, q) => q[1].g - p[1].g).map(x => `<div class="member"><span>${line(x)}</span></div>`).join('') || `<p class="mut">${t('No opponents yet.')}</p>`}</div>` : ''}
+    ${statsSeg === 'collection' ? collectionHtml(id, played) : ''}
     ${challengeCard()}${rm ? `<button class="add recapbtn" onclick="openRecap()">🎁 ${t('{month} recap', { month: monthLabel(rm) })}</button>` : ''}`;
 }
 
@@ -364,10 +376,26 @@ const TITLES = () => ({ clutch: ['🧊', t('Clutch'), t('wins the deciding games
   machine: ['🤖', t('The Machine'), t('wins 7 out of 10')], hotstreak: ['🔥', t('Hot streak'), t('won 8 or more in a row')], onrise: ['📈', t('On the rise'), t('climbing fastest lately')],
   lonewolf: ['🐺', t('Lone wolf'), t('loves a 1 vs 1')], teamplayer: ['👥', t('Team player'), t('has partnered everyone')], workhorse: ['🐎', t('Workhorse'), t('plays the most games a night')],
   rookie: ['🌱', t('Rookie'), t('just getting started')], allround: ['⚖️', t('All-rounder'), t('a bit of everything')] });
+// season album (stickers) and card collection (players you have beaten or won with), under Stats → Collection
+const STICKERS = () => ({ nights5: ['🗓', t('Play 5 nights')], matches20: ['🏸', t('Play 20 matches')], partners5: ['🤝', t('Win with 5 different partners')],
+  beat5: ['🎯', t('Beat 5 different opponents')], streak3: ['🔥', t('Win 3 in a row')], decider: ['🧊', t('Win a deciding game')], singles: ['🐺', t('Win a singles match')],
+  perfect: ['💯', t('Win every match of a night')], challenge: ['⭐', t('Complete a weekly challenge')] });
+function collectionHtml(id, played) {
+  const season = seasonKey(tzParts().date), st = album(db.days, db.players, season, id), S = STICKERS(), done = st.filter(x => x.done).length;
+  const got = collection(db.days, id), others = played.filter(p => p.id !== id && !p.removed);
+  return `<h2 class="sec">${t('Season album')} · ${esc(seasonLabel(season))}</h2>
+    <p class="mut">${done === st.length ? '🏆 ' + t('Album complete: this season your card has a gold edge!') : t('{n} of {m} stickers. Fill the album for a gold-edge card this season.', { n: done, m: st.length })}</p>
+    <div class="album">${st.map(x => `<div class="stk ${x.done ? 'done' : ''}"><span class="si">${S[x.k][0]}</span><span>${S[x.k][1]}</span><small>${x.done ? '✓' : `${x.have}/${x.need}`}</small></div>`).join('')}</div>
+    <h2 class="sec">${t('Card collection')} · ${others.filter(p => got.has(p.id)).length}/${others.length}</h2>
+    <p class="mut">${t('Collect a card by beating that player or winning together.')}</p>
+    <div class="cards">${others.map(p => { const g = got.get(p.id);
+      return `<div class="ccard ${g ? 'got' : ''}">${av(p.id, 44)}<b>${esc(p.name)}</b><small class="mut">${g ? (g.how === 'beat' ? t('beaten') : t('won together')) : '🔒'}</small></div>`; }).join('')}</div>`;
+}
 function cardSpec(id, an = analyse(db.days, db.players), badges = []) {
   const c = playerCard(db.days, db.players, id, an), s = seasonOf(tzParts().date), [te, tn, td] = TITLES()[c.title], hid = ratingHidden(id);
   const seasonName = { winter: t('Winter {y}', s), spring: t('Spring {y}', s), summer: t('Summer {y}', s), autumn: t('Autumn {y}', s) }[s.k];
-  return { id, tier: c.tier, edition: { gold: t('Gold edition'), silver: t('Silver edition'), bronze: t('Bronze edition') }[c.tier], group: dayName(sched ? sched.dow : 4).slice(0, 3).toUpperCase(),
+  const full = album(db.days, db.players, seasonKey(tzParts().date), id).every(x => x.done), tier = full ? 'gold' : c.tier;
+  return { id, tier, edition: full ? t('Album edition') : { gold: t('Gold edition'), silver: t('Silver edition'), bronze: t('Bronze edition') }[c.tier], group: dayName(sched ? sched.dow : 4).slice(0, 3).toUpperCase(),
     rating: hid ? '🙈' : String(Math.round(ratingOf(an, id))), ratingLabel: hid ? t('just playing') : `${t('Rating')} · ${an.main(id) === 'singles' ? t('Singles') : t('Doubles')}`, name: player(id).name, titleEmoji: te, titleWord: tn, titleLine: td,
     stats: [[Math.round(100 * c.rate) + '%', t('win rate')], [c.bestRun, t('best run')], [c.matches, t('matches')], [c.nights, t('nights')], [c.deciders.p ? `${c.deciders.w}/${c.deciders.p}` : '–', t('deciders')]].map(([x, l]) => [String(x), l]),
     partner: c.partner ? `🤝 ${t('best partner')}: ${player(c.partner).name}${c.partnerGames >= 3 ? ` · ${Math.round(100 * c.partnerRate)}%` : ''}` : '', badges: badges.map(x => x.split(' ')[0]).join(' '),
@@ -487,8 +515,8 @@ function adminView() {
 
 // admins only: how the app is used (last 30 days): who is active, which tabs, what people do, and when
 function usageCard() {
-  const today = tzParts().date, tabs = ['play', 'board', 'chat', 'tips', 'photos', 'stats', 'profile', 'members', 'calendar', 'admin'];
-  const label = { play: t('Play'), board: t('Board'), chat: t('Chat'), tips: t('Videos'), photos: t('Photos'), stats: t('Stats'), profile: t('Profile'), members: t('Members'), calendar: t('Calendar'), admin: t('Admin tools') };
+  const today = tzParts().date, tabs = ['play', 'board', 'chat', 'tips', 'records', 'photos', 'stats', 'profile', 'members', 'calendar', 'admin'];
+  const label = { play: t('Play'), board: t('Board'), chat: t('Chat'), tips: t('Videos'), records: t('Hall of fame'), photos: t('Photos'), stats: t('Stats'), profile: t('Profile'), members: t('Members'), calendar: t('Calendar'), admin: t('Admin tools') };
   const sum = rows => rows.reduce((x, r) => x + r.n, 0), views = usage.filter(r => tabs.includes(r.what));
   const active = days => new Set(usage.filter(r => r.day > addDays(today, -days)).map(r => r.user_id)).size;
   const pct = rows => { const tot = sum(rows); return tabs.map(k => [k, sum(rows.filter(r => r.what === k))]).filter(([, n]) => n).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${label[k]} ${Math.round(100 * n / tot)}%`).join(' · '); };
@@ -636,7 +664,7 @@ const EMO = { '👁': 'eye', '💬': 'chat', '📅': 'calendar', '✅': 'check',
 const EMO_RE = new RegExp('(' + Object.keys(EMO).join('|') + ')\uFE0F?', 'gu');
 function minimalize(root) {
   if (!root) return;
-  const skip = n => /^(OPTION|SELECT|TEXTAREA|SCRIPT|STYLE|TITLE)$/.test(n.parentNode.nodeName) || n.parentNode.closest('#rx, .podium, .badge, .rx, .lic');
+  const skip = n => /^(OPTION|SELECT|TEXTAREA|SCRIPT|STYLE|TITLE)$/.test(n.parentNode.nodeName) || n.parentNode.closest('#rx, .podium, .badge, .rx, .lic, .stk');
   const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), hits = [];
   while (w.nextNode()) { EMO_RE.lastIndex = 0; if (EMO_RE.test(w.currentNode.data) && !skip(w.currentNode)) hits.push(w.currentNode); }
   for (const n of hits) { const s = document.createElement('span'); s.innerHTML = esc(n.data).replace(EMO_RE, (_, e) => svgIcon(EMO[e], 'inl i-' + EMO[e])); n.replaceWith(...s.childNodes); }
@@ -658,7 +686,7 @@ function render() {
   document.body.classList.toggle('out', !session); document.body.classList.toggle('clean', !photosOn());
   document.body.dataset.view = session ? view : '';
   document.documentElement.lang = lang;
-  document.querySelectorAll('nav button').forEach(b => { b.innerHTML = NAV[b.dataset.v](); b.setAttribute('aria-current', b.dataset.v === view || (b.dataset.v === 'group' && (view === 'chat' || view === 'tips' || view === 'members')) ? 'page' : ''); });
+  document.querySelectorAll('nav button').forEach(b => { b.innerHTML = NAV[b.dataset.v](); b.setAttribute('aria-current', b.dataset.v === view || (b.dataset.v === 'group' && (view === 'chat' || view === 'tips' || view === 'records' || view === 'members')) ? 'page' : ''); });
   if (!sb) { app.innerHTML = `<h1>${t('Almost there')}</h1><p class="mut">${t('Add your Supabase URL and key to config.js (see SETUP.md).')}</p>`; return; }
   if (!authReady) { app.innerHTML = skeleton(); return; }
   if (!session) { app.innerHTML = login_(); return; }
@@ -673,7 +701,7 @@ function render() {
   const behind = isAdmin() && dbBehind ? `<div class="strip"><span>⚠️ ${t('The database is missing updates, so some buttons may fail. Apply the newest migrations in Supabase (see SETUP.md).')}</span></div>` : '';
   const strip = behind + (me.is_admin && asMember ? `<div class="strip"><span>👁 ${t('You are viewing the app as a member. Admin tools are hidden.')}</span><button onclick="toggleView()">${t('Back to admin')}</button></div>` : '');
   const nearEnd = view === 'chat' && innerHeight + scrollY >= document.body.scrollHeight - 120;   // reading older messages: do not jump
-  app.innerHTML = top + strip + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'admin' && isAdmin() ? adminView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : view === 'chat' && chatOn ? chatView() : view === 'tips' ? tipsView() : view === 'backfill' && bf ? backfillView() : `<h1>${t('Photos')}</h1><div class="seg" style="margin-bottom:12px"><button class="${photosTab === 'photos' ? 'on' : ''}" onclick="photosTab='photos';render()">📷 ${t('Photos')}</button><button class="${photosTab === 'receipts' ? 'on' : ''}" onclick="photosTab='receipts';render()">🧾 ${t('Receipts')}</button></div><div id="gal"></div>`);
+  app.innerHTML = top + strip + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'admin' && isAdmin() ? adminView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : view === 'chat' && chatOn ? chatView() : view === 'tips' ? tipsView() : view === 'records' ? recordsView() : view === 'backfill' && bf ? backfillView() : `<h1>${t('Photos')}</h1><div class="seg" style="margin-bottom:12px"><button class="${photosTab === 'photos' ? 'on' : ''}" onclick="photosTab='photos';render()">📷 ${t('Photos')}</button><button class="${photosTab === 'receipts' ? 'on' : ''}" onclick="photosTab='receipts';render()">🧾 ${t('Receipts')}</button></div><div id="gal"></div>`);
   drawReactions();
   const sl = document.querySelector('.slides'); shownSlide = slideIdx; if (sl && slideIdx) sl.scrollLeft = slideIdx * sl.clientWidth;
   minimalize(app);
@@ -702,7 +730,7 @@ const TOUR = () => [
   ['.startbar, [onclick="start()"], #app ol .row', '▶️ ' + t('Start playing'), t('It opens shortly before play time. Then tap a team to record its win. Someone leaving early or arriving late? Use ⋯ More during play.')],
   ['.teams', '🏆 ' + t('Record the winner'), t('Tap the team that won. Everyone sees the scores live, and Undo fixes a wrong tap.')],
   ['nav [data-v=board]', '🏆 ' + t('Board'), t('Rating points won that night, that month, and your rating over all time. Tap a player for their stats.')],
-  ['nav [data-v=group]', '💬 ' + t('Group'), t('Video tips to get better, and Members: everyone in the group and who is coming.')],
+  ['nav [data-v=group]', '💬 ' + t('Group'), t('Video tips to get better, the Hall of fame with the group records, and Members: everyone in the group and who is coming.')],
   ['nav [data-v=photos]', '📷 ' + t('Photos'), t('The group photo of each day, and receipts for extra courts or shuttles.')],
   ['nav [data-v=stats]', '📊 ' + t('Stats'), t('Your rating over time, badges, best partners and head-to-head records.')],
   ['.top .me', '🙂 ' + t('Your profile'), t('Tap your photo for your profile: picture, language, light or dark theme and privacy.')],

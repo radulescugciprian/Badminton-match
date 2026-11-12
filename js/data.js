@@ -242,7 +242,11 @@ const rulesHtml = () => `<h2 class="sec">${t('Badminton rules')}</h2>
       <li>${t('When your side wins a rally while serving, the same player serves again from the other court and the two partners swap sides.')}</li>
       <li>${t('During a rally either partner may hit the shuttle. Only the serve and the return of serve are fixed by the diagonal.')}</li></ul></details>`;
 // ---- release notes, newest first. A new id shows "What's new" once to everyone who used the app before (new people get the tour instead).
-const NEWS = () => [{ id: '2026-11-10.2', date: '2026-11-10', items: [
+const NEWS = () => [{ id: '2026-11-12', items: [
+  ['🃏', t('Six new card titles: The Machine, Hot streak, On the rise, Lone wolf, Team player and Workhorse.')],
+  ['🏆', t('Hall of fame in the Group tab: the longest win streak, the biggest upset, the best night and more. Break a record and the closed night shows it.')],
+  ['📒', t('Stats → Collection: a season album with 9 stickers to fill (a full album gives your card a gold edge) and a card collection: beat a player or win together to collect their card.')],
+] }, { id: '2026-11-10.2', date: '2026-11-10', items: [
   ['📈', t('Separate ratings for doubles and singles, plus a loyalty bonus for showing up: +3 a night, +1 a match (max 2), +2 per weekly challenge. It starts again each season.')],
   ['🏆', t('The leaderboard is all about rating points: won that night, won that month, and your rating over all time. Share "How the rating works" from All time.')],
   ['🃏', t('New player cards in a clean style, with your best partner (best win rate together). Upload your profile photo again for a sharp card.')],

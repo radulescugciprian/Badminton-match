@@ -161,4 +161,22 @@ assert(ratingChart([1000, 1032, 1010]).includes('1032'));
   assert.equal(l.get(3).bonus - 2 * l.get(3).challenges, l.get(1).bonus - 2 * l.get(1).challenges, 'winning or losing makes no difference to the bonus');
 }
 
+{ // hall of fame, card collection, season album
+  const { records, collection, album } = require('../analytics.js');
+  const P = [1, 2, 3, 4, 5].map(id => ({ id })), night = (id, date, ms) => ({ id, date, matches: ms.map(([t1, t2, win], i) => ({ n: i + 1, t1, t2, win })) });
+  const ds = [night(1, '2026-10-01', [[[1, 2], [3, 4], 1], [[1, 3], [2, 4], 1]]), night(2, '2026-10-08', [[[1, 2], [3, 4], 1], [[1, 2], [3, 5], 1], [[1], [5], 2]])];
+  const r = Object.fromEntries(records(ds, P).map(x => [x.key, x]));
+  assert.deepEqual([r.streak.ids, r.streak.value, r.streak.day], [[1], 4, 2], 'Vali won 4 in a row, set on the second night');
+  assert.deepEqual([r.pair.ids, r.pair.value], [[1, 2], 3], 'Vali & Dani: 3 matches together');
+  assert.deepEqual([r.matches.value, r.matches.day], [3, 2], 'most matches in one night');
+  assert.equal(r.nights.value, 2);
+  const c = collection(ds, 1);
+  assert.deepEqual([...c.keys()].sort(), [2, 3, 4, 5], 'Vali beat or won with everyone');
+  assert.equal(c.get(2).how, 'partner'); assert.equal(c.get(4).how, 'beat');
+  assert.equal(collection(ds, 5).size, 1, 'Ciprian only beat Vali');
+  const al = Object.fromEntries(album(ds, P, 'autumn 2026', 1).map(x => [x.k, x]));
+  assert.deepEqual([al.nights5.have, al.streak3.done, al.partners5.have, al.beat5.have, al.singles.done], [2, true, 2, 4, false]);
+  assert.equal(album(ds, P, 'spring 2027', 1).filter(x => x.done).length, 0, 'every season starts empty');
+}
+
 console.log('analytics tests passed');
