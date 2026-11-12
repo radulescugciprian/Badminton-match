@@ -24,7 +24,7 @@ let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-ma
 const DB_VERSION = 20261115; // bump together with db_version() in the newest migration
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
-let loyaltyOpen = false, statsSeg = 'badges', boardKind = 'doubles', boardOpen = null, memFilter = 'all', memSort = 'name', memOpen = null, adminPage = '', admPanel = '', prevView = 'play', profPanel = '', usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, lineupOpen = false, moreOpen = false, dayMore = false, matchesOpen = {}, lastRec = 0, bgLoaded = false, rsvps = [], reactions = [], statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
+let flipOn = false, loyaltyOpen = false, statsSeg = 'partners', boardKind = 'doubles', boardOpen = null, memFilter = 'all', memSort = 'name', memOpen = null, adminPage = '', admPanel = '', prevView = 'play', profPanel = '', usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, lineupOpen = false, moreOpen = false, dayMore = false, matchesOpen = {}, lastRec = 0, bgLoaded = false, rsvps = [], reactions = [], statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
 function memberView() { try { return localStorage.getItem('adminView') !== '1'; } catch { return true; } }
 let view = 'play', tab = 'all', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0, manualLogout = false, lostSession = false, asMember = memberView();   // asMember: an admin seeing the app as a normal member (the default; remembered on this phone)
 // the sign-in is kept on the phone (localStorage) and renewed automatically, so people stay logged in until they log out
@@ -538,7 +538,7 @@ const deckTo = (i, smooth = true) => { const el = document.querySelector('.cdeck
 function onDeck(el) {
   const i = deckIdx(); document.querySelectorAll('.cdeck + .dots i').forEach((x, k) => x.classList.toggle('on', k === i));
   clearTimeout(deckT); deckT = setTimeout(() => { if (!el.isConnected) return;   // a redraw replaced this deck meanwhile
-    const s = el.children[i], id = s && +s.querySelector('.pcslot').dataset.id; if (id && id !== statsId) { statsId = id; render(); } }, 180);
+    const s = el.children[i], id = s && +s.querySelector('.pcslot').dataset.id; if (id && id !== statsId) { statsId = id; flipOn = false; render(); } }, 180);
 }
 // swiping the day cards: move the dots at once, redraw the list for the new day when the swipe settles
 let slideT, shownSlide = 0;

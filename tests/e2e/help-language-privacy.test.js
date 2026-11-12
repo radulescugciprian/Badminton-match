@@ -52,12 +52,12 @@ run('help, plain errors, languages, privacy and the schedule editor', async h =>
   await C.click('nav >> text=Board'); await C.click('.seg >> text=All time'); await C.waitForSelector('text=Everyone starts at 1000');
   const ratingC = await C.textContent('#app');
   assert(ratingC.includes('private') && !(await C.locator('.rank:has-text("Dani") b >> nth=-1').textContent()).match(/\d{4}/), 'Dani hidden from members');
-  await C.click('nav >> text=Stats'); await C.waitForSelector('text=Rating over time');
+  await C.click('nav >> text=Stats'); await C.waitForSelector('svg[aria-label^="Rating over time"]');
   assert(!(await C.locator('.pchoose button').allTextContents()).some(x => x.includes('Dani')), 'not in the stats picker');
   // Bob sees himself, admin Anna sees everything (marked with a lock)
-  await B.click('nav >> text=Stats'); await B.waitForSelector('text=Rating over time');
+  await B.click('nav >> text=Stats'); await B.waitForSelector('svg[aria-label^="Rating over time"]');
   assert((await B.locator('.pchoose button').allTextContents()).some(x => x.includes('Dani')), 'owner sees own stats');
-  await A.click('nav >> text=Stats'); await A.waitForSelector('text=Rating over time');
+  await A.click('nav >> text=Stats'); await A.waitForSelector('svg[aria-label^="Rating over time"]');
   assert.equal(await A.locator('.pchoose button:has-text("Dani") svg.lic').count(), 1, 'admin sees all, private ones marked with a lock');
   await A.click('.pchoose button:has-text("Dani")'); await A.waitForSelector('text=keeps these stats private');
   // the leaderboard still shows results for everyone

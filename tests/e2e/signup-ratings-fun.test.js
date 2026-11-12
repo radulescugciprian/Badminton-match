@@ -67,16 +67,17 @@ run('sign-up list, ratings, badges, result card and reactions', async h => {
   await A.click('#lb >> text=Close'); await B.click('#lb >> text=Close');
   
   // ---- stats + rating
-  await A.click('nav >> text=Stats'); await A.waitForSelector('text=Rating over time');
+  await A.click('nav >> text=Stats'); await A.waitForSelector('svg[aria-label^="Rating over time"]');
   const sx = await A.textContent('#app');
-  assert(sx.includes('Perfect night') && !sx.includes('Best pair') && (await A.locator('svg[aria-label^="Rating over time"]').count()) === 1, 'stats: badges and the chart first');
+  assert(sx.includes('Perfect night') && sx.includes('My season') && (await A.locator('svg[aria-label^="Rating over time"]').count()) === 1, 'the card back has the badges and the chart; my season below');
+  await A.click('.cslide.on'); await A.waitForSelector('.flip.on');   // tap the middle card: it flips
   await A.click('.stseg >> text=Partners'); await A.waitForSelector('text=Best pair');   // one section at a time
   await A.click('.stseg >> text=Rivals'); await A.waitForSelector('h2:has-text("Head-to-head")');
-  await A.click('.stseg >> text=Badges');
+  await A.click('.stseg >> text=Partners');
   await A.screenshot({ path: require('os').tmpdir() + '/stats.png', fullPage: true });
   await A.click('nav >> text=Board'); await A.click('.seg >> text=All time'); await A.waitForSelector('text=Everyone starts at 1000');
   assert((await A.textContent('.card .rank >> nth=0')).includes('Vali'), 'highest rating first');
-  await A.click('.rank.tap >> nth=1'); await A.waitForSelector('text=Rating over time');                    // tapping a player opens their stats
+  await A.click('.rank.tap >> nth=1'); await A.waitForSelector('svg[aria-label^="Rating over time"]');                    // tapping a player opens their stats
   assert.equal(await A.evaluate(() => statsId), await A.evaluate(() => db.players.find(p => p.name === document.querySelector('.pchoose [aria-pressed=true] > span:last-child').textContent.replace(/ 🔒/, '').trim()).id), 'the tapped player is selected');
   // the rating everyone sees = match rating + loyalty bonus for showing up; Month is back
   await A.click('nav >> text=Board'); await A.click('.seg >> text=All time');

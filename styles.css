@@ -370,3 +370,14 @@
   .coin.sm{--s:22px;margin:-2px 2px 0 -4px} .coin.off{background:none;box-shadow:none;border:1.5px dashed var(--line);color:var(--mut)}
   .rank .r .coin{--s:28px} .pod .medal .coin{--s:36px} .hof .stk .coin{--s:36px} .album .stk .si{filter:none;opacity:1;font-size:0} .album .stk .si .coin{--s:44px}
   .newrec .coin.sm{margin:-3px 4px 0 0}
+  /* the middle card flips on tap: the back shows that player's details, like the back of a sports card */
+  .flip{position:relative;transform-style:preserve-3d;transition:transform .5s cubic-bezier(.2,.8,.2,1)} .flip.on{transform:rotateY(180deg)}
+  .flip .face{backface-visibility:hidden;-webkit-backface-visibility:hidden}
+  .cback{position:absolute;inset:0;transform:rotateY(180deg);overflow-y:auto;border-radius:18px;padding:16px 14px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:6px;font-size:var(--fs-sm);color:var(--text)}
+  .cback .bh{display:flex;flex-direction:column} .cback .bh b{font-family:var(--disp);font-weight:400;font-size:28px;line-height:1.05;letter-spacing:.03em}
+  .cback .br{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap} .cback .br b{font-family:var(--disp);font-weight:400;font-size:40px;line-height:1} .cback .br .mut{font-size:var(--fs-xs)}
+  .cback .bchart svg{width:100%;height:auto;display:block;color:var(--mut)}
+  .cback .bsec{font-size:var(--fs-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin-top:6px}
+  .cback .bbad{display:flex;flex-wrap:wrap;gap:4px} .cback .badge{margin:0;font-size:var(--fs-xs);padding:3px 8px 3px 6px} .cback .brec{display:flex;align-items:center;gap:6px} .cback .brec .coin{--s:22px}
+  .flipnote{text-align:center;font-size:var(--fs-xs);margin:-6px 0 8px}
+  @media (prefers-reduced-motion:reduce){.flip{transition:none}}

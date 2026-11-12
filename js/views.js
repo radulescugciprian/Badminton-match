@@ -353,32 +353,39 @@ function statsView() {
   if (fresh && !played.some(p => p.id === statsId)) return `<h1>${t('Stats')}</h1><div class="pchoose" role="group" aria-label="${t('Player')}">${youBtn}${played.map(p => `<button aria-pressed="false" onclick="statsId=${p.id};render()">${av(p.id, 42)}<span>${esc(p.name)}</span></button>`).join('')}</div>`
     + emptyState('stats', t('Your card unlocks after your first match.'), t('Play a match and your rating, badges and season album start here.'), `<button class="primary" onclick="go('play')">${t('Go to Play')}</button>`) + challengeCard();
   const id = played.some(p => p.id === statsId) ? statsId : mine && played.some(p => p.id === mine.id) ? mine.id : played[0].id;
-  const rel = relations(db.days, id);
-  const rate = x => Math.round(100 * x.w / x.g), byRate = (m, min) => [...m].filter(([pid, x]) => x.g >= min && canSee(pid)).sort((p, q) => rate(q[1]) - rate(p[1]) || q[1].g - p[1].g);
-  const mates = byRate(rel.mate, 1), foes = byRate(rel.foe, 2), pair_ = bestPair(db.days, 3, ids => ids.every(canSee)), isMe = mine && mine.id === id;
-  const nemesis = foes.length ? foes[foes.length - 1] : null, victim = foes.length ? foes[0] : null, line = ([pid, x]) => `${av(pid, 24)} ${name(pid)} <span class="mut">${x.w}-${x.g - x.w} · ${rate(x)}%</span>`;
-  const none = `<span class="mut">${t('none yet')}</span>`;
-  const badges = badgesOf(an, id);
-  const rm = recapDefault();
-  // partners, rivals and the collection are private: only the player (and admins) see them
-  const own = (mine && mine.id === id) || isAdmin(), sseg = own ? statsSeg : 'badges';
-  const seg = own ? [['badges', t('Badges')], ['partners', t('Partners')], ['rivals', t('Rivals')], ['collection', t('Collection')]] : [];
+  // the deck is everyone (tap the middle card to flip it: that player's details are on the back); below it is always you
+  const me_ = mine && played.some(p => p.id === mine.id) ? mine.id : null, rm = recapDefault();
   return `<h1>${t('Stats')}</h1>
-    <div class="pchoose" role="group" aria-label="${t('Player')}">${youBtn}${played.map(p => `<button aria-pressed="${p.id === id}" onclick="statsId=${p.id};render()">${av(p.id, 42)}<span>${esc(p.name)}${sharing(p.id) ? '' : ' 🔒'}</span></button>`).join('')}</div>
+    <div class="pchoose" role="group" aria-label="${t('Player')}">${youBtn}${played.map(p => `<button aria-pressed="${p.id === id}" onclick="flipOn=false;statsId=${p.id};render()">${av(p.id, 42)}<span>${esc(p.name)}${sharing(p.id) ? '' : ' 🔒'}</span></button>`).join('')}</div>
     ${cardDeck(an, played, id)}
-    ${ratingHidden(id) ? '' : loyaltyHtml(an, id)}
-    ${sharing(id) ? '' : `<p class="mut" role="status">🔒 ${t('{name} keeps these stats private. You can see them because you are an admin or it is you.', { name: esc(player(id).name) })}</p>`}
-    ${seg.length ? '' : `<p class="mut">🔒 ${t('Partners, rivals and the collection are private: only {name} sees them.', { name: esc(player(id).name) })}</p>`}<div class="seg stseg">${seg.map(([k, l]) => `<button class="${statsSeg === k ? 'on' : ''}" onclick="statsSeg='${k}';render()">${l}</button>`).join('')}</div>
-    ${sseg === 'badges' ? `<h2 class="sec">${t('Badges')}</h2>${badges.map(x => `<span class="badge">${x}</span>`).join('') || `<p class="mut">${t('None yet. They come for wins, streaks and simply showing up.')}</p>`}
-    ${ratingHidden(id) ? '' : `<h2 class="sec">${t('Rating over time')}</h2><div class="card" style="color:var(--mut)">${ratingChart(chartOf(an, id), 320, 150, t('Rating over time')) || `<p class="mut" style="margin:0">${t('Play a few more matches to see the chart.')}</p>`}</div>`}` : ''}
-    ${sseg === 'partners' ? `<h2 class="sec">${t('Partners')}</h2><div class="card" style="padding:4px 16px">${mates.map(x => `<div class="member"><span>${line(x)}</span></div>`).join('') || `<p class="mut">${t('No partners yet.')}</p>`}</div>
+    ${me_ ? mySeason(an, me_) : `<h2 class="sec">${t('My season')}</h2><p class="mut">${t('Your card unlocks after your first match.')}</p>`}
+    ${me_ ? challengeCard() : ''}${rm ? `<button class="add recapbtn" onclick="openRecap()">🎁 ${t('{month} recap', { month: monthLabel(rm) })}</button>` : ''}`;
+}
+// below the deck: your own season, which stays put while you swipe (partners, rivals and the collection are private anyway)
+function mySeason(an, id) {
+  const rel = relations(db.days, id), rate = x => Math.round(100 * x.w / x.g), byRate = (m, min) => [...m].filter(([pid, x]) => x.g >= min && canSee(pid)).sort((p, q) => rate(q[1]) - rate(p[1]) || q[1].g - p[1].g);
+  const mates = byRate(rel.mate, 1), foes = byRate(rel.foe, 2), pair_ = bestPair(db.days, 3, ids => ids.every(canSee));
+  const nemesis = foes.length ? foes[foes.length - 1] : null, victim = foes.length ? foes[0] : null, line = ([pid, x]) => `${av(pid, 24)} ${name(pid)} <span class="mut">${x.w}-${x.g - x.w} · ${rate(x)}%</span>`;
+  const none = `<span class="mut">${t('none yet')}</span>`, sseg = ['partners', 'rivals', 'collection'].includes(statsSeg) ? statsSeg : 'partners';
+  return `<section class="myseason"><h2 class="sec mys">${t('My season')}</h2>${ratingHidden(id) ? '' : loyaltyHtml(an, id)}
+    <div class="seg stseg">${[['partners', t('Partners')], ['rivals', t('Rivals')], ['collection', t('Collection')]].map(([k, l]) => `<button class="${sseg === k ? 'on' : ''}" onclick="statsSeg='${k}';render()">${l}</button>`).join('')}</div>
+    ${sseg === 'partners' ? `<div class="card" style="padding:4px 16px">${mates.map(x => `<div class="member"><span>${line(x)}</span></div>`).join('') || `<p class="mut">${t('No partners yet.')}</p>`}</div>
     <h2 class="sec">${t('Best pair in the group')}</h2><div class="card">${pair_ ? `${pair_.ids.map(x => av(x, 24)).join('')} ${pair(pair_.ids)} <span class="mut">${t('{record} together', { record: `${pair_.w}-${pair_.g - pair_.w}` })}</span>` : `<span class="mut">${t('needs 3 games together')}</span>`}</div>` : ''}
-    ${sseg === 'rivals' ? `<h2 class="sec">${t('Rivals')}</h2><div class="card" style="padding:4px 16px">
+    ${sseg === 'rivals' ? `<div class="card" style="padding:4px 16px">
       <div class="member"><span>😈 ${t('Nemesis')}</span><span>${nemesis && rate(nemesis[1]) < 50 ? line(nemesis) : none}</span></div>
       <div class="member"><span>🎯 ${t('Favourite victim')}</span><span>${victim && rate(victim[1]) > 50 ? line(victim) : none}</span></div></div>
     <h2 class="sec">${t('Head-to-head')}</h2><div class="card" style="padding:4px 16px">${[...rel.foe].filter(([pid]) => canSee(pid)).sort((p, q) => q[1].g - p[1].g).map(x => `<div class="member"><span>${line(x)}</span></div>`).join('') || `<p class="mut">${t('No opponents yet.')}</p>`}</div>` : ''}
-    ${sseg === 'collection' ? collectionHtml(id, played) : ''}
-    ${isMe ? challengeCard() : ''}${rm ? `<button class="add recapbtn" onclick="openRecap()">🎁 ${t('{month} recap', { month: monthLabel(rm) })}</button>` : ''}`;
+    ${sseg === 'collection' ? collectionHtml(id, db.players.filter(p => (an.hist.get(p.id).length || an.histS.get(p.id).length) && canSee(p.id))) : ''}</section>`;
+}
+// the back of the middle card: that player's rating over time, badges and records, as on the back of a sports card
+function cardBack(an, id) {
+  const hid = ratingHidden(id), L = loyaltyOf(an, id), recs = shownRecords(an).filter(r => r.ids.includes(id)), b = badgesOf(an, id), sp = cardSpec(id, an);
+  return `<div class="bh"><b>${esc(player(id).name)}</b><span class="mut">${esc(sp.titleWord)} · ${esc(sp.edition)}</span></div>
+    ${hid ? `<p class="mut">🙈 ${t('just playing')}</p>` : `<div class="br"><b>${Math.round(ratingOf(an, id))}</b><span class="mut">${Math.round(matchRatingOf(an, id))} ${t('match rating')} + ${L.bonus} ${t('loyalty bonus')}</span></div>
+      <div class="bchart">${ratingChart(chartOf(an, id), 280, 80, t('Rating over time')) || `<span class="mut">${t('Play a few more matches to see the chart.')}</span>`}</div>`}
+    <div class="bsec">${t('Badges')}</div><div class="bbad">${b.map(x => `<span class="badge">${x}</span>`).join('') || `<span class="mut">${t('None yet. They come for wins, streaks and simply showing up.')}</span>`}</div>
+    ${recs.length ? `<div class="bsec">${t('Records')}</div>${recs.map(r => `<div class="brec">${RECS()[r.key][0]} ${RECS()[r.key][1]} · <b>${RECS()[r.key][2](r.value)}</b></div>`).join('')}` : ''}
+    ${sharing(id) ? '' : `<p class="mut">🔒 ${t('{name} keeps these stats private. You can see them because you are an admin or it is you.', { name: esc(player(id).name) })}</p>`}`;
 }
 
 
@@ -408,8 +415,10 @@ function loyaltyHtml(an, id) {
 function cardDeck(an, played, id) {
   const k = played.findIndex(p => p.id === id), lastDay = [...db.days].reverse().find(d => (an.night.get(d.id) || new Map()).has(id)), r = lastDay && an.night.get(lastDay.id).get(id);
   const g = r && !ratingHidden(id) ? Math.round(r.delta + (seasonKey(lastDay.date) === seasonKey(tzParts().date) ? nightBonus(r) : 0)) : 0;
-  return `<div class="cdeck" onscroll="onDeck(this)">${played.map((p, i) => `<div class="cslide ${i === k ? 'on' : ''}" onclick="if(${i}!==deckIdx())deckTo(${i})">${playerCardHtml(cardSpec(p.id, an))}</div>`).join('')}</div>
+  return `<div class="cdeck" onscroll="onDeck(this)">${played.map((p, i) => `<div class="cslide ${i === k ? 'on' : ''}" onclick="if(${i}!==deckIdx())deckTo(${i});else{flipOn=!flipOn;this.querySelector('.flip').classList.toggle('on',flipOn)}">
+      <div class="flip ${i === k && flipOn ? 'on' : ''}"><div class="face">${playerCardHtml(cardSpec(p.id, an))}</div><div class="face cback" role="note">${i === k ? cardBack(an, p.id) : ''}</div></div></div>`).join('')}</div>
     ${played.length > 1 ? `<div class="dots">${played.map((_, i) => `<i class="${i === k ? 'on' : ''}"></i>`).join('')}</div>` : ''}
+    <p class="mut flipnote">${t('Tap the card to flip it')}</p>
     <div class="cbar">${g ? `<span class="${g > 0 ? 'up' : 'down'}">${g > 0 ? '▲' : '▼'}${Math.abs(g)} ${t('last night')}</span>` : '<span></span>'}<button class="link" onclick="sharePlayerCard(${id})">📤 ${t('Share card')}</button></div>`;
 }
 // the chart shows the rating people see; it ends on today's number (a new season starts the bonus again)

@@ -32,12 +32,14 @@ run('hide rating, showing-up badges, monthly recap', async h => {
   const hof = await A.textContent('#app'); assert(hof.includes('Longest win streak') && hof.includes('Most wins in one night') && !hof.includes('Most nights played'), hof.slice(0, 300));
   await A.click('nav >> text=Stats'); await A.click('.stseg >> text=Collection'); await A.waitForSelector('.album .stk');
   assert.equal(await A.locator('.album .stk').count(), 9, 'nine stickers'); assert(await A.locator('.ccard').count() >= 1, 'cards to collect');
-  await A.click('.stseg >> text=Badges');
   await A.click('.rbreak summary'); await A.waitForSelector('.rbreak >> text=Nights played');   // the loyalty bonus, step by step
   assert((await A.textContent('.rbreak')).includes('5 × 3'), 'Vali: 5 nights × 3');
   // someone else's partners, rivals and collection are private (seen as a member; admins still see them)
-  await A.evaluate(() => { asMember = true; statsId = 2; go('stats'); }); await A.waitForSelector('text=only Dani sees them');
-  assert.equal(await A.locator('.stseg button').count(), 0, 'no private sections'); assert.equal(await A.locator('.album').count(), 0);
+  // swiping to Dani shows Dani's card (and its back), while "My season" below stays mine: Dani's partners never show
+  await A.evaluate(() => { asMember = true; statsId = 1; go('stats'); }); await A.waitForSelector('.mys');
+  const mineBelow = await A.textContent('.myseason');
+  await A.evaluate(() => { statsId = 2; render(); }); await A.waitForSelector('.cslide.on .cback >> text=Dani');
+  assert.equal(await A.textContent('.myseason'), mineBelow, 'my season stays mine while another card is in the middle');
   await A.evaluate(() => { asMember = false; statsId = 1; render(); }); await A.waitForSelector('.stseg button');
   // hide my rating: no number and no rank, but the badges stay
   await A.click('.top .me'); await A.click('[data-row=hiderating]'); await A.click('text=Hide my rating number and rank');
@@ -45,7 +47,7 @@ run('hide rating, showing-up badges, monthly recap', async h => {
   await A.click('nav >> text=Board'); await A.waitForSelector('.rank:has-text("Vali") >> text=just playing');
   assert.equal(await A.locator('.podium >> text=Vali').count(), 0, 'not on the podium');
   await A.click('nav >> text=Stats'); await A.waitForSelector('.badge:has-text("5 nights in a row")');
-  assert(!(await A.textContent('#app')).includes('Rating over time'), 'no rating chart');
+  assert.equal(await A.locator('svg[aria-label^="Rating over time"]').count(), 0, 'no rating chart');
   // a new player with no matches sees "You" and what unlocks, not someone else's card; the challenge only shows on your own page
   const N = await mk(); await signup(N, 'Nina', 'n@x.com'); await N.evaluate(() => { asMember = true; go('stats'); });
   await N.waitForSelector('text=Your card unlocks after your first match.'); assert((await N.locator('.pchoose [aria-pressed=true]').textContent()).includes('You'), '"You" first and selected');
