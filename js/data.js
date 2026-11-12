@@ -24,7 +24,7 @@ let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-ma
 const DB_VERSION = 20261115; // bump together with db_version() in the newest migration
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
-let cardOpen = false, loyaltyOpen = false, statsSeg = 'badges', boardKind = 'doubles', boardOpen = null, memFilter = 'all', memSort = 'name', memOpen = null, adminPage = '', admPanel = '', prevView = 'play', profPanel = '', usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, lineupOpen = false, moreOpen = false, dayMore = false, matchesOpen = {}, lastRec = 0, bgLoaded = false, rsvps = [], reactions = [], statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
+let loyaltyOpen = false, statsSeg = 'badges', boardKind = 'doubles', boardOpen = null, memFilter = 'all', memSort = 'name', memOpen = null, adminPage = '', admPanel = '', prevView = 'play', profPanel = '', usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, lineupOpen = false, moreOpen = false, dayMore = false, matchesOpen = {}, lastRec = 0, bgLoaded = false, rsvps = [], reactions = [], statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
 function memberView() { try { return localStorage.getItem('adminView') !== '1'; } catch { return true; } }
 let view = 'play', tab = 'all', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0, manualLogout = false, lostSession = false, asMember = memberView();   // asMember: an admin seeing the app as a normal member (the default; remembered on this phone)
 // the sign-in is kept on the phone (localStorage) and renewed automatically, so people stay logged in until they log out
@@ -530,6 +530,16 @@ const bfSave = () => {
 const appLink = q => location.origin + location.pathname + (q ? '?' + q : '');
 const plain = ids => ids.map(id => player(id).name).join(' & ');
 const waShare = text => track('act:whatsapp') || window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
+// swiping the card deck on Stats: the card in the middle becomes the player shown below once the swipe settles
+let deckT;
+const deckIdx = () => { const el = document.querySelector('.cdeck'); if (!el) return 0; const mid = el.scrollLeft + el.clientWidth / 2;
+  let best = 0; [...el.children].forEach((c, i) => { if (Math.abs(c.offsetLeft + c.offsetWidth / 2 - mid) < Math.abs(el.children[best].offsetLeft + el.children[best].offsetWidth / 2 - mid)) best = i; }); return best; };
+const deckTo = (i, smooth = true) => { const el = document.querySelector('.cdeck'), c = el && el.children[i]; if (c) el.scrollTo({ left: c.offsetLeft - (el.clientWidth - c.offsetWidth) / 2, behavior: smooth ? 'smooth' : 'auto' }); };
+function onDeck(el) {
+  const i = deckIdx(); document.querySelectorAll('.cdeck + .dots i').forEach((x, k) => x.classList.toggle('on', k === i));
+  clearTimeout(deckT); deckT = setTimeout(() => { if (!el.isConnected) return;   // a redraw replaced this deck meanwhile
+    const s = el.children[i], id = s && +s.querySelector('.pcslot').dataset.id; if (id && id !== statsId) { statsId = id; render(); } }, 180);
+}
 // swiping the day cards: move the dots at once, redraw the list for the new day when the swipe settles
 let slideT, shownSlide = 0;
 function onSlides(el) {

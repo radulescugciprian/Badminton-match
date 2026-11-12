@@ -335,6 +335,16 @@ function ratingList() {
       <button class="add" style="margin:12px 0 0" onclick="shareRules()">📤 ${t('Share the rules')}</button></div></details>`;
 }
 
+// a player's badges (text with an icon), on Stats and on their card
+function badgesOf(an, id) {
+  const b = an.badges.get(id), me_ = stats(db.days.flatMap(d => d.matches)).find(r => r.id === id) || { p: 0 };
+  const crowns = monthChamps().filter(c => c.id === id).length;
+  return [crowns && `👑 ${t('Champion of the month')} ×${crowns}`, b.potn && `⭐ ${t('Player of the night')} ×${b.potn}`, b.perfect && `💯 ${t('Perfect night')} ×${b.perfect}`, b.fire && `🔥 ${t('5 in a row')} ×${b.fire}`,
+    b.comeback && `🔄 ${t('Comeback')} ×${b.comeback}`, b.improved && `📈 ${t('Most improved')}`,
+    // showing up counts too
+    b.nightsRun >= 5 && `🗓 ${t('{n} nights in a row', { n: b.nightsRun })}`, me_.p >= 50 && `🎖 ${t('{n} matches played', { n: [250, 100, 50].find(x => me_.p >= x) })}`,
+    b.everyone && `🤝 ${t('Played with everyone')}`, b.everyMonth && `📆 ${t('Never missed a month')}`, earlyBird(id) && `🐦 ${t('Early bird')} ×${earlyBird(id)}`, loyal(id) && `🏅 ${t('Loyal player')} ×${loyal(id)}`, challengeWins(db.days, db.players).get(id) && `🎯 ${t('Weekly challenges')} ×${challengeWins(db.days, db.players).get(id)}`].filter(Boolean);
+}
 function statsView() {
   const an = analyse(db.days, db.players), mine = db.players.find(p => p.user === session.user.id), played = db.players.filter(p => (an.hist.get(p.id).length || an.histS.get(p.id).length) && canSee(p.id));
   if (!played.length) return `<h1>${t('Stats')}</h1>` + emptyState('stats', t('No matches yet.'), t('Stats appear after the first match.'), `<button class="primary" onclick="go('play')">${t('Go to Play')}</button>`);
@@ -343,24 +353,19 @@ function statsView() {
   if (fresh && !played.some(p => p.id === statsId)) return `<h1>${t('Stats')}</h1><div class="pchoose" role="group" aria-label="${t('Player')}">${youBtn}${played.map(p => `<button aria-pressed="false" onclick="statsId=${p.id};render()">${av(p.id, 42)}<span>${esc(p.name)}</span></button>`).join('')}</div>`
     + emptyState('stats', t('Your card unlocks after your first match.'), t('Play a match and your rating, badges and season album start here.'), `<button class="primary" onclick="go('play')">${t('Go to Play')}</button>`) + challengeCard();
   const id = played.some(p => p.id === statsId) ? statsId : mine && played.some(p => p.id === mine.id) ? mine.id : played[0].id;
-  const b = an.badges.get(id), rel = relations(db.days, id), me_ = stats(db.days.flatMap(d => d.matches)).find(r => r.id === id);
+  const rel = relations(db.days, id);
   const rate = x => Math.round(100 * x.w / x.g), byRate = (m, min) => [...m].filter(([pid, x]) => x.g >= min && canSee(pid)).sort((p, q) => rate(q[1]) - rate(p[1]) || q[1].g - p[1].g);
   const mates = byRate(rel.mate, 1), foes = byRate(rel.foe, 2), pair_ = bestPair(db.days, 3, ids => ids.every(canSee)), isMe = mine && mine.id === id;
   const nemesis = foes.length ? foes[foes.length - 1] : null, victim = foes.length ? foes[0] : null, line = ([pid, x]) => `${av(pid, 24)} ${name(pid)} <span class="mut">${x.w}-${x.g - x.w} · ${rate(x)}%</span>`;
   const none = `<span class="mut">${t('none yet')}</span>`;
-  const crowns = monthChamps().filter(c => c.id === id).length;
-  const badges = [crowns && `👑 ${t('Champion of the month')} ×${crowns}`, b.potn && `⭐ ${t('Player of the night')} ×${b.potn}`, b.perfect && `💯 ${t('Perfect night')} ×${b.perfect}`, b.fire && `🔥 ${t('5 in a row')} ×${b.fire}`,
-    b.comeback && `🔄 ${t('Comeback')} ×${b.comeback}`, b.improved && `📈 ${t('Most improved')}`,
-    // showing up counts too
-    b.nightsRun >= 5 && `🗓 ${t('{n} nights in a row', { n: b.nightsRun })}`, me_.p >= 50 && `🎖 ${t('{n} matches played', { n: [250, 100, 50].find(x => me_.p >= x) })}`,
-    b.everyone && `🤝 ${t('Played with everyone')}`, b.everyMonth && `📆 ${t('Never missed a month')}`, earlyBird(id) && `🐦 ${t('Early bird')} ×${earlyBird(id)}`, loyal(id) && `🏅 ${t('Loyal player')} ×${loyal(id)}`, challengeWins(db.days, db.players).get(id) && `🎯 ${t('Weekly challenges')} ×${challengeWins(db.days, db.players).get(id)}`].filter(Boolean);
+  const badges = badgesOf(an, id);
   const rm = recapDefault();
   // partners, rivals and the collection are private: only the player (and admins) see them
   const own = (mine && mine.id === id) || isAdmin(), sseg = own ? statsSeg : 'badges';
   const seg = own ? [['badges', t('Badges')], ['partners', t('Partners')], ['rivals', t('Rivals')], ['collection', t('Collection')]] : [];
   return `<h1>${t('Stats')}</h1>
     <div class="pchoose" role="group" aria-label="${t('Player')}">${youBtn}${played.map(p => `<button aria-pressed="${p.id === id}" onclick="statsId=${p.id};render()">${av(p.id, 42)}<span>${esc(p.name)}${sharing(p.id) ? '' : ' 🔒'}</span></button>`).join('')}</div>
-    ${statsHead(an, id, badges)}
+    ${cardDeck(an, played, id)}
     ${ratingHidden(id) ? '' : loyaltyHtml(an, id)}
     ${sharing(id) ? '' : `<p class="mut" role="status">🔒 ${t('{name} keeps these stats private. You can see them because you are an admin or it is you.', { name: esc(player(id).name) })}</p>`}
     ${seg.length ? '' : `<p class="mut">🔒 ${t('Partners, rivals and the collection are private: only {name} sees them.', { name: esc(player(id).name) })}</p>`}<div class="seg stseg">${seg.map(([k, l]) => `<button class="${statsSeg === k ? 'on' : ''}" onclick="statsSeg='${k}';render()">${l}</button>`).join('')}</div>
@@ -399,14 +404,13 @@ function loyaltyHtml(an, id) {
       ${row(t('Match rating'), t('starts at 1000, moves with every win and loss'), Math.round(matchRatingOf(an, id)))}
       ${row(`<b>${t('Rating')}</b>`, '', Math.round(ratingOf(an, id)))}</div></details>`;
 }
-// the top of Stats: avatar, name, card title, the rating with last night's change, and the full card behind "View card"
-function statsHead(an, id, badges) {
-  const spec = cardSpec(id, an, badges), hid = ratingHidden(id);
-  const lastDay = [...db.days].reverse().find(d => (an.night.get(d.id) || new Map()).has(id)), r = lastDay && an.night.get(lastDay.id).get(id);
-  const g = r ? Math.round(r.delta + (seasonKey(lastDay.date) === seasonKey(tzParts().date) ? nightBonus(r) : 0)) : 0;
-  return `<div class="shead">${av(id, 56)}<div class="sw"><b>${esc(player(id).name)}</b><span class="mut">${spec.titleEmoji} ${esc(spec.titleWord)} · ${esc(spec.edition)}</span></div>
-      <div class="sr">${hid ? `<b>🙈</b><span class="mut">${t('just playing')}</span>` : `<b>${Math.round(ratingOf(an, id))}</b>${g ? `<span class="${g > 0 ? 'up' : 'down'}">${g > 0 ? '▲' : '▼'}${Math.abs(g)} ${t('last night')}</span>` : `<span class="mut">${t('Rating')}</span>`}`}</div></div>
-    <details class="fold cardfold" ${cardOpen ? 'open' : ''} ontoggle="if (cardOpen !== this.open) { cardOpen = this.open; render(); }"><summary>🃏 ${t('View card')}</summary>${cardOpen ? `${playerCardHtml(spec)}<button class="add" style="margin-top:10px" onclick="sharePlayerCard(${id})">📤 ${t('Share card')}</button>` : ''}</details>`;
+// the top of Stats: everyone's card as a deck to swipe through (like the match-day slides); the one in the middle is the player shown below
+function cardDeck(an, played, id) {
+  const k = played.findIndex(p => p.id === id), lastDay = [...db.days].reverse().find(d => (an.night.get(d.id) || new Map()).has(id)), r = lastDay && an.night.get(lastDay.id).get(id);
+  const g = r && !ratingHidden(id) ? Math.round(r.delta + (seasonKey(lastDay.date) === seasonKey(tzParts().date) ? nightBonus(r) : 0)) : 0;
+  return `<div class="cdeck" onscroll="onDeck(this)">${played.map((p, i) => `<div class="cslide ${i === k ? 'on' : ''}" onclick="if(${i}!==deckIdx())deckTo(${i})">${playerCardHtml(cardSpec(p.id, an, badgesOf(an, p.id)))}</div>`).join('')}</div>
+    ${played.length > 1 ? `<div class="dots">${played.map((_, i) => `<i class="${i === k ? 'on' : ''}"></i>`).join('')}</div>` : ''}
+    <div class="cbar">${g ? `<span class="${g > 0 ? 'up' : 'down'}">${g > 0 ? '▲' : '▼'}${Math.abs(g)} ${t('last night')}</span>` : '<span></span>'}<button class="link" onclick="sharePlayerCard(${id})">📤 ${t('Share card')}</button></div>`;
 }
 // the chart shows the rating people see; it ends on today's number (a new season starts the bonus again)
 const chartOf = (an, id) => { const s = shownHistory(db.days, db.players, id, an), now = ratingOf(an, id); return s.length && Math.round(s[s.length - 1]) !== Math.round(now) ? [...s, now] : s; };
@@ -434,9 +438,10 @@ function cardSpec(id, an = analyse(db.days, db.players), badges = []) {
 // the card is drawn once as a picture (drawPlayerCard in fx.js) and the same picture is shown here and shared;
 // it is kept per player until something on it changes
 let cardCache = {};
-const playerCardHtml = c => `<div class="pcslot" data-key="${esc(JSON.stringify(c))}"><img class="pcimg" alt="${esc(`${c.name}: ${c.titleWord} · ${c.stats.map(([x, l]) => `${l} ${x}`).join(', ')}${c.partner ? ' · ' + c.partner : ''}`)}" ${cardCache[JSON.stringify(c)] ? `src="${cardCache[JSON.stringify(c)]}"` : ''}></div>`;
+const playerCardHtml = c => `<div class="pcslot" data-id="${c.id}" data-key="${esc(JSON.stringify(c))}"><img class="pcimg" alt="${esc(`${c.name}: ${c.titleWord} · ${c.stats.map(([x, l]) => `${l} ${x}`).join(', ')}${c.partner ? ' · ' + c.partner : ''}`)}" ${cardCache[JSON.stringify(c)] ? `src="${cardCache[JSON.stringify(c)]}"` : ''}></div>`;
 async function fillCards() {
-  for (const el of document.querySelectorAll('.pcslot')) {
+  const all = [...document.querySelectorAll('.pcslot')], on = Math.max(0, all.findIndex(x => x.closest('.cslide.on')));
+  for (const el of all.map((x, i) => [x, Math.abs(i - on)]).sort((a, b) => a[1] - b[1]).map(x => x[0])) {   // the card in the middle first, then its neighbours
     const key = el.dataset.key, img = el.querySelector('img'); if (cardCache[key]) { img.src = cardCache[key]; continue; }
     const c = JSON.parse(key), blob = await drawPlayerCard({ ...c, ...(await cardArt(c.id)) });
     cardCache[key] = URL.createObjectURL(blob); if (img.isConnected) img.src = cardCache[key];
@@ -738,7 +743,7 @@ function render() {
   drawReactions();
   const sl = document.querySelector('.slides'); shownSlide = slideIdx; if (sl && slideIdx) sl.scrollLeft = slideIdx * sl.clientWidth;
   minimalize(app);
-  if (view === 'stats') fillCards();
+  if (view === 'stats') { const k = [...document.querySelectorAll('.cslide')].findIndex(x => x.classList.contains('on')); if (k > 0) deckTo(k, false); fillCards(); }
   let cf = document.querySelector('.cform');   // made once, outside #app: redraws never interrupt typing
   if (!cf && session) { cf = document.createElement('form'); cf.className = 'cform'; cf.onsubmit = sendChat; document.body.append(cf); }
   if (cf) {

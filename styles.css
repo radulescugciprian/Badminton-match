@@ -353,12 +353,13 @@
   .lastnight .mut{font-size:var(--fs-xs)} .lastnight .go{grid-row:1/3;grid-column:2;align-self:center;font-size:var(--fs-xl);color:var(--mut)}
   :root:not([data-theme=light]) .team small{color:color-mix(in srgb,var(--c) 55%,#fff)}   /* the darker team colours as text on the dark theme */
   .rsvp .rhead>span{display:flex;flex-wrap:nowrap;align-items:center;flex-shrink:0} .rsvp .rhead .rcount{display:block;font-size:var(--fs-sm)}
-  /* stats: a compact header instead of the full card; line icons in badges and stickers */
-  .shead{display:flex;align-items:center;gap:12px;margin:4px 0 6px} .shead .sw{flex:1;min-width:0;display:flex;flex-direction:column}
-  .shead .sw b{font-size:var(--fs-lg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .shead .sw .mut{font-size:var(--fs-sm)}
-  .shead .sr{display:flex;flex-direction:column;align-items:flex-end} .shead .sr b{font-family:var(--disp);font-weight:400;font-size:40px;line-height:1}
-  .shead .sr span{font-size:var(--fs-xs);font-weight:700;white-space:nowrap} .shead .up{color:var(--acc)} .shead .down{color:var(--danger)}
-  .cardfold>summary{color:var(--text)} :root:not([data-theme=light]) img.pcimg{filter:brightness(.88)}
   .album .stk small{font-size:var(--fs-xs)} .album .stk .si .lic{width:28px;height:28px} .album .stk.done .si{color:var(--acc)}
   .hof .stk .lic{width:24px;height:24px;color:var(--acc)} .badge .lic.inl{color:var(--gold, var(--acc))}
-  .cardfold{margin:0}
+
+  /* stats: everyone's card as a deck to swipe; the neighbours peek in, smaller */
+  .cdeck{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;margin:4px -16px 0;padding:4px 9vw 8px} .cdeck::-webkit-scrollbar{display:none}
+  .cslide{flex:0 0 min(82vw,340px);scroll-snap-align:center;transition:transform .25s cubic-bezier(.2,.8,.2,1),opacity .25s} .cslide:not(.on){transform:scale(.92);opacity:.6;cursor:pointer}
+  .cslide .pcslot{margin:0}
+  .cbar{display:flex;justify-content:space-between;align-items:center;margin:-4px 0 4px} .cbar span{font-size:var(--fs-sm);font-weight:700} .cbar .up{color:var(--acc)} .cbar .down{color:var(--danger)}
+  :root:not([data-theme=light]) img.pcimg{filter:brightness(.9)}
+  @media (prefers-reduced-motion:reduce){.cslide{transition:none}}

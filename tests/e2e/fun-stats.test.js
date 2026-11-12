@@ -10,12 +10,16 @@ run('hide rating, showing-up badges, monthly recap', async h => {
   await A.waitForSelector('.chal >> text=Challenge of the week'); assert((await A.textContent('.chal')).includes('Play this week to take part'), 'the weekly challenge, nothing played yet this week');
   await A.click('nav >> text=Stats'); await A.waitForSelector('.badge:has-text("5 nights in a row")');
   // the player card: bronze for 5 nights, its stats, and a picture to share
-  await A.waitForSelector('.shead >> text=The Machine').catch(() => {}); await A.click('.cardfold summary'); await A.waitForSelector('img.pcimg[src^="blob:"]');   // the full card opens on tap
-  assert(/win rate 100%, best run 10, matches 10/.test(await A.getAttribute('img.pcimg', 'alt')), 'the card picture, described for screen readers');
+  await A.waitForSelector('.cslide.on img.pcimg[src^="blob:"]');   // everyone's card in a deck, the shown player's in the middle
+  assert(/win rate 100%, best run 10, matches 10/.test(await A.getAttribute('.cslide.on img.pcimg', 'alt')), 'the card picture, described for screen readers');
   assert.equal(await A.evaluate(() => cardSpec(1).tier), 'bronze', 'bronze under 10 nights');
   assert((await A.evaluate(() => cardSpec(1).footer)).includes('Autumn 2026'), 'the season');
   const [dl] = await Promise.all([A.waitForEvent('download'), A.click('text=Share card')]);
   assert.equal(dl.suggestedFilename(), 'badminton-Vali.png');
+  // swiping the deck shows the next player's card in the middle and their stats below
+  const first = await A.evaluate(() => statsId || +document.querySelector('.cslide.on .pcslot').dataset.id);
+  await A.evaluate(() => deckTo(1, false)); await A.waitForFunction(f => statsId && statsId !== f && document.querySelector('.cslide.on .pcslot').dataset.id == statsId, first);
+  await A.evaluate(f => { statsId = f; render(); }, first);
   // the recap of the last finished month, with your own cards, and a WhatsApp share
   await A.click('.recapbtn'); await A.waitForSelector('#recap .rcard');
   const txt = await A.textContent('#recap');
@@ -45,7 +49,7 @@ run('hide rating, showing-up badges, monthly recap', async h => {
   // a new player with no matches sees "You" and what unlocks, not someone else's card; the challenge only shows on your own page
   const N = await mk(); await signup(N, 'Nina', 'n@x.com'); await N.evaluate(() => { asMember = true; go('stats'); });
   await N.waitForSelector('text=Your card unlocks after your first match.'); assert((await N.locator('.pchoose [aria-pressed=true]').textContent()).includes('You'), '"You" first and selected');
-  await N.click('.pchoose button >> nth=1'); await N.waitForSelector('.shead'); assert.equal(await N.locator('.chal').count(), 0, "no challenge on someone else's page");
+  await N.click('.pchoose button >> nth=1'); await N.waitForSelector('.cdeck'); assert.equal(await N.locator('.chal').count(), 0, "no challenge on someone else's page");
   assert(N.errs.length === 0, N.errs.join());
   assert(A.errs.length === 0, A.errs.join());
 });
