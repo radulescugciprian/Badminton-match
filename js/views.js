@@ -353,7 +353,7 @@ function statsView() {
   const seg = [['badges', t('Badges')], ['partners', t('Partners')], ['rivals', t('Rivals')], ['collection', t('Collection')]];
   return `<h1>${t('Stats')}</h1>
     <div class="pchoose" role="group" aria-label="${t('Player')}">${played.map(p => `<button aria-pressed="${p.id === id}" onclick="statsId=${p.id};render()">${av(p.id, 48)}<span>${esc(p.name)}${sharing(p.id) ? '' : ' 🔒'}</span></button>`).join('')}</div>
-    ${ratingHidden(id) ? '' : `<p class="mut rbreak">${t('Rating')} <b>${Math.round(ratingOf(an, id))}</b> = ${Math.round(matchRatingOf(an, id))} ${t('match rating')} + ${bonusOf(an, id)} ${t('loyalty bonus')}</p>`}
+    ${ratingHidden(id) ? '' : loyaltyHtml(an, id)}
     ${sharing(id) ? '' : `<p class="mut" role="status">🔒 ${t('{name} keeps these stats private. You can see them because you are an admin or it is you.', { name: esc(player(id).name) })}</p>`}
     ${playerCardHtml(cardSpec(id, an, badges))}<button class="add" style="margin-top:10px" onclick="sharePlayerCard(${id})">📤 ${t('Share card')}</button>
     <div class="seg stseg">${seg.map(([k, l]) => `<button class="${statsSeg === k ? 'on' : ''}" onclick="statsSeg='${k}';render()">${l}</button>`).join('')}</div>
@@ -380,6 +380,18 @@ const TITLES = () => ({ clutch: ['🧊', t('Clutch'), t('wins the deciding games
 const STICKERS = () => ({ nights5: ['🗓', t('Play 5 nights')], matches20: ['🏸', t('Play 20 matches')], partners5: ['🤝', t('Win with 5 different partners')],
   beat5: ['🎯', t('Beat 5 different opponents')], streak3: ['🔥', t('Win 3 in a row')], decider: ['🧊', t('Win a deciding game')], singles: ['🐺', t('Win a singles match')],
   perfect: ['💯', t('Win every match of a night')], challenge: ['⭐', t('Complete a weekly challenge')] });
+// the rating line under the player picker opens this player's loyalty bonus, worked out step by step
+function loyaltyHtml(an, id) {
+  const L = loyaltyOf(an, id), row = (l, calc, v) => `<div class="member"><span>${l}${calc ? `<br><small class="mut">${calc}</small>` : ''}</span><b>${v}</b></div>`;
+  return `<details class="fold rbreak" ${loyaltyOpen ? 'open' : ''} ontoggle="loyaltyOpen=this.open"><summary><span>${t('Rating')} <b>${Math.round(ratingOf(an, id))}</b> = ${Math.round(matchRatingOf(an, id))} ${t('match rating')} + ${L.bonus} ${t('loyalty bonus')}</span></summary>
+    <div class="card" style="padding:4px 16px"><p class="mut" style="margin:10px 0 4px">${t('Loyalty bonus for {season}. It starts again each season; winning or losing makes no difference.', { season: esc(seasonLabel(seasonKey(tzParts().date))) })}</p>
+      ${row(t('Nights played'), `${L.nights} × ${LOYALTY.night}`, '+' + L.nights * LOYALTY.night)}
+      ${row(t('Matches played'), t('+{n} per match, at most {m} a night', { n: LOYALTY.match, m: LOYALTY.maxMatches }), '+' + L.matches)}
+      ${row(t('Weekly challenges'), `${L.challenges} × ${LOYALTY.challenge}`, '+' + L.challenges * LOYALTY.challenge)}
+      ${row(`<b>${t('Loyalty bonus')}</b>`, '', '+' + L.bonus)}
+      ${row(t('Match rating'), t('starts at 1000, moves with every win and loss'), Math.round(matchRatingOf(an, id)))}
+      ${row(`<b>${t('Rating')}</b>`, '', Math.round(ratingOf(an, id)))}</div></details>`;
+}
 function collectionHtml(id, played) {
   const season = seasonKey(tzParts().date), st = album(db.days, db.players, season, id), S = STICKERS(), done = st.filter(x => x.done).length;
   const got = collection(db.days, id), others = played.filter(p => p.id !== id && !p.removed);

@@ -158,6 +158,8 @@ assert(ratingChart([1000, 1032, 1010]).includes('1032'));
   const l = loyalty(days, P, 'autumn 2026');
   assert(!l.has(5), 'never played'); assert.equal(l.get(1).nights, 2, 'only autumn nights');
   assert.equal(l.get(1).bonus - 2 * l.get(1).challenges, 5 + 4, 'two nights: 3+2 and 3+1');
+  assert.equal(l.get(1).nights * 3 + l.get(1).matches + l.get(1).challenges * 2, l.get(1).bonus, 'the parts add up to the bonus');
+  assert.equal(l.get(1).matches, 3, 'match points: 2 + 1');
   assert.equal(l.get(3).bonus - 2 * l.get(3).challenges, l.get(1).bonus - 2 * l.get(1).challenges, 'winning or losing makes no difference to the bonus');
 }
 

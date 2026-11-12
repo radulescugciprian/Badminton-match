@@ -24,7 +24,7 @@ let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-ma
 const DB_VERSION = 20261114; // bump together with db_version() in the newest migration
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
-let statsSeg = 'badges', boardKind = 'doubles', boardOpen = null, memFilter = 'all', memSort = 'name', memOpen = null, adminPage = '', admPanel = '', prevView = 'play', profPanel = '', usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, lineupOpen = false, moreOpen = false, dayMore = false, matchesOpen = {}, lastRec = 0, bgLoaded = false, rsvps = [], reactions = [], statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
+let loyaltyOpen = false, statsSeg = 'badges', boardKind = 'doubles', boardOpen = null, memFilter = 'all', memSort = 'name', memOpen = null, adminPage = '', admPanel = '', prevView = 'play', profPanel = '', usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, lineupOpen = false, moreOpen = false, dayMore = false, matchesOpen = {}, lastRec = 0, bgLoaded = false, rsvps = [], reactions = [], statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
 let view = 'play', tab = 'all', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0, manualLogout = false, lostSession = false, asMember = false;   // asMember: an admin previewing the app as a normal member
 // the sign-in is kept on the phone (localStorage) and renewed automatically, so people stay logged in until they log out
 const sb = window.supabase && CONFIG.url && !CONFIG.url.includes('YOUR-')
@@ -63,7 +63,8 @@ const seasonLabel = key => { const [k, y] = key.split(' '); return { winter: t('
 const loyal = id => seasonsPlayed().filter(s => s !== seasonKey(tzParts().date))
   .filter(s => [...loyalty(db.days, db.players, s)].sort((x, y) => y[1].bonus - x[1].bonus).slice(0, 3).some(([pid]) => pid === id)).length;
 // the rating everyone sees = the match rating (pure, used for odds and upsets) + this season's loyalty bonus
-const bonusOf = (an, id) => ((an.bonus || (an.bonus = loyalty(db.days, db.players, seasonKey(tzParts().date), an))).get(id) || { bonus: 0 }).bonus;
+const loyaltyOf = (an, id) => (an.bonus || (an.bonus = loyalty(db.days, db.players, seasonKey(tzParts().date), an))).get(id) || { bonus: 0, nights: 0, matches: 0, challenges: 0 };
+const bonusOf = (an, id) => loyaltyOf(an, id).bonus;
 const matchRatingOf = (an, id) => (an.main(id) === 'singles' ? an.ratingS : an.rating).get(id);
 const ratingOf = (an, id) => matchRatingOf(an, id) + bonusOf(an, id);   // in the kind a player plays most
 const ratingHidden = pid => (profileOf(pid) || {}).hide_rating === true;   // "hide my rating": no number or rank for anyone, the person included

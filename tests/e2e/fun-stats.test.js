@@ -29,6 +29,8 @@ run('hide rating, showing-up badges, monthly recap', async h => {
   await A.click('nav >> text=Stats'); await A.click('.stseg >> text=Collection'); await A.waitForSelector('.album .stk');
   assert.equal(await A.locator('.album .stk').count(), 9, 'nine stickers'); assert(await A.locator('.ccard').count() >= 1, 'cards to collect');
   await A.click('.stseg >> text=Badges');
+  await A.click('.rbreak summary'); await A.waitForSelector('.rbreak >> text=Nights played');   // the loyalty bonus, step by step
+  assert((await A.textContent('.rbreak')).includes('5 × 3'), 'Vali: 5 nights × 3');
   // hide my rating: no number and no rank, but the badges stay
   await A.click('.top .me'); await A.click('[data-row=hiderating]'); await A.click('text=Hide my rating number and rank');
   await until(() => st.profiles.find(p => p.username === 'Anna').hide_rating === true, 'saved');

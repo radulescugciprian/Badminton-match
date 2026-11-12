@@ -171,9 +171,9 @@ const seasonKey = iso => { const s = seasonOf(iso); return s.k + ' ' + s.y; };
 const nightBonus = r => LOYALTY.night + Math.min(LOYALTY.maxMatches, r.p * LOYALTY.match);   // r = a.night.get(dayId).get(playerId)
 // the season's bonus per player: Map(id -> { bonus, nights, challenges })
 function loyalty(days, players, season, a = analyse(days, players)) {
-  const out = new Map(), row = id => out.get(id) || out.set(id, { bonus: 0, nights: 0, challenges: 0 }).get(id);
+  const out = new Map(), row = id => out.get(id) || out.set(id, { bonus: 0, nights: 0, matches: 0, challenges: 0 }).get(id);
   const ds = days.filter(d => d.matches.length && seasonKey(d.date) === season);
-  for (const d of ds) for (const [id, r] of a.night.get(d.id) || []) { const x = row(id); x.nights++; x.bonus += nightBonus(r); }
+  for (const d of ds) for (const [id, r] of a.night.get(d.id) || []) { const x = row(id); x.nights++; x.matches += nightBonus(r) - LOYALTY.night; x.bonus += nightBonus(r); }
   for (const w of new Set(ds.map(d => mondayOf(d.date)))) for (const [id, c] of challenge(days, players, w, a).of) if (c.done) { const x = row(id); x.challenges++; x.bonus += LOYALTY.challenge; }
   return out;
 }
