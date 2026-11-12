@@ -43,6 +43,7 @@ Admins change the schedule in the app: **Members → Play schedule** (day, time,
 - English is the default; Romanian, Croatian and Swedish are in **Profile → Language** (also on the login page). The choice follows the account. The translations are in `i18n.js`; `tests/i18n.test.js` fails the deploy if a text is missing in a language. They were written without a native review, so corrections are welcome.
 - The first time someone opens the app, a one-screen **How it works** explains the sign-up and the 5-match rotation. The **?** button at the top (or Profile) shows it again.
 - Errors such as "email rate limit exceeded" are shown in plain words.
+- **Private sections:** under Stats, Partners, Rivals and Collection are only shown for your own player (admins see everyone's).
 - **Sharing stats:** in Profile everyone chooses whether others see their rating, badges and partner/rival stats (default: shared). Leaderboard results are always visible, and admins see everything. This hides the numbers in the app; the match results themselves stay readable by every member, because the leaderboards are built from them.
 
 ## Sign-up, ratings, photos

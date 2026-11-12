@@ -31,6 +31,10 @@ run('hide rating, showing-up badges, monthly recap', async h => {
   await A.click('.stseg >> text=Badges');
   await A.click('.rbreak summary'); await A.waitForSelector('.rbreak >> text=Nights played');   // the loyalty bonus, step by step
   assert((await A.textContent('.rbreak')).includes('5 × 3'), 'Vali: 5 nights × 3');
+  // someone else's partners, rivals and collection are private (seen as a member; admins still see them)
+  await A.evaluate(() => { asMember = true; statsId = 2; go('stats'); }); await A.waitForSelector('text=only Dani sees them');
+  assert.equal(await A.locator('.stseg button').count(), 0, 'no private sections'); assert.equal(await A.locator('.album').count(), 0);
+  await A.evaluate(() => { asMember = false; statsId = 1; render(); }); await A.waitForSelector('.stseg button');
   // hide my rating: no number and no rank, but the badges stay
   await A.click('.top .me'); await A.click('[data-row=hiderating]'); await A.click('text=Hide my rating number and rank');
   await until(() => st.profiles.find(p => p.username === 'Anna').hide_rating === true, 'saved');

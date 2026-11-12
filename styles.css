@@ -343,3 +343,4 @@
   .ccard{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:12px;background:var(--card);border:1px solid var(--line);font-size:var(--fs-xs);text-align:center;min-width:0}
   .ccard b{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .ccard:not(.got) .av{filter:grayscale(1);opacity:.4}
   .newrec .link{color:var(--acc);font-weight:700;min-height:0}
+  .stseg:empty{display:none}

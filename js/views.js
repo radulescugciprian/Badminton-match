@@ -350,22 +350,24 @@ function statsView() {
     b.nightsRun >= 5 && `🗓 ${t('{n} nights in a row', { n: b.nightsRun })}`, me_.p >= 50 && `🎖 ${t('{n} matches played', { n: [250, 100, 50].find(x => me_.p >= x) })}`,
     b.everyone && `🤝 ${t('Played with everyone')}`, b.everyMonth && `📆 ${t('Never missed a month')}`, earlyBird(id) && `🐦 ${t('Early bird')} ×${earlyBird(id)}`, loyal(id) && `🏅 ${t('Loyal player')} ×${loyal(id)}`, challengeWins(db.days, db.players).get(id) && `🎯 ${t('Weekly challenges')} ×${challengeWins(db.days, db.players).get(id)}`].filter(Boolean);
   const rm = recapDefault();
-  const seg = [['badges', t('Badges')], ['partners', t('Partners')], ['rivals', t('Rivals')], ['collection', t('Collection')]];
+  // partners, rivals and the collection are private: only the player (and admins) see them
+  const own = (mine && mine.id === id) || isAdmin(), sseg = own ? statsSeg : 'badges';
+  const seg = own ? [['badges', t('Badges')], ['partners', t('Partners')], ['rivals', t('Rivals')], ['collection', t('Collection')]] : [];
   return `<h1>${t('Stats')}</h1>
     <div class="pchoose" role="group" aria-label="${t('Player')}">${played.map(p => `<button aria-pressed="${p.id === id}" onclick="statsId=${p.id};render()">${av(p.id, 48)}<span>${esc(p.name)}${sharing(p.id) ? '' : ' 🔒'}</span></button>`).join('')}</div>
     ${ratingHidden(id) ? '' : loyaltyHtml(an, id)}
     ${sharing(id) ? '' : `<p class="mut" role="status">🔒 ${t('{name} keeps these stats private. You can see them because you are an admin or it is you.', { name: esc(player(id).name) })}</p>`}
     ${playerCardHtml(cardSpec(id, an, badges))}<button class="add" style="margin-top:10px" onclick="sharePlayerCard(${id})">📤 ${t('Share card')}</button>
-    <div class="seg stseg">${seg.map(([k, l]) => `<button class="${statsSeg === k ? 'on' : ''}" onclick="statsSeg='${k}';render()">${l}</button>`).join('')}</div>
-    ${statsSeg === 'badges' ? `<h2 class="sec">${t('Badges')}</h2>${badges.map(x => `<span class="badge">${x}</span>`).join('') || `<p class="mut">${t('None yet. They come for wins, streaks and simply showing up.')}</p>`}
+    ${seg.length ? '' : `<p class="mut">🔒 ${t('Partners, rivals and the collection are private: only {name} sees them.', { name: esc(player(id).name) })}</p>`}<div class="seg stseg">${seg.map(([k, l]) => `<button class="${statsSeg === k ? 'on' : ''}" onclick="statsSeg='${k}';render()">${l}</button>`).join('')}</div>
+    ${sseg === 'badges' ? `<h2 class="sec">${t('Badges')}</h2>${badges.map(x => `<span class="badge">${x}</span>`).join('') || `<p class="mut">${t('None yet. They come for wins, streaks and simply showing up.')}</p>`}
     ${ratingHidden(id) ? '' : `<h2 class="sec">${t('Rating over time')}</h2><div class="card" style="color:var(--mut)">${ratingChart(h.map(x => x.r), 320, 150, t('Rating over time')) || `<p class="mut" style="margin:0">${t('Play a few more matches to see the chart.')}</p>`}</div>`}` : ''}
-    ${statsSeg === 'partners' ? `<h2 class="sec">${t('Partners')}</h2><div class="card" style="padding:4px 16px">${mates.map(x => `<div class="member"><span>${line(x)}</span></div>`).join('') || `<p class="mut">${t('No partners yet.')}</p>`}</div>
+    ${sseg === 'partners' ? `<h2 class="sec">${t('Partners')}</h2><div class="card" style="padding:4px 16px">${mates.map(x => `<div class="member"><span>${line(x)}</span></div>`).join('') || `<p class="mut">${t('No partners yet.')}</p>`}</div>
     <h2 class="sec">${t('Best pair in the group')}</h2><div class="card">${pair_ ? `${pair(pair_.ids)} <span class="mut">${t('{record} together', { record: `${pair_.w}-${pair_.g - pair_.w}` })}</span>` : `<span class="mut">${t('needs 3 games together')}</span>`}</div>` : ''}
-    ${statsSeg === 'rivals' ? `<h2 class="sec">${t('Rivals')}</h2><div class="card" style="padding:4px 16px">
+    ${sseg === 'rivals' ? `<h2 class="sec">${t('Rivals')}</h2><div class="card" style="padding:4px 16px">
       <div class="member"><span>😈 ${t('Nemesis')}</span><span>${nemesis && rate(nemesis[1]) < 50 ? line(nemesis) : none}</span></div>
       <div class="member"><span>🎯 ${t('Favourite victim')}</span><span>${victim && rate(victim[1]) > 50 ? line(victim) : none}</span></div></div>
     <h2 class="sec">${t('Head-to-head')}</h2><div class="card" style="padding:4px 16px">${[...rel.foe].filter(([pid]) => canSee(pid)).sort((p, q) => q[1].g - p[1].g).map(x => `<div class="member"><span>${line(x)}</span></div>`).join('') || `<p class="mut">${t('No opponents yet.')}</p>`}</div>` : ''}
-    ${statsSeg === 'collection' ? collectionHtml(id, played) : ''}
+    ${sseg === 'collection' ? collectionHtml(id, played) : ''}
     ${challengeCard()}${rm ? `<button class="add recapbtn" onclick="openRecap()">🎁 ${t('{month} recap', { month: monthLabel(rm) })}</button>` : ''}`;
 }
 
