@@ -186,7 +186,7 @@ function closedExtras(d) {
       <div class="mut">${canSee(top.id) && !ratingHidden(top.id) ? `${top.delta >= 0 ? '+' : ''}${Math.round(top.delta)} ${t('rating')} · ` : ''}${t('{w} of {p} won', { w: top.w, p: top.p })}</div></div></div>
     ${(() => { const mine = db.players.find(p => p.user === session.user.id), r = mine && (an.night.get(d.id) || new Map()).get(mine.id);
       return r ? `<p class="ptsnight">🏅 ${t('+{n} loyalty bonus tonight', { n: nightBonus(r) })}</p>` : ''; })()}
-    ${db.days.find(x => x.matches.length) !== d ? (rs => rs.length ? `<p class="ptsnight newrec"><button class="link" onclick="go('records')">🎉 ${t('New record')}: ${rs.map(r => `${RECS()[r.key][1]} (${pair(r.ids)})`).join(' · ')}</button></p>` : '')(shownRecords(an).filter(r => r.day === d.id && !['nights', 'deciders', 'pair'].includes(r.key))) : ''}
+    ${db.days.find(x => x.matches.length) !== d ? (rs => rs.length ? `<p class="ptsnight newrec"><button class="link" onclick="go('records')">🎉 ${t('New record')}: ${rs.map(r => `${RECS()[r.key][1]} (${pair(r.ids)})`).join(' · ')}</button></p>` : '')(shownRecords(an).filter(r => r.day === d.id && !['deciders', 'pair'].includes(r.key))) : ''}
     ${nightAwards(an, d.id).map(x => `<span class="badge">${name(x.id)}: ${AWARD[x.kind]()}</span>`).join('')}<div style="height:10px"></div>`;
 }
 
@@ -245,11 +245,11 @@ function play() {
 // for Month and All time, your own row highlighted, and a mini profile on tap
 // Chat: messages (yours on the right), the app's own notes in the middle, tap a message to react or delete it
 const groupSeg = () => `<div class="seg" style="margin:0 0 12px">${chatOn ? `<button class="${view === 'chat' ? 'on' : ''}" onclick="go('chat')">💬 ${t('Chat')}</button>` : ''}<button class="${view === 'tips' ? 'on' : ''}" onclick="go('tips')">🎬 ${t('Videos')}</button><button class="${view === 'records' ? 'on' : ''}" onclick="go('records')">🏆 ${t('Records')}</button><button class="${view === 'members' ? 'on' : ''}" onclick="go('members')">👥 ${t('Members')}</button></div>`;
-// Records: the group's records, who holds them and since when (best night and highest rating are rating numbers, so hidden ratings are left out)
+// Records: the group's records, who holds them and since when (the best night is a rating number, so hidden ratings are left out)
 const RECS = () => ({ streak: ['🔥', t('Longest win streak'), v => tp('{n} wins', v)], upset: ['😈', t('Biggest upset'), v => v + '%'],
-  night: ['📈', t('Best night'), v => `+${v} ${t('rating')}`], wins: ['🏆', t('Most wins in one night'), v => tp('{n} wins', v)], peak: ['👑', t('Highest rating ever'), v => String(v)],
-  deciders: ['🧊', t('Most deciders won'), v => tp('{n} wins', v)], pair: ['🤝', t('Best pair'), v => v + '%'], nights: ['🗓', t('Most nights played'), v => String(v)] });
-const shownRecords = (an = analyse(db.days, db.players)) => records(db.days, db.players, an).filter(r => (r.key !== 'night' && r.key !== 'peak') || (canSee(r.ids[0]) && !ratingHidden(r.ids[0])));
+  night: ['📈', t('Best night'), v => `+${v} ${t('rating')}`], wins: ['🏆', t('Most wins in one night'), v => tp('{n} wins', v)],
+  deciders: ['🧊', t('Most deciders won'), v => tp('{n} wins', v)], pair: ['🤝', t('Best pair'), v => v + '%'] });
+const shownRecords = (an = analyse(db.days, db.players)) => records(db.days, db.players, an).filter(r => r.key !== 'night' || (canSee(r.ids[0]) && !ratingHidden(r.ids[0])));
 function recordsView() {
   const rs = shownRecords(), R = RECS();
   return groupSeg() + (rs.length ? `<div class="card" style="padding:4px 16px">${rs.map(r => `<div class="hof"><span class="stk">${R[r.key][0]}</span><span class="hl"><b>${R[r.key][1]}</b><span class="mut">${pair(r.ids)}${r.key === 'upset' ? ' · ' + t('won with a {n}% chance', { n: r.value }) : r.key === 'pair' ? ' · ' + t('{record} together', { record: `${r.w}-${r.g - r.w}` }) : ''} · ${t('since {date}', { date: esc(niceDate(r.date)) })}</span></span><b class="hv">${R[r.key][2](r.value)}</b></div>`).join('')}</div>`

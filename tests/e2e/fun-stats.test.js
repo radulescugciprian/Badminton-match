@@ -25,7 +25,7 @@ run('hide rating, showing-up badges, monthly recap', async h => {
   await A.click('#rclose'); assert.equal(await A.locator('#recap').count(), 0);
   // hall of fame in the Group tab, and the season album + card collection under Stats
   await A.click('nav >> text=Group'); await A.click('.seg >> text=Records'); await A.waitForSelector('.hof');
-  const hof = await A.textContent('#app'); assert(hof.includes('Longest win streak') && hof.includes('Most nights played'), hof.slice(0, 300));
+  const hof = await A.textContent('#app'); assert(hof.includes('Longest win streak') && hof.includes('Most wins in one night') && !hof.includes('Most nights played'), hof.slice(0, 300));
   await A.click('nav >> text=Stats'); await A.click('.stseg >> text=Collection'); await A.waitForSelector('.album .stk');
   assert.equal(await A.locator('.album .stk').count(), 9, 'nine stickers'); assert(await A.locator('.ccard').count() >= 1, 'cards to collect');
   await A.click('.stseg >> text=Badges');
