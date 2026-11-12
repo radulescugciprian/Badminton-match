@@ -246,7 +246,7 @@ const rulesHtml = () => `<h2 class="sec">${t('Badminton rules')}</h2>
 // ---- release notes, newest first. A new id shows "What's new" once to everyone who used the app before (new people get the tour instead).
 const NEWS = () => [{ id: '2026-11-12', items: [
   ['🃏', t('Six new card titles: The Machine, Hot streak, On the rise, Lone wolf, Team player and Workhorse.')],
-  ['🏆', t('Hall of fame in the Group tab: the longest win streak, the biggest upset, the best night and more. Break a record and the closed night shows it.')],
+  ['🏆', t('Records in the Group tab: the longest win streak, the biggest upset, the best night and more. Break a record and the closed night shows it.')],
   ['📒', t('Stats → Collection: a season album with 9 stickers to fill (a full album gives your card a gold edge) and a card collection: beat a player or win together to collect their card.')],
 ] }, { id: '2026-11-10.2', date: '2026-11-10', items: [
   ['📈', t('Separate ratings for doubles and singles, plus a loyalty bonus for showing up: +3 a night, +1 a match (max 2), +2 per weekly challenge. It starts again each season.')],

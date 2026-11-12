@@ -216,22 +216,30 @@ function challengeWins(days, players) {
 // ---- hall of fame: group records from the whole match log. Each names the day it was set (beaten only by a strictly better
 // value), so a closed night can say "new record". ids: the player(s), value: the number, day/date: when it was set.
 function records(days, players, a = analyse(days, players)) {
-  const ds = days.filter(d => d.matches.length), out = {}, set = (key, ids, value, d, better) => { if (!out[key] || better(value, out[key].value)) out[key] = { key, ids, value, day: d.id, date: d.date }; };
-  const gt = (x, y) => x > y, run = new Map(), pairs = new Map(), nights = new Map();
+  const ds = days.filter(d => d.matches.length), out = {}, set = (key, ids, value, d, better, extra) => { if (!out[key] || better(value, out[key].value)) out[key] = { key, ids, value, day: d.id, date: d.date, ...extra }; };
+  const gt = (x, y) => x > y, run = new Map(), nights = new Map(), dec = new Map(), key = ids => [...ids].sort((x, y) => x - y).join('-');
   for (const d of ds) {
+    let k = null, sc = {};   // deciders: the third game of a best of 3 at 1–1 (same teams), as on the player card
     for (const m of d.matches) {
-      for (const [ids, won] of [[m.t1, m.win === 1], [m.t2, m.win === 2]]) {
+      for (const [ids, won] of [[m.t1, m.win === 1], [m.t2, m.win === 2]])
         for (const id of ids) { const r = won ? (run.get(id) || 0) + 1 : 0; run.set(id, r); if (r) set('streak', [id], r, d, gt); }
-        if (ids.length === 2) { const k = [...ids].sort((x, y) => x - y).join('-'), g = (pairs.get(k) || 0) + 1; pairs.set(k, g); set('pair', k.split('-').map(Number), g, d, gt); }
-      }
+      const mk = [key(m.t1), key(m.t2)].sort().join('|'); if (mk !== k) { k = mk; sc = {}; }
+      if ((sc[key(m.t1)] || 0) === 1 && (sc[key(m.t2)] || 0) === 1) for (const id of m.win === 1 ? m.t1 : m.t2) { const n = (dec.get(id) || 0) + 1; dec.set(id, n); set('deciders', [id], n, d, gt); }
+      const wk = key(m.win === 1 ? m.t1 : m.t2); sc[wk] = (sc[wk] || 0) + 1; if (sc[wk] >= 2) sc = {};
     }
     for (const [id, r] of a.night.get(d.id) || []) {
-      set('matches', [id], r.p, d, gt); set('night', [id], Math.round(r.delta), d, gt);
+      set('wins', [id], r.w, d, gt); set('night', [id], Math.round(r.delta), d, gt);
       const n = (nights.get(id) || 0) + 1; nights.set(id, n); set('nights', [id], n, d, gt);
     }
   }
-  for (const x of a.log) if (x.chance < 0.5) { const d = ds.find(y => y.id === x.day); set('upset', x.won, Math.round(100 * x.chance), d, (v, old) => v < old); }
-  return ['streak', 'upset', 'night', 'matches', 'pair', 'nights'].filter(k => out[k]).map(k => out[k]);
+  for (const x of a.log) if (x.chance < 0.5) set('upset', x.won, Math.round(100 * x.chance), ds.find(y => y.id === x.day), (v, old) => v < old);
+  // highest rating ever (doubles or singles), in the order it happened so the first to reach it keeps it
+  [...a.hist, ...a.histS].flatMap(([id, h]) => h.map(e => ({ id, ...e }))).sort((x, y) => x.date.localeCompare(y.date) || x.n - y.n)
+    .forEach(e => set('peak', [e.id], Math.round(e.r), ds.find(y => y.id === e.day), gt));
+  // best pair: the highest win rate together over at least 10 matches; "since" is their last match together
+  const bp = bestPair(ds, 10);
+  if (bp) { const last = ds.filter(d => d.matches.some(m => [m.t1, m.t2].some(t => t.length === 2 && bp.ids.every(i => t.includes(i))))).pop(); set('pair', bp.ids, Math.round(100 * bp.w / bp.g), last, gt, { w: bp.w, g: bp.g }); }
+  return ['streak', 'upset', 'night', 'wins', 'peak', 'deciders', 'pair', 'nights'].filter(k => out[k]).map(k => out[k]);
 }
 
 // ---- card collection: you collect someone's card the first time you beat them or win with them as your partner
