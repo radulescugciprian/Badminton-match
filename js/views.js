@@ -361,6 +361,8 @@ function statsView() {
 // player card: the same facts for the screen and for the shared picture (drawPlayerCard in fx.js)
 const TITLES = () => ({ clutch: ['🧊', t('Clutch'), t('wins the deciding games')], giant: ['😈', t('Giant slayer'), t('beats the favourites')], glue: ['🤝', t('Glue'), t('partners win more with them')],
   comeback: ['🔄', t('Comeback kid'), t('never gives up on a night')], ironman: ['🔋', t('Ironman'), t('hardly ever misses a night')], rollercoaster: ['🎢', t('Rollercoaster'), t('win, lose, win, lose…')],
+  machine: ['🤖', t('The Machine'), t('wins 7 out of 10')], hotstreak: ['🔥', t('Hot streak'), t('won 8 or more in a row')], onrise: ['📈', t('On the rise'), t('climbing fastest lately')],
+  lonewolf: ['🐺', t('Lone wolf'), t('loves a 1 vs 1')], teamplayer: ['👥', t('Team player'), t('has partnered everyone')], workhorse: ['🐎', t('Workhorse'), t('plays the most games a night')],
   rookie: ['🌱', t('Rookie'), t('just getting started')], allround: ['⚖️', t('All-rounder'), t('a bit of everything')] });
 function cardSpec(id, an = analyse(db.days, db.players), badges = []) {
   const c = playerCard(db.days, db.players, id, an), s = seasonOf(tzParts().date), [te, tn, td] = TITLES()[c.title], hid = ratingHidden(id);

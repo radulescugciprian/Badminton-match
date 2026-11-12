@@ -141,6 +141,10 @@ assert(ratingChart([1000, 1032, 1010]).includes('1032'));
   assert.equal(c.title, 'rookie', 'fewer than 10 matches');
   const many = Array.from({ length: 4 }, (_, i) => night(10 + i, `2026-10-0${i + 1}`, [[[1, 2], [3, 4], 1], [[1, 2], [3, 4], 2], [[1, 2], [3, 4], 1]]));
   assert.equal(playerCard(many, P, 1).title, 'clutch', 'wins the deciders');
+  const solo = Array.from({ length: 4 }, (_, i) => night(200 + i, '2026-02-0' + (i + 1), [[[1], [2], 1], [[1], [3], 1], [[1], [2], 2]]));
+  assert.equal(playerCard(solo, P, 2).title, 'lonewolf', 'mostly singles');
+  const wins = Array.from({ length: 4 }, (_, i) => night(300 + i, '2026-03-0' + (i + 1), [[[1, 2], [3, 4], 1], [[1, 3], [2, 4], 1], [[1, 4], [2, 3], 1], [[1, 2], [3, 4], 2]]));
+  assert.equal(playerCard(wins, P, 1).title, 'machine', '12 of 16 won');
   assert.equal(playerCard(Array.from({ length: 25 }, (_, i) => night(100 + i, '2026-01-01', [[[1, 2], [3, 4], 1]])), P, 3).tier, 'gold');
   assert.deepEqual([seasonOf('2026-11-10'), seasonOf('2026-12-03'), seasonOf('2027-02-01'), seasonOf('2027-04-01')].map(x => x.k + ' ' + x.y), ['autumn 2026', 'winter 2026/27', 'winter 2026/27', 'spring 2027']);
 }

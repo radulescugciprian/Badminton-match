@@ -151,9 +151,13 @@ function playerCard(days, players, pid, a = analyse(days, players)) {
   let lift = 0, liftG = 0; for (const [q, x] of rel.mate) if (x.g >= 3) { lift += (x.w / x.g - overall(q)) * x.g; liftG += x.g; }
   const res = mine.map(m => won(m, pid)), flips = res.filter((r, i) => i && r !== res[i - 1]).length;
   const b = a.badges.get(pid) || {}, upsets = a.log.filter(x => x.won.includes(pid) && x.chance < 0.4).length;
-  const title = dec.p >= 3 && dec.w / dec.p >= 0.6 ? 'clutch' : upsets >= 3 ? 'giant' : liftG >= 10 && lift / liftG >= 0.1 ? 'glue' : b.comeback >= 2 ? 'comeback'
-    : nights >= 8 && nights / played.length >= 0.8 ? 'ironman' : res.length >= 10 && flips / (res.length - 1) >= 0.6 ? 'rollercoaster' : mine.length < 10 ? 'rookie' : 'allround';
-  return { matches: mine.length, rate: mine.length ? w / mine.length : 0, bestRun: b.bestStreak || 0, deciders: dec, partner: fav ? fav[0] : null, partnerRate: fav ? fav[1].w / fav[1].g : 0, partnerGames: fav ? fav[1].g : 0, nights,
+  // workhorse: plays clearly more matches a night than the group's average player
+  const seats = played.reduce((n, d) => n + d.matches.reduce((k, m) => k + m.t1.length + m.t2.length, 0), 0), playerNights = played.reduce((n, d) => n + new Set(d.matches.flatMap(m => [...m.t1, ...m.t2])).size, 0);
+  const singles = mine.filter(m => m.t1.length === 1).length, rate = mine.length ? w / mine.length : 0;
+  const title = dec.p >= 3 && dec.w / dec.p >= 0.6 ? 'clutch' : upsets >= 3 ? 'giant' : mine.length >= 15 && rate >= 0.7 ? 'machine' : (b.bestStreak || 0) >= 8 ? 'hotstreak'
+    : liftG >= 10 && lift / liftG >= 0.1 ? 'glue' : b.comeback >= 2 ? 'comeback' : b.improved ? 'onrise' : singles >= 8 && singles / mine.length >= 0.5 ? 'lonewolf'
+    : nights >= 8 && nights / played.length >= 0.8 ? 'ironman' : b.everyone ? 'teamplayer' : nights >= 5 && mine.length / nights >= 1.2 * seats / playerNights ? 'workhorse' : res.length >= 10 && flips / (res.length - 1) >= 0.6 ? 'rollercoaster' : mine.length < 10 ? 'rookie' : 'allround';
+  return { matches: mine.length, rate, bestRun: b.bestStreak || 0, deciders: dec, partner: fav ? fav[0] : null, partnerRate: fav ? fav[1].w / fav[1].g : 0, partnerGames: fav ? fav[1].g : 0, nights,
     tier: nights >= 25 ? 'gold' : nights >= 10 ? 'silver' : 'bronze', title };
 }
 // the season of a date: winter (Dec–Feb), spring, summer, autumn; winter spans two years
