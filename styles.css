@@ -318,8 +318,8 @@
   .skel{display:flex;flex-direction:column;gap:12px;padding-top:8px} .skel i{display:block;border-radius:14px;background:linear-gradient(90deg,var(--chip) 25%,rgba(255,255,255,.14) 50%,var(--chip) 75%);background-size:200% 100%;animation:shimmer 1.2s infinite}
   @keyframes shimmer{to{background-position:-200% 0}}
   .empty{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:36px 16px} .empty .lic{width:56px;height:56px;color:var(--acc)} .empty b{font-size:var(--fs-lg)} .empty .primary{width:auto;padding:12px 22px}
-  .pchoose{display:flex;gap:10px;overflow-x:auto;padding:4px 2px 8px;scrollbar-width:none} .pchoose::-webkit-scrollbar{display:none}
-  .pchoose button{flex:none;display:flex;flex-direction:column;align-items:center;gap:4px;background:none;padding:4px;min-width:64px;color:var(--mut);font-size:var(--fs-xs);font-weight:600}
+  .pchoose{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 8px;scrollbar-width:none} .pchoose::-webkit-scrollbar{display:none}
+  .pchoose button{flex:none;width:calc((100% - 30px) / 6);display:flex;flex-direction:column;align-items:center;gap:4px;background:none;padding:4px 0;min-width:0;color:var(--mut);font-size:var(--fs-xs);font-weight:600}
   .pchoose button .av{border:3px solid transparent} .pchoose button[aria-pressed=true]{color:var(--text)} .pchoose button[aria-pressed=true] .av{border-color:var(--acc)}
   .howpts{margin:0;padding-left:4px;list-style:none;display:flex;flex-direction:column;gap:6px} .howpts b{display:inline-block;min-width:34px;color:var(--gold);font-family:var(--disp);font-size:20px;font-weight:400}
   .ptsnight{text-align:center;font-weight:700;margin:0 0 12px} .rank .bn small{display:block}
@@ -344,3 +344,4 @@
   .ccard b{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .ccard:not(.got) .av{filter:grayscale(1);opacity:.4}
   .newrec .link{color:var(--acc);font-weight:700;min-height:0}
   .stseg:empty{display:none}
+  .pchoose button span:last-child{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}   /* six players across */
