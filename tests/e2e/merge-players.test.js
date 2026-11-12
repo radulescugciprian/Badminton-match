@@ -16,7 +16,7 @@ run('merge players', async h => {
   await until(() => !st.players.includes(fresh) && st.players.find(p => p.id === 4).user_id === st.users['z@x.com'].id, 'merged');
   await until(() => st.files['avatars/p4.jpg'] && !st.files[`avatars/p${fresh.id}.jpg`], 'the card photo moved to the old player');
   await B.reload(); await B.waitForSelector('text=Next match day');
-  await B.click('nav >> text=Stats'); await B.waitForSelector('img.pcimg[alt*="matches 1,"]');   // the new account now has the old player's match
+  await B.click('nav >> text=Stats'); await B.click('.cardfold summary'); await B.waitForSelector('img.pcimg[alt*="matches 1,"]');   // the new account now has the old player's match
   assert(st.log.some(l => l.action === 'merge_players'), 'logged');
   assert(A.errs.length === 0 && B.errs.length === 0, A.errs.concat(B.errs).join());
 });

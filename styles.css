@@ -261,7 +261,7 @@
   .cnew{display:flex;align-items:center;gap:8px;color:var(--danger);font-size:var(--fs-xs);font-weight:700;text-transform:uppercase;letter-spacing:.06em} .cnew::before,.cnew::after{content:'';flex:1;border-top:1.5px solid var(--danger)}
   nav button{position:relative} nav .cbadge{top:2px;right:calc(50% - 26px)}
   /* monthly recap: full-screen swipeable cards */
-  .recapbtn{margin:0 0 12px;border-style:solid;border-color:var(--acc);color:var(--text);font-weight:700}
+  .recapbtn{margin:0 0 12px;color:var(--text);font-weight:700}
   #recap{position:fixed;inset:0;z-index:35;background:var(--bg);color:var(--text);display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);text-shadow:none}
   #recap .rtop{display:flex;align-items:center;gap:6px;padding:10px 16px;max-width:480px;width:100%;margin:0 auto;box-sizing:border-box} #recap .rtop b{flex:1;text-align:center;font-size:var(--fs-lg);text-transform:capitalize}
   #recap .rtop .link{font-size:24px;padding:4px 10px} #recap .rtop .link:disabled{opacity:.25}
@@ -305,7 +305,7 @@
   h1,.num,.tile b,.podium .bar,.pod .pw,.rank .r,.rank>b:last-child,.pchips span,#recap .rtop b,.rcard h2{font-family:var(--disp);font-weight:400;letter-spacing:.03em}
   h1{font-size:34px;line-height:1.05} .num{font-size:56px;line-height:1} .tile b{font-size:30px;line-height:1.1} .podium .bar{font-size:26px} .pod .pw{font-size:var(--fs-md)} .rank .r{font-size:20px} .rank>b:last-child{font-size:22px}
   .pchips span{font-size:15px;letter-spacing:.05em} .rcard h2{font-size:34px}
-  .potn,.chal,.recapbtn{border-color:var(--gold)} .chalme{color:var(--gold)} .badge{border-color:var(--gold)} .potn .mut:first-child,.chal .mut:first-child{color:var(--gold)}
+  .potn,.chal{border-color:var(--gold)} .chalme{color:var(--gold)} .badge{border-color:var(--gold)} .potn .mut:first-child,.chal .mut:first-child{color:var(--gold)}
   body[data-view=board]::before,body[data-view=stats]::before{filter:blur(7px) brightness(.6);transform:scale(1.06)} :root[data-theme=light] body[data-view=board]::before,:root[data-theme=light] body[data-view=stats]::before{filter:blur(7px) brightness(.8)}
   .recapbtn{background:var(--card)} :root[data-theme=light] .recapbtn{--text:#10231a;color:#10231a}
   /* ---- group C: the ⋯ menu, press feedback, a toast, loading placeholders, empty screens, player chips */
@@ -353,3 +353,12 @@
   .lastnight .mut{font-size:var(--fs-xs)} .lastnight .go{grid-row:1/3;grid-column:2;align-self:center;font-size:var(--fs-xl);color:var(--mut)}
   :root:not([data-theme=light]) .team small{color:color-mix(in srgb,var(--c) 55%,#fff)}   /* the darker team colours as text on the dark theme */
   .rsvp .rhead>span{display:flex;flex-wrap:nowrap;align-items:center;flex-shrink:0} .rsvp .rhead .rcount{display:block;font-size:var(--fs-sm)}
+  /* stats: a compact header instead of the full card; line icons in badges and stickers */
+  .shead{display:flex;align-items:center;gap:12px;margin:4px 0 6px} .shead .sw{flex:1;min-width:0;display:flex;flex-direction:column}
+  .shead .sw b{font-size:var(--fs-lg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .shead .sw .mut{font-size:var(--fs-sm)}
+  .shead .sr{display:flex;flex-direction:column;align-items:flex-end} .shead .sr b{font-family:var(--disp);font-weight:400;font-size:40px;line-height:1}
+  .shead .sr span{font-size:var(--fs-xs);font-weight:700;white-space:nowrap} .shead .up{color:var(--acc)} .shead .down{color:var(--danger)}
+  .cardfold>summary{color:var(--text)} :root:not([data-theme=light]) img.pcimg{filter:brightness(.88)}
+  .album .stk small{font-size:var(--fs-xs)} .album .stk .si .lic{width:28px;height:28px} .album .stk.done .si{color:var(--acc)}
+  .hof .stk .lic{width:24px;height:24px;color:var(--acc)} .badge .lic.inl{color:var(--gold, var(--acc))}
+  .cardfold{margin:0}

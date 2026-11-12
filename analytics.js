@@ -238,6 +238,13 @@ function records(days, players, a = analyse(days, players)) {
   return ['streak', 'upset', 'night', 'wins', 'deciders', 'pair'].filter(k => out[k]).map(k => out[k]);
 }
 
+// the rating people see after each match: match rating + that season's loyalty bonus up to that day (the chart on Stats)
+function shownHistory(days, players, pid, a = analyse(days, players)) {
+  const cache = new Map(), bonus = date => cache.has(date) ? cache.get(date)
+    : cache.set(date, (loyalty(days.filter(d => d.date <= date), players, seasonKey(date), a).get(pid) || { bonus: 0 }).bonus).get(date);
+  return ((a.main(pid) === 'singles' ? a.histS : a.hist).get(pid) || []).map(e => e.r + bonus(e.date));
+}
+
 // ---- card collection: you collect someone's card the first time you beat them or win with them as your partner
 function collection(days, pid) {
   const got = new Map();
@@ -288,4 +295,4 @@ function ratingChart(vals, w = 320, h = 150, label = 'Rating over time') {
     <text x="8" y="${h - 3}" font-size="12" fill="currentColor" fill-opacity=".7">${Math.round(Math.min(...vals))}</text></svg>`;
 }
 
-if (typeof module !== 'undefined') module.exports = { records, collection, album, ALBUM, winnerStays, recap, loyalty, nightBonus, seasonKey, LOYALTY, playerCard, seasonOf, challenge, challengeWins, challengeFor, mondayOf, analyse, playerOfNight, nightAwards, relations, bestPair, ratingChart, START_RATING };
+if (typeof module !== 'undefined') module.exports = { shownHistory, records, collection, album, ALBUM, winnerStays, recap, loyalty, nightBonus, seasonKey, LOYALTY, playerCard, seasonOf, challenge, challengeWins, challengeFor, mondayOf, analyse, playerOfNight, nightAwards, relations, bestPair, ratingChart, START_RATING };

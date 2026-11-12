@@ -183,6 +183,9 @@ assert(ratingChart([1000, 1032, 1010]).includes('1032'));
   const al = Object.fromEntries(album(ds, P, 'autumn 2026', 1).map(x => [x.k, x]));
   assert.deepEqual([al.nights5.have, al.streak3.done, al.partners5.have, al.beat5.have, al.singles.done], [2, true, 2, 4, false]);
   assert.equal(album(ds, P, 'spring 2027', 1).filter(x => x.done).length, 0, 'every season starts empty');
+  const { shownHistory, analyse, loyalty } = require('../analytics.js'), an = analyse(ds, P), sh = shownHistory(ds, P, 1, an);
+  assert.equal(Math.round(sh[sh.length - 1]), Math.round(an.rating.get(1) + loyalty(ds, P, 'autumn 2026', an).get(1).bonus), 'the chart ends on the rating people see');
+  assert(sh[0] > an.hist.get(1)[0].r, 'the first night already counts its bonus');
 }
 
 console.log('analytics tests passed');

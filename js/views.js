@@ -338,10 +338,14 @@ function ratingList() {
 function statsView() {
   const an = analyse(db.days, db.players), mine = db.players.find(p => p.user === session.user.id), played = db.players.filter(p => (an.hist.get(p.id).length || an.histS.get(p.id).length) && canSee(p.id));
   if (!played.length) return `<h1>${t('Stats')}</h1>` + emptyState('stats', t('No matches yet.'), t('Stats appear after the first match.'), `<button class="primary" onclick="go('play')">${t('Go to Play')}</button>`);
+  const fresh = mine && !played.some(p => p.id === mine.id) && !mine.removed;   // my account has no matches yet
+  const youBtn = fresh ? `<button aria-pressed="${!played.some(p => p.id === statsId)}" onclick="statsId=${mine.id};render()">${av(mine.id, 42)}<span>${t('You')}</span></button>` : '';
+  if (fresh && !played.some(p => p.id === statsId)) return `<h1>${t('Stats')}</h1><div class="pchoose" role="group" aria-label="${t('Player')}">${youBtn}${played.map(p => `<button aria-pressed="false" onclick="statsId=${p.id};render()">${av(p.id, 42)}<span>${esc(p.name)}</span></button>`).join('')}</div>`
+    + emptyState('stats', t('Your card unlocks after your first match.'), t('Play a match and your rating, badges and season album start here.'), `<button class="primary" onclick="go('play')">${t('Go to Play')}</button>`) + challengeCard();
   const id = played.some(p => p.id === statsId) ? statsId : mine && played.some(p => p.id === mine.id) ? mine.id : played[0].id;
-  const h = (an.main(id) === 'singles' ? an.histS : an.hist).get(id), b = an.badges.get(id), rel = relations(db.days, id), me_ = stats(db.days.flatMap(d => d.matches)).find(r => r.id === id);
+  const b = an.badges.get(id), rel = relations(db.days, id), me_ = stats(db.days.flatMap(d => d.matches)).find(r => r.id === id);
   const rate = x => Math.round(100 * x.w / x.g), byRate = (m, min) => [...m].filter(([pid, x]) => x.g >= min && canSee(pid)).sort((p, q) => rate(q[1]) - rate(p[1]) || q[1].g - p[1].g);
-  const mates = byRate(rel.mate, 1), foes = byRate(rel.foe, 2), pair_ = bestPair(db.days, 3, ids => ids.every(canSee));
+  const mates = byRate(rel.mate, 1), foes = byRate(rel.foe, 2), pair_ = bestPair(db.days, 3, ids => ids.every(canSee)), isMe = mine && mine.id === id;
   const nemesis = foes.length ? foes[foes.length - 1] : null, victim = foes.length ? foes[0] : null, line = ([pid, x]) => `${av(pid, 24)} ${name(pid)} <span class="mut">${x.w}-${x.g - x.w} · ${rate(x)}%</span>`;
   const none = `<span class="mut">${t('none yet')}</span>`;
   const crowns = monthChamps().filter(c => c.id === id).length;
@@ -355,21 +359,21 @@ function statsView() {
   const own = (mine && mine.id === id) || isAdmin(), sseg = own ? statsSeg : 'badges';
   const seg = own ? [['badges', t('Badges')], ['partners', t('Partners')], ['rivals', t('Rivals')], ['collection', t('Collection')]] : [];
   return `<h1>${t('Stats')}</h1>
-    <div class="pchoose" role="group" aria-label="${t('Player')}">${played.map(p => `<button aria-pressed="${p.id === id}" onclick="statsId=${p.id};render()">${av(p.id, 42)}<span>${esc(p.name)}${sharing(p.id) ? '' : ' 🔒'}</span></button>`).join('')}</div>
+    <div class="pchoose" role="group" aria-label="${t('Player')}">${youBtn}${played.map(p => `<button aria-pressed="${p.id === id}" onclick="statsId=${p.id};render()">${av(p.id, 42)}<span>${esc(p.name)}${sharing(p.id) ? '' : ' 🔒'}</span></button>`).join('')}</div>
+    ${statsHead(an, id, badges)}
     ${ratingHidden(id) ? '' : loyaltyHtml(an, id)}
     ${sharing(id) ? '' : `<p class="mut" role="status">🔒 ${t('{name} keeps these stats private. You can see them because you are an admin or it is you.', { name: esc(player(id).name) })}</p>`}
-    ${playerCardHtml(cardSpec(id, an, badges))}<button class="add" style="margin-top:10px" onclick="sharePlayerCard(${id})">📤 ${t('Share card')}</button>
     ${seg.length ? '' : `<p class="mut">🔒 ${t('Partners, rivals and the collection are private: only {name} sees them.', { name: esc(player(id).name) })}</p>`}<div class="seg stseg">${seg.map(([k, l]) => `<button class="${statsSeg === k ? 'on' : ''}" onclick="statsSeg='${k}';render()">${l}</button>`).join('')}</div>
     ${sseg === 'badges' ? `<h2 class="sec">${t('Badges')}</h2>${badges.map(x => `<span class="badge">${x}</span>`).join('') || `<p class="mut">${t('None yet. They come for wins, streaks and simply showing up.')}</p>`}
-    ${ratingHidden(id) ? '' : `<h2 class="sec">${t('Rating over time')}</h2><div class="card" style="color:var(--mut)">${ratingChart(h.map(x => x.r), 320, 150, t('Rating over time')) || `<p class="mut" style="margin:0">${t('Play a few more matches to see the chart.')}</p>`}</div>`}` : ''}
+    ${ratingHidden(id) ? '' : `<h2 class="sec">${t('Rating over time')}</h2><div class="card" style="color:var(--mut)">${ratingChart(chartOf(an, id), 320, 150, t('Rating over time')) || `<p class="mut" style="margin:0">${t('Play a few more matches to see the chart.')}</p>`}</div>`}` : ''}
     ${sseg === 'partners' ? `<h2 class="sec">${t('Partners')}</h2><div class="card" style="padding:4px 16px">${mates.map(x => `<div class="member"><span>${line(x)}</span></div>`).join('') || `<p class="mut">${t('No partners yet.')}</p>`}</div>
-    <h2 class="sec">${t('Best pair in the group')}</h2><div class="card">${pair_ ? `${pair(pair_.ids)} <span class="mut">${t('{record} together', { record: `${pair_.w}-${pair_.g - pair_.w}` })}</span>` : `<span class="mut">${t('needs 3 games together')}</span>`}</div>` : ''}
+    <h2 class="sec">${t('Best pair in the group')}</h2><div class="card">${pair_ ? `${pair_.ids.map(x => av(x, 24)).join('')} ${pair(pair_.ids)} <span class="mut">${t('{record} together', { record: `${pair_.w}-${pair_.g - pair_.w}` })}</span>` : `<span class="mut">${t('needs 3 games together')}</span>`}</div>` : ''}
     ${sseg === 'rivals' ? `<h2 class="sec">${t('Rivals')}</h2><div class="card" style="padding:4px 16px">
       <div class="member"><span>😈 ${t('Nemesis')}</span><span>${nemesis && rate(nemesis[1]) < 50 ? line(nemesis) : none}</span></div>
       <div class="member"><span>🎯 ${t('Favourite victim')}</span><span>${victim && rate(victim[1]) > 50 ? line(victim) : none}</span></div></div>
     <h2 class="sec">${t('Head-to-head')}</h2><div class="card" style="padding:4px 16px">${[...rel.foe].filter(([pid]) => canSee(pid)).sort((p, q) => q[1].g - p[1].g).map(x => `<div class="member"><span>${line(x)}</span></div>`).join('') || `<p class="mut">${t('No opponents yet.')}</p>`}</div>` : ''}
     ${sseg === 'collection' ? collectionHtml(id, played) : ''}
-    ${challengeCard()}${rm ? `<button class="add recapbtn" onclick="openRecap()">🎁 ${t('{month} recap', { month: monthLabel(rm) })}</button>` : ''}`;
+    ${isMe ? challengeCard() : ''}${rm ? `<button class="add recapbtn" onclick="openRecap()">🎁 ${t('{month} recap', { month: monthLabel(rm) })}</button>` : ''}`;
 }
 
 
@@ -386,7 +390,7 @@ const STICKERS = () => ({ nights5: ['🗓', t('Play 5 nights')], matches20: ['�
 // the rating line under the player picker opens this player's loyalty bonus, worked out step by step
 function loyaltyHtml(an, id) {
   const L = loyaltyOf(an, id), row = (l, calc, v) => `<div class="member"><span>${l}${calc ? `<br><small class="mut">${calc}</small>` : ''}</span><b>${v}</b></div>`;
-  return `<details class="fold rbreak" ${loyaltyOpen ? 'open' : ''} ontoggle="loyaltyOpen=this.open"><summary><span>${t('Rating')} <b>${Math.round(ratingOf(an, id))}</b> = ${Math.round(matchRatingOf(an, id))} ${t('match rating')} + ${L.bonus} ${t('loyalty bonus')}</span></summary>
+  return `<details class="fold rbreak" ${loyaltyOpen ? 'open' : ''} ontoggle="loyaltyOpen=this.open"><summary><span>+${L.bonus} ${t('loyalty bonus')} · ${t('how the rating adds up')}</span></summary>
     <div class="card" style="padding:4px 16px"><p class="mut" style="margin:10px 0 4px">${t('Loyalty bonus for {season}. It starts again each season; winning or losing makes no difference.', { season: esc(seasonLabel(seasonKey(tzParts().date))) })}</p>
       ${row(t('Nights played'), `${L.nights} × ${LOYALTY.night}`, '+' + L.nights * LOYALTY.night)}
       ${row(t('Matches played'), t('+{n} per match, at most {m} a night', { n: LOYALTY.match, m: LOYALTY.maxMatches }), '+' + L.matches)}
@@ -395,14 +399,25 @@ function loyaltyHtml(an, id) {
       ${row(t('Match rating'), t('starts at 1000, moves with every win and loss'), Math.round(matchRatingOf(an, id)))}
       ${row(`<b>${t('Rating')}</b>`, '', Math.round(ratingOf(an, id)))}</div></details>`;
 }
+// the top of Stats: avatar, name, card title, the rating with last night's change, and the full card behind "View card"
+function statsHead(an, id, badges) {
+  const spec = cardSpec(id, an, badges), hid = ratingHidden(id);
+  const lastDay = [...db.days].reverse().find(d => (an.night.get(d.id) || new Map()).has(id)), r = lastDay && an.night.get(lastDay.id).get(id);
+  const g = r ? Math.round(r.delta + (seasonKey(lastDay.date) === seasonKey(tzParts().date) ? nightBonus(r) : 0)) : 0;
+  return `<div class="shead">${av(id, 56)}<div class="sw"><b>${esc(player(id).name)}</b><span class="mut">${spec.titleEmoji} ${esc(spec.titleWord)} · ${esc(spec.edition)}</span></div>
+      <div class="sr">${hid ? `<b>🙈</b><span class="mut">${t('just playing')}</span>` : `<b>${Math.round(ratingOf(an, id))}</b>${g ? `<span class="${g > 0 ? 'up' : 'down'}">${g > 0 ? '▲' : '▼'}${Math.abs(g)} ${t('last night')}</span>` : `<span class="mut">${t('Rating')}</span>`}`}</div></div>
+    <details class="fold cardfold" ${cardOpen ? 'open' : ''} ontoggle="if (cardOpen !== this.open) { cardOpen = this.open; render(); }"><summary>🃏 ${t('View card')}</summary>${cardOpen ? `${playerCardHtml(spec)}<button class="add" style="margin-top:10px" onclick="sharePlayerCard(${id})">📤 ${t('Share card')}</button>` : ''}</details>`;
+}
+// the chart shows the rating people see; it ends on today's number (a new season starts the bonus again)
+const chartOf = (an, id) => { const s = shownHistory(db.days, db.players, id, an), now = ratingOf(an, id); return s.length && Math.round(s[s.length - 1]) !== Math.round(now) ? [...s, now] : s; };
 function collectionHtml(id, played) {
   const season = seasonKey(tzParts().date), st = album(db.days, db.players, season, id), S = STICKERS(), done = st.filter(x => x.done).length;
-  const got = collection(db.days, id), others = played.filter(p => p.id !== id && !p.removed);
+  const got = collection(db.days.filter(d => seasonKey(d.date) === season), id), others = played.filter(p => p.id !== id && !p.removed);
   return `<h2 class="sec">${t('Season album')} · ${esc(seasonLabel(season))}</h2>
     <p class="mut">${done === st.length ? '🏆 ' + t('Album complete: this season your card has a gold edge!') : t('{n} of {m} stickers. Fill the album for a gold-edge card this season.', { n: done, m: st.length })}</p>
     <div class="album">${st.map(x => `<div class="stk ${x.done ? 'done' : ''}"><span class="si">${S[x.k][0]}</span><span>${S[x.k][1]}</span><small>${x.done ? '✓' : `${x.have}/${x.need}`}</small></div>`).join('')}</div>
     <h2 class="sec">${t('Card collection')} · ${others.filter(p => got.has(p.id)).length}/${others.length}</h2>
-    <p class="mut">${t('Collect a card by beating that player or winning together.')}</p>
+    <p class="mut">${t('Collect a card by beating that player or winning together this season.')}</p>
     <div class="cards">${others.map(p => { const g = got.get(p.id);
       return `<div class="ccard ${g ? 'got' : ''}">${av(p.id, 44)}<b>${esc(p.name)}</b><small class="mut">${g ? (g.how === 'beat' ? t('beaten') : t('won together')) : '🔒'}</small></div>`; }).join('')}</div>`;
 }
@@ -668,6 +683,8 @@ Object.assign(LINE, {
   star: '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>', crown: '<path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z"/>',
   gift: '<rect x="3" y="8" width="18" height="5" rx="1"/><path d="M5 13v8h14v-8M12 8v13M12 8S10.5 3 8 4s0 4 4 4zM12 8s1.5-5 4-4 0 4-4 4z"/>',
   medal: '<circle cx="12" cy="15" r="5"/><path d="M8.5 11 6 3h4l2 5M15.5 11 18 3h-4l-2 5"/>', bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+  flame: '<path d="M12 3c1 4 5 5.5 5 10a5 5 0 0 1-10 0c0-2.5 1.5-3.5 2-5 1 1.5 1.5 2 2 2.5C11.5 8 11 5.5 12 3z"/>', trend: '<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>',
+  snow: '<path d="M12 2v20M4.9 7l14.2 10M4.9 17L19.1 7M9 4l3 2 3-2M9 20l3-2 3 2"/>', sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   phone: '<rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/>', user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
   target: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/>', link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
 });
@@ -675,11 +692,12 @@ Object.assign(LINE, {
 const EMO = { '👁': 'eye', '💬': 'chat', '📅': 'calendar', '✅': 'check', '❌': 'cross', '✕': 'cross', '⏳': 'clock', '✎': 'pencil', '📤': 'share', '🔔': 'bell',
   '🧾': 'receipt', '🖼': 'image', '🚫': 'ban', '↺': 'undo', '↶': 'undo', '🗑': 'trash', '▶': 'go', '🔒': 'lock', '✉': 'mail', '🏁': 'flag', '📷': 'photos',
   '📊': 'stats', '🏆': 'board', '🏸': 'play', '👥': 'members', '❔': 'help', '❓': 'help', '⚙': 'gear', '⚠': 'warn', '🔑': 'admin', '⬇': 'save', '➕': 'plus', '🎬': 'video', '🎯': 'target', '🔗': 'link',
-  '🌐': 'globe', '🙈': 'eyeoff', '🌗': 'contrast', '🎨': 'contrast', '🔓': 'unlock', '⭐': 'star', '👑': 'crown', '🎁': 'gift', '🏅': 'medal', '😈': 'bolt', '📱': 'phone', '👤': 'user' };
+  '🌐': 'globe', '🙈': 'eyeoff', '🌗': 'contrast', '🎨': 'contrast', '🔓': 'unlock', '⭐': 'star', '👑': 'crown', '🎁': 'gift', '🏅': 'medal', '😈': 'bolt', '📱': 'phone', '👤': 'user',
+  '💯': 'check', '🔥': 'flame', '🔄': 'undo', '📈': 'trend', '🗓': 'calendar', '📆': 'calendar', '🎖': 'medal', '🤝': 'members', '🐦': 'sun', '🧊': 'snow', '🐺': 'user', '🃏': 'stats' };
 const EMO_RE = new RegExp('(' + Object.keys(EMO).join('|') + ')\uFE0F?', 'gu');
 function minimalize(root) {
   if (!root) return;
-  const skip = n => /^(OPTION|SELECT|TEXTAREA|SCRIPT|STYLE|TITLE)$/.test(n.parentNode.nodeName) || n.parentNode.closest('#rx, .podium, .badge, .rx, .lic, .stk');
+  const skip = n => /^(OPTION|SELECT|TEXTAREA|SCRIPT|STYLE|TITLE)$/.test(n.parentNode.nodeName) || n.parentNode.closest('#rx, .podium, .rx, .lic');
   const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), hits = [];
   while (w.nextNode()) { EMO_RE.lastIndex = 0; if (EMO_RE.test(w.currentNode.data) && !skip(w.currentNode)) hits.push(w.currentNode); }
   for (const n of hits) { const s = document.createElement('span'); s.innerHTML = esc(n.data).replace(EMO_RE, (_, e) => svgIcon(EMO[e], 'inl i-' + EMO[e])); n.replaceWith(...s.childNodes); }

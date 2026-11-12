@@ -10,7 +10,7 @@ run('hide rating, showing-up badges, monthly recap', async h => {
   await A.waitForSelector('.chal >> text=Challenge of the week'); assert((await A.textContent('.chal')).includes('Play this week to take part'), 'the weekly challenge, nothing played yet this week');
   await A.click('nav >> text=Stats'); await A.waitForSelector('.badge:has-text("5 nights in a row")');
   // the player card: bronze for 5 nights, its stats, and a picture to share
-  await A.waitForSelector('img.pcimg[src^="blob:"]');
+  await A.waitForSelector('.shead >> text=The Machine').catch(() => {}); await A.click('.cardfold summary'); await A.waitForSelector('img.pcimg[src^="blob:"]');   // the full card opens on tap
   assert(/win rate 100%, best run 10, matches 10/.test(await A.getAttribute('img.pcimg', 'alt')), 'the card picture, described for screen readers');
   assert.equal(await A.evaluate(() => cardSpec(1).tier), 'bronze', 'bronze under 10 nights');
   assert((await A.evaluate(() => cardSpec(1).footer)).includes('Autumn 2026'), 'the season');
@@ -42,5 +42,10 @@ run('hide rating, showing-up badges, monthly recap', async h => {
   assert.equal(await A.locator('.podium >> text=Vali').count(), 0, 'not on the podium');
   await A.click('nav >> text=Stats'); await A.waitForSelector('.badge:has-text("5 nights in a row")');
   assert(!(await A.textContent('#app')).includes('Rating over time'), 'no rating chart');
+  // a new player with no matches sees "You" and what unlocks, not someone else's card; the challenge only shows on your own page
+  const N = await mk(); await signup(N, 'Nina', 'n@x.com'); await N.evaluate(() => { asMember = true; go('stats'); });
+  await N.waitForSelector('text=Your card unlocks after your first match.'); assert((await N.locator('.pchoose [aria-pressed=true]').textContent()).includes('You'), '"You" first and selected');
+  await N.click('.pchoose button >> nth=1'); await N.waitForSelector('.shead'); assert.equal(await N.locator('.chal').count(), 0, "no challenge on someone else's page");
+  assert(N.errs.length === 0, N.errs.join());
   assert(A.errs.length === 0, A.errs.join());
 });
