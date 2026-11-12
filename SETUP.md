@@ -71,7 +71,7 @@ The app keeps you signed in on the phone and renews the sign-in by itself, so yo
 The sign-up card on the Play screen is compact until the play day (date, count and the two answer buttons; **Details** shows the names). The 📅 button opens a month calendar: weekly play days are highlighted, days that were played have a dot. Admins tap a date to add an **extra** play day or to **cancel** a normal one (tap again to undo); the sign-up card and the "members can start a day" window follow it. Changes are written to the activity log. Needs `20261023120000_play_dates.sql`.
 
 ## Viewing as a member
-Admins get a 👁 button in the top bar. It shows the app exactly as a normal member sees it (no admin tools, the start window applies, private stats stay hidden) with a yellow bar on top and a **Back to admin** button. It is a preview only: the database still treats you as an admin, and the preview ends when you log out.
+Admins see the app as a normal member by default (no admin tools, the start window applies, private stats stay hidden). The ⋯ menu at the top has **Back to admin** for the admin tools and **View as member** to return. The choice is remembered on each phone, also after logging out. The database-update warning still shows in the member view.
 
 ## Who can do what
 | | Member | Admin |

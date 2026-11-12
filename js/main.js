@@ -10,7 +10,7 @@ sb && sb.auth.onAuthStateChange((ev, s) => {
     channel = sb.channel('all').on('postgres_changes', { event: '*', schema: 'public' }, later).subscribe();
   } else {
     if (channel) sb.removeChannel(channel);
-    loaded = false; me = {}; db = { players: [], days: [] }; view = 'play'; asMember = false; render();
+    loaded = false; me = {}; db = { players: [], days: [] }; view = 'play'; asMember = memberView(); render();
   }
 });
 // some phone browsers (Brave) select the field on a tap but never open the clock / calendar: open it ourselves

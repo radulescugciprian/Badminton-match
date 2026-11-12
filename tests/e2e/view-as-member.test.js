@@ -13,13 +13,12 @@ run('admin views the app as a member', async h => {
   await h.menu(A); await A.click('[aria-label="Admin tools"]'); await A.click('[data-adm=players]'); assert((await A.locator('[aria-label^="Remove"]').count()) > 0 ); await A.click('nav >> text=Play');
   assert(await A.locator('button:has-text("Start playing")').isEnabled());
   await h.menu(A); await A.click('[aria-label="View as member"]');
-  await A.waitForSelector('.strip');
-  assert((await A.textContent('.strip')).includes('viewing the app as a member'));
+  await A.waitForFunction(() => asMember);
   assert.equal(await A.locator('[aria-label="Admin tools"]').count(), 0, 'no admin button in the preview');
   assert.equal(await A.locator('text=Add guest player').count(), 1, 'members can add guests');
   assert.equal(await A.locator('button:has-text("Start playing")').count(), 0, 'hidden outside the play day, like for a member');
   assert.equal(await A.locator('.top [aria-label="Admin tools"]').count(), 0, 'the top bar shows no admin tag');
-  assert.equal(await A.locator('[aria-label="View as member"]').count(), 0);
+  assert.equal(await A.locator('[aria-label="View as member"]').count(), 0); await h.menu(A); assert.equal(await A.locator('[aria-label="Back to admin"]').count(), 1, 'the way back is in the ⋯ menu'); await A.evaluate(() => { topMenu = false; render(); });
   await A.click('nav [data-v=group]'); await A.click('.seg >> text=Members'); await A.waitForSelector('text=Accounts');
   assert.equal(await A.locator('text=Make admin').count() + await A.locator('text=Activity log').count() + await A.locator('[aria-label^="Remove account"]').count(), 0, 'Members page without admin tools');
   await A.click('[aria-label=Calendar]').catch(() => {});
@@ -37,13 +36,14 @@ run('admin views the app as a member', async h => {
   // privacy follows: Bob's stats are hidden from the preview, visible again as admin
   await A.evaluate(() => go('stats')); await A.waitForFunction(() => !document.getElementById('app').textContent.includes('Bob') || true);
   assert.equal(await A.evaluate(() => canSee(2)), false, "a member does not see Bob's private stats");
-  await A.click('text=Back to admin'); await A.waitForFunction(() => !document.querySelector('.strip'));
+  await h.menu(A); await A.click('[aria-label="Back to admin"]'); await A.waitForFunction(() => !asMember);
   assert.equal(await A.evaluate(() => canSee(2)), true, 'the admin sees everything again');
   await A.evaluate(() => go('play'));
   assert((await A.locator('[aria-label="Admin tools"]').count()) === 1 && await A.locator('button:has-text("Start playing")').isEnabled(), 'admin tools are back');
-  // it is only a preview: the choice is not kept after logging out
+  // the choice is remembered on this phone, also after logging out and in again
   await h.menu(A); await A.click('[aria-label="View as member"]'); await h.menu(A); await A.click('text=Log out'); await A.waitForSelector('text=Log in to see the scores');
   await A.fill('[name=login]', 'a@x.com'); await A.fill('[name=password]', 'secret1'); await A.click('button[type=submit]'); await A.waitForSelector('text=Next match day');
-  assert.equal(await A.locator('.strip').count(), 0, 'back to the admin view after logging in again');
+  assert.equal(await A.evaluate(() => asMember), true, 'still the member view after logging in again');
+  assert.equal(await A.locator('[aria-label="Admin tools"]').count(), 0);
   assert(A.errs.length + B.errs.length === 0, [A.errs, B.errs].join());
 });

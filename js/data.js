@@ -25,7 +25,8 @@ const DB_VERSION = 20261114; // bump together with db_version() in the newest mi
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
 let loyaltyOpen = false, statsSeg = 'badges', boardKind = 'doubles', boardOpen = null, memFilter = 'all', memSort = 'name', memOpen = null, adminPage = '', admPanel = '', prevView = 'play', profPanel = '', usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, lineupOpen = false, moreOpen = false, dayMore = false, matchesOpen = {}, lastRec = 0, bgLoaded = false, rsvps = [], reactions = [], statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
-let view = 'play', tab = 'all', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0, manualLogout = false, lostSession = false, asMember = false;   // asMember: an admin previewing the app as a normal member
+function memberView() { try { return localStorage.getItem('adminView') !== '1'; } catch { return true; } }
+let view = 'play', tab = 'all', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0, manualLogout = false, lostSession = false, asMember = memberView();   // asMember: an admin seeing the app as a normal member (the default; remembered on this phone)
 // the sign-in is kept on the phone (localStorage) and renewed automatically, so people stay logged in until they log out
 const sb = window.supabase && CONFIG.url && !CONFIG.url.includes('YOUR-')
   ? supabase.createClient(CONFIG.url, CONFIG.key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }) : null;
@@ -51,7 +52,7 @@ const niceDate = (iso, o = { weekday: 'long', day: 'numeric', month: 'short' }) 
 
 // an admin can look at the app the way a member sees it (a preview only: the server still knows who they are)
 const isAdmin = () => !!me.is_admin && !asMember;
-const toggleView = () => { asMember = !asMember; if (asMember && (view === 'members' || view === 'admin')) view = 'play'; render(); };
+const toggleView = () => { asMember = !asMember; try { localStorage.setItem('adminView', asMember ? '0' : '1'); } catch {} if (asMember && (view === 'members' || view === 'admin')) view = 'play'; render(); };
 
 // ---- who may see whose rating and stats: players decide for themselves, admins see everything. Guests (no account) are shared.
 const profileOf = pid => { const u = player(pid).user; return u && members.find(m => m.id === u); };

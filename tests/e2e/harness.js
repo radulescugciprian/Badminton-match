@@ -29,6 +29,7 @@ async function run(name, body) {
     await p.route('http://localhost:8766/**', r => { const f = st.files[r.request().url().replace('http://localhost:8766/', '')]; return f ? r.fulfill({ contentType: 'image/png', body: Buffer.from(f) }) : r.fulfill({ status: 404 }); });
     await p.addInitScript(({ seen, news, t0 }) => {
       if (seen) localStorage.setItem('seenHelp', '1');
+      if (!localStorage.getItem('adminView')) localStorage.setItem('adminView', '1');   // tests start in the admin view (a real admin starts as a member)
       if (seen && news && !localStorage.getItem('seenNews')) localStorage.setItem('seenNews', '9999');
       window.open = u => { window.__wa = u; return null; };   // WhatsApp links are only recorded
       const R = Date; window.__t = t0;                                   // lets a test move the app's clock: window.__t = timestamp
