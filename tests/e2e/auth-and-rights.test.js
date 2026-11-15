@@ -30,7 +30,7 @@ run('sign-in, rights, photos and the play schedule', async h => {
   await A.click('button:has-text("4 players")'); await B.waitForFunction(() => cur().mode === 4);
   await A.click('button:has-text("5 players")'); await B.waitForFunction(() => cur().mode === 5);
   await A.click('text=Start playing'); await B.waitForSelector('text=Match 1');
-  assert((await B.locator('text=Close day').count()) === 0, 'member cannot close');
+  assert.equal(await B.locator('.closeday').count(), 1, 'members can close the day too');
   await win(B, 1); await A.waitForSelector('text=Match 2');
   await win(A, 2); await B.waitForSelector('text=Match 3');
   // both leaderboards identical
@@ -43,7 +43,7 @@ run('sign-in, rights, photos and the play schedule', async h => {
   assert(B.alerts.some(a => a.includes('already recorded')), 'duplicate warned: ' + B.alerts);
   assert(st.matches.length === 2, 'no duplicate match stored');
   // close day (admin) -> member photo -> shared library
-  await A.click('nav >> text=Play'); await h.more(A); await A.click('text=Close day'); await B.waitForSelector('h1:has-text("Results")');
+  await A.click('nav >> text=Play'); await h.more(A); await A.click('text=Close day'); await B.waitForSelector('h1:has-text("Results")'); assert.equal(await B.locator('text=Reopen day').count(), 0, 'only admins reopen');
   await B.click('text=Take group photo'); await B.setInputFiles('#shot', S + 'red.png'); await B.click('#crop [data-ok]');
   await B.waitForSelector('text=Photo saved'); await A.waitForSelector('text=Photo saved');
   await A.click('nav >> text=Photos'); await A.waitForSelector('.grid img');

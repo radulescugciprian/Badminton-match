@@ -13,7 +13,10 @@ const C4 = [[[1, 2], [3, 4]], [[1, 3], [2, 4]], [[1, 4], [2, 3]]];
 // the best-of-3 state after these results (1/2 = winning team): how many series are done and the score of the current one
 const series = wins => { let k = 0, w = [0, 0]; for (const x of wins) if (x && ++w[x - 1] === 2) { k++; w = [0, 0]; } return { k, w }; };
 // the teams of match i (from 0) given the results before it: 4 players change teams after a best of 3, 5 players after every match
-const cycAt = (size, wins, i) => size === 4 ? C4[series(wins.slice(0, i)).k % 3] : C5[i % 5];
+// 4 players: a best of 3 per pairing; from match q on (short on time) the next pairing comes after every match,
+// starting with the pairing after the one being played when the switch was made
+const cycAt = (size, wins, i, q = null) => size !== 4 ? C5[i % 5] : q === null || i < q ? C4[series(wins.slice(0, i)).k % 3]
+  : (s => C4[(s.k + (s.w[0] + s.w[1] ? 1 : 0) + i - q) % 3])(series(wins.slice(0, q)));
 const today = () => new Date().toLocaleDateString('sv-SE'); // local YYYY-MM-DD
 
 // Everything lives in Supabase (see supabase/migrations); this is the last fetched copy, shared by all logged-in members.
@@ -21,7 +24,7 @@ let db = { players: [], days: [] }, members = [], me = {}, session = null, loade
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
-const DB_VERSION = 20261115; // bump together with db_version() in the newest migration
+const DB_VERSION = 20261116; // bump together with db_version() in the newest migration
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
 let flipOn = false, loyaltyOpen = false, statsSeg = 'partners', boardKind = 'doubles', boardOpen = null, memFilter = 'all', memSort = 'name', memOpen = null, adminPage = '', admPanel = '', prevView = 'play', profPanel = '', usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, lineupOpen = false, moreOpen = false, dayMore = false, matchesOpen = {}, lastRec = 0, bgLoaded = false, rsvps = [], reactions = [], statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
@@ -95,7 +98,7 @@ async function refresh() {
   rsvps = rs.error ? [] : rs.data; reactions = rx.error ? [] : rx.data; // empty until the migration has been applied
   chat = ch.error ? [] : ch.data.reverse(); chatRx = cr.error ? [] : cr.data; tips = tg.error ? [] : tg.data;
   db.players = ok(p).map(x => ({ id: x.id, name: x.name, avatar: x.avatar, removed: !x.active, user: x.user_id, by: x.created_by, at: x.created_at }));
-  db.days = ok(d).sort((a, b) => a.closed === b.closed ? (a.closed ? (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) : 0) : a.closed ? -1 : 1).map(x => ({ id: x.id, date: x.date, order: x.player_order, mode: x.mode, rotFrom: x.rot_from || 0, started: x.started, closed: x.closed,
+  db.days = ok(d).sort((a, b) => a.closed === b.closed ? (a.closed ? (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) : 0) : a.closed ? -1 : 1).map(x => ({ id: x.id, date: x.date, order: x.player_order, mode: x.mode, rotFrom: x.rot_from || 0, quickFrom: x.quick_from ?? null, started: x.started, closed: x.closed,
     photo: x.photo_path, matches: x.matches.sort((a, b) => a.n - b.n) }));
   if (!session) return; // logged out while loading
   const ms = ok(m), mine = ms.find(x => x.id === session.user.id);
@@ -302,6 +305,7 @@ function showHelp() {
     <table class="rot"><tr><th>${t('Match')}</th><th>${t('Teams')}</th><th>${t('Rests')}</th></tr>${rows}</table>
     <p class="mut">${t('The numbers are places in the player list (1 = top).')}</p>
     <p>${t('With 4 players nobody rests: the same teams play best of 3, then change teams, until everyone has played with everyone.')}</p>
+    <p>${t('Short on time? ⋯ More → "One match per pairing": from the next match, every pairing plays once instead of a best of 3. Anyone can close the day; only admins can reopen it.')}</p>
     <p>${t('With 3 players you play singles: the winner stays on court, but after 3 games in a row the winner sits out one game.')}</p>
     <h2 class="sec">${t('Rating')}</h2><p>${t('Doubles and singles have separate ratings, both starting at 1000. Win and you gain points, lose and you drop; beating stronger players earns more.')}</p>
     <p>${t('On top comes a loyalty bonus that starts again each season: +3 for every night you play, +1 per match (at most 2 a night) and +2 per weekly challenge. The leaderboard shows your rating with the bonus.')}</p>
@@ -504,7 +508,7 @@ function nextTeams(d) {
   const ms = d.matches.slice(d.rotFrom || 0); // the rotation restarts whenever someone leaves or joins
   if (d.mode === 2) return { t1: [d.order[0]], t2: [d.order[1]], rest: null };
   if (d.mode === 3) return winnerStays(d.order, ms);
-  const [a, b, r] = cycAt(d.mode, ms.map(m => m.win), ms.length);
+  const [a, b, r] = cycAt(d.mode, ms.map(m => m.win), ms.length, d.quickFrom == null ? null : Math.max(0, d.quickFrom - (d.rotFrom || 0)));
   return { t1: slots(d.order, a), t2: slots(d.order, b), rest: r ? d.order[r - 1] : null };
 }
 // someone leaves early or arrives late: they play from / stop playing at the next match (2 to 5 players)
@@ -914,21 +918,23 @@ async function shareCard(dayId) {
   else saveFile(blob, file.name);
 }
 const undo = () => { const d = cur(), last = d.matches[d.matches.length - 1], n = d.matches.length - 1;   // by day and number: the last match may not have reached the server yet
-  const back = d.rotFrom > n; // undoing the match before a line-up change: the new rotation starts one match earlier
-  return act(async () => { ok(await sb.from('matches').delete().eq('day_id', d.id).eq('n', last.n)); if (back) await patchDay(d.id, { rot_from: n })(); },
-    () => { d.matches.pop(); if (back) d.rotFrom = n; }); };
+  const back = d.rotFrom > n, quick = d.quickFrom > n; // undoing the match before a line-up change (or the short-on-time switch): it starts one match earlier
+  return act(async () => { ok(await sb.from('matches').delete().eq('day_id', d.id).eq('n', last.n)); if (back || quick) await patchDay(d.id, { ...(back && { rot_from: n }), ...(quick && { quick_from: n }) })(); },
+    () => { d.matches.pop(); if (back) d.rotFrom = n; if (quick) d.quickFrom = n; }); };
+// short on time (4 players): from the next match on, one match per pairing so every pairing still gets played
+const shortNight = () => { const d = cur(); return confirm(t('Short on time? From the next match on, every pairing plays one match instead of a best of 3.')) && act(patchDay(d.id, { quick_from: d.matches.length }), () => { d.quickFrom = d.matches.length; }); };
 const closeDay = () => { const d = cur(); return confirm(t('Close the day? No more matches can be added.')) && act(patchDay(d.id, { closed: true }), () => { d.closed = true; celebrate(); }); };
 const reopenDay = () => { const d = cur(); return act(patchDay(d.id, { closed: false }), () => { d.closed = false; }); };
 const dropPhotos = async paths => { paths = paths.filter(Boolean); if (paths.length) ok(await sb.storage.from('photos').remove(paths)); };
 const resetDay = () => confirm(t('Reset today? This deletes all matches of this day and goes back to player order.')) && act(async () => {
   const d = cur();
   ok(await sb.from('matches').delete().eq('day_id', d.id));
-  await patchDay(d.id, { started: false, closed: false, photo_path: null, rot_from: 0 })();
+  await patchDay(d.id, { started: false, closed: false, photo_path: null, rot_from: 0, quick_from: null })();
   await dropPhotos([d.photo]);
 });
 const newDayBtn = () => act(async () => {
   if (cur().matches.length) ok(await sb.from('days').insert(dayRow(cur())));
-  else await patchDay(cur().id, { started: false, rot_from: 0 })();
+  else await patchDay(cur().id, { started: false, rot_from: 0, quick_from: null })();
 });
 const eraseAll = () => confirm(t('Reset ALL scores? This deletes every day, match and group photo for everyone. Players and accounts are kept. This cannot be undone.')) && act(async () => {
   await dropPhotos(db.days.map(d => d.photo));

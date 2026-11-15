@@ -3,9 +3,9 @@ const fs = require('fs'), assert = require('assert');
 const { winnerStays } = require('../analytics.js');
 const src = fs.readFileSync(require('path').join(__dirname, '../js/data.js'), 'utf8');
 const grab = re => src.match(re)[0];
-eval([grab(/const C5 = \[[\s\S]*?\n\];/), grab(/const C4 = .*;/), grab(/const series = .*;/), grab(/const cycAt = .*;/), grab(/const slots = .*;/), grab(/function nextTeams\(d\) \{[\s\S]*?\n\}/)].join('\n').replace(/const (\w+) =/g, 'global.$1 ='));
+eval([grab(/const C5 = \[[\s\S]*?\n\];/), grab(/const C4 = .*;/), grab(/const series = .*;/), grab(/const cycAt = [\s\S]*?;\n/), grab(/const slots = .*;/), grab(/function nextTeams\(d\) \{[\s\S]*?\n\}/)].join('\n').replace(/const (\w+) =/g, 'global.$1 ='));
 const P = [1, 2, 3, 4, 5], key = (a, b) => [a, b].sort().join();
-const play = (mode, wins) => { const d = { order: P.slice(0, mode), mode, matches: [], rotFrom: 0 }; for (const w of wins) d.matches.push({ ...nextTeams(d), win: w }); return d.matches; };
+const play = (mode, wins, quickFrom = null) => { const d = { order: P.slice(0, mode), mode, matches: [], rotFrom: 0, quickFrom }; for (const w of wins) d.matches.push({ ...nextTeams(d), win: w }); return d.matches; };
 const rnd = n => Array.from({ length: n }, () => 1 + (Math.random() < .5));
 // 5 players: per 5 matches everyone rests once and partners each other player once
 for (let k = 0; k < 200; k++) { const ms = play(5, rnd(10));
@@ -17,6 +17,11 @@ for (let k = 0; k < 2000; k++) { const ms = play(4, rnd(12)); let w = [0, 0], sp
     if (!seen.length || seen[seen.length - 1] !== s) { if (seen.length) assert(Math.max(...w) === 2, 'teams only change after a best of 3'); seen.push(s); w = [0, 0]; }
     w[m.win - 1]++; assert(Math.max(...w) <= 2); }
   const firstThree = new Set(seen.slice(0, 3).flatMap(s => s.split('|'))); if (seen.length >= 3) assert.equal(firstThree.size, 6, 'all 6 partnerships in one cycle'); }
+// 4 players, short on time: after the switch every match is a new pairing, never the one being played at the switch,
+// and any 3 matches in a row after it are the 3 pairings (all 6 partnerships)
+for (let k = 0; k < 2000; k++) { const q = Math.floor(Math.random() * 7), ms = play(4, rnd(q + 6), q), split = m => [key(...m.t1), key(...m.t2)].sort().join('|');
+  for (let i = Math.max(q, 1); i < ms.length; i++) if (i > q || ms.slice(0, q).length) assert.notEqual(split(ms[i]), split(ms[i - 1]), 'a new pairing every match after the switch');
+  for (let i = q; i + 3 <= ms.length; i++) assert.equal(new Set(ms.slice(i, i + 3).flatMap(m => [key(...m.t1), key(...m.t2)])).size, 6, 'three in a row cover every partnership'); }
 // 3 players: singles, winner stays, nobody plays more than 3 in a row, the resting player always comes on next
 for (let k = 0; k < 2000; k++) { const ms = play(3, rnd(30)); let run = {};
   ms.forEach((m, i) => { assert(m.t1.length === 1 && m.rest); const on = [m.t1[0], m.t2[0]];

@@ -216,7 +216,8 @@ function play() {
   }
   const { t1, t2, rest } = nextTeams(d), ms = d.matches.slice(d.rotFrom || 0), bo3 = series(ms.map(m => m.win)).w;
   const streak = ms.slice().reverse().findIndex(m => ![...m.t1, ...m.t2].includes(t1[0])); // games in a row the player staying on has played
-  const rule = d.mode === 3 ? t('Winner stays · game {n}/3', { n: (streak < 0 ? ms.length : streak) + 1 }) : d.mode === 4 ? t('Best of 3: {a}–{b}', { a: bo3[0], b: bo3[1] }) : '';
+  const quick = d.mode === 4 && d.quickFrom != null && n >= d.quickFrom;   // short on time: one match per pairing
+  const rule = d.mode === 3 ? t('Winner stays · game {n}/3', { n: (streak < 0 ? ms.length : streak) + 1 }) : quick ? t('One match per pairing') : d.mode === 4 ? t('Best of 3: {a}–{b}', { a: bo3[0], b: bo3[1] }) : '';
   // the match after this one, for either result (they differ with "winner stays" and at the end of a best of 3)
   const peek = w => nextTeams({ ...d, matches: [...d.matches, { t1, t2, rest, win: w }] }), vs = m => `${pair(m.t1)} <span class="mut">${t('vs')}</span> ${pair(m.t2)}`;
   const [n1, n2] = [vs(peek(1)), vs(peek(2))];
@@ -229,9 +230,10 @@ function play() {
     ${rest ? `<div class="rest">${av(rest, 22)} ${t('Resting:')} <b>${name(rest)}</b></div>` : ''}
     ${lw ? `<div class="toast">✓ ${pair(lw.win === 1 ? lw.t1 : lw.t2)} <button class="link" onclick="lastRec=0;undo()">↶ ${t('Undo')}</button></div>` : ''}
     <div class="upnext"><b>${t('Next')}:</b> ${n1 === n2 ? n1 : `<div>${t('If team {n} wins: {m}', { n: 1, m: n1 })}</div><div>${t('If team {n} wins: {m}', { n: 2, m: n2 })}</div>`}</div>
-    <div class="pbtns">${lw ? '' : `<button onclick="undo()" ${n ? '' : 'disabled'}>↶ ${t('Undo last')}</button>`}${admin ? `<button class="link closeday" onclick="closeDay()" ${n ? '' : 'disabled'}>🏁 ${t('Close day')}</button>` : ''}</div>
+    <div class="pbtns">${lw ? '' : `<button onclick="undo()" ${n ? '' : 'disabled'}>↶ ${t('Undo last')}</button>`}<button class="link closeday" onclick="closeDay()" ${n ? '' : 'disabled'}>🏁 ${t('Close day')}</button></div>
     <details class="fold pmore" ${moreOpen ? 'open' : ''} ontoggle="moreOpen=this.open"><summary>⋯ ${t('More')}</summary>
       <div class="actions">
+        ${d.mode === 4 && d.quickFrom == null ? `<button class="link" onclick="moreOpen=false;shortNight()">⏱ ${t('Short on time? One match per pairing')}</button>` : ''}
         ${admin ? `<button class="link danger" onclick="resetDay()">${t('Reset day')}</button>` : ''}
       </div>
       <details class="fold lineup" ${lineupOpen ? 'open' : ''} ontoggle="lineupOpen=this.open"><summary>${t('Someone leaving or arriving?')}</summary>

@@ -25,7 +25,7 @@ function rpc(u, r) {
   const match = row => r.f.every(([op, c, v]) => op === 'eq' ? row[c] === v : op === 'gte' ? row[c] >= v : row[c] > v);
   switch (r.op) {
     case 'rpc': {
-      if (r.name === 'db_version') return { data: st.dbVersion ?? 20261115 };
+      if (r.name === 'db_version') return { data: st.dbVersion ?? 20261116 };
       if (r.name === 'track') {
         if (!u) return { data: null };
         const f = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(st.now || Date.now())), g = x => f.find(p => p.type === x).value;
@@ -119,7 +119,7 @@ function rpc(u, r) {
     }
     case 'update': {
       for (const row of T.filter(match)) {
-        if (r.table === 'days' && ((r.payload.closed !== undefined && r.payload.closed !== row.closed) || (row.started && r.payload.started === false) || (row.photo_path && r.payload.photo_path === null)) && !isAdmin(u)) return err('Admins only');
+        if (r.table === 'days' && ((row.closed && r.payload.closed === false) || (row.started && r.payload.started === false) || (row.photo_path && r.payload.photo_path === null)) && !isAdmin(u)) return err('Admins only');
         if (r.table === 'days' && !row.started && r.payload.started === true && !isAdmin(u) && !canStart()) return err('A day can only be started during the play window. Ask an admin.');
         if (r.table === 'play_dates' && !isAdmin(u) && row.created_by !== u) continue;
         if (r.table === 'play_dates' && r.payload.called_off !== undefined && r.payload.called_off !== row.called_off) logAct(u, r.payload.called_off ? 'call_off_extra' : 'restore_extra', { date: row.day });

@@ -94,7 +94,8 @@ select check_that(rows_changed($$update profiles set is_admin = false where user
 select as_user((select m1 from ids));
 select check_that(rows_changed($$delete from matches where n = 1$$) = 0, 'cannot undo an older match');
 select check_that(rows_changed($$delete from matches where n = 3$$) = 1, 'undo the latest');
-select must_fail($$update days set closed = true where id = 1$$, 'admins only');
+update days set closed = true where id = 1;                                                       -- any member may close the day
+select must_fail($$update days set closed = false where id = 1$$, 'admins only');                  -- reopening is for admins
 select must_fail($$update days set started = false where id = 1$$, 'admins only');
 select check_that(rows_changed($$delete from days where id = 1$$) = 0, 'members cannot delete days');
 insert into reactions (day_id, kind) values (1, 'fire');
@@ -122,7 +123,7 @@ select check_that((select count(*) from admin_log where action = 'close_day') = 
 select check_that((select count(*) from admin_log where action = 'remove_player' and detail ->> 'name' = 'Ciprian') = 1, 'player removal logged');
 select check_that((select count(*) from admin_log where action = 'edit_schedule' and actor_name = 'Admin1') = 1, 'schedule edit logged');
 select check_that((select count(*) from admin_log where action in ('make_admin', 'remove_admin')) = 2, 'role changes logged');
-select check_that((select actor_name from admin_log where action = 'close_day') = 'Admin1', 'who did it is recorded');
+select check_that((select actor_name from admin_log where action = 'close_day') = 'member1', 'who did it is recorded (a member closed the day)');
 select must_fail($$insert into admin_log (action) values ('forged')$$, 'row-level security');
 select check_that(rows_changed($$delete from admin_log$$) = 0, 'the log cannot be edited');
 -- deleting a day with matches: ONE entry carrying the match count, not one per cascaded match

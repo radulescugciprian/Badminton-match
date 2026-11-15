@@ -85,7 +85,8 @@ Admins see the app as a normal member by default (no admin tools, the start wind
 | Add a guest player (no account) | ❌ | ✅ |
 | Record a match result, undo the last one | ✅ | ✅ |
 | Take or retake the group photo | ✅ | ✅ |
-| Close / reopen / reset a day | ❌ | ✅ |
+| Close a day | ✅ | ✅ |
+| Reopen / reset a day | ❌ | ✅ |
 | Remove a player, delete a photo, erase all data | ❌ | ✅ |
 | Promote members to admin, remove accounts, reset all scores, edit the play schedule | ❌ | ✅ |
 
