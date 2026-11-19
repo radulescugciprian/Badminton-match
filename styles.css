@@ -392,3 +392,7 @@
   #crop#crop button{color:#eefaf4;background:none;border:0} #crop#crop .seg button.on{background:rgba(255,255,255,.22)}
   #crop#crop .cact [data-no]{border:1px solid rgba(255,255,255,.35)} #crop#crop .cact .primary{background:var(--acc);color:var(--on-acc)}
   .unlockreq{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0 0;padding:8px 10px;border-radius:12px;background:var(--chip);font-size:var(--fs-sm)} .unlockreq .link{white-space:nowrap;font-weight:700}
+  /* results waiting for a confirmation; who records the match */
+  .rescard{display:flex;flex-direction:column;gap:6px;margin:0 0 12px;border-color:var(--acc)} .rescard .nextup{margin:6px 0 0}
+  .mstate{font-size:var(--fs-xs);color:var(--mut);white-space:nowrap} .mrow .mfix{min-height:32px;min-width:32px;padding:0}
+  .whorec{text-align:center;margin:8px 0 0} button.team:disabled{opacity:.55;cursor:not-allowed}

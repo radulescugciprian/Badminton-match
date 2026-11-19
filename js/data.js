@@ -24,7 +24,7 @@ let db = { players: [], days: [] }, members = [], me = {}, session = null, loade
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
-const DB_VERSION = 20261120; // bump together with db_version() in the newest migration
+const DB_VERSION = 20261121; // bump together with db_version() in the newest migration
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
 let unlocks = [];   // late answers: a member asked the admins to open the sign-up for them (opened: an admin did)
@@ -307,6 +307,7 @@ function showHelp() {
     <table class="rot"><tr><th>${t('Match')}</th><th>${t('Teams')}</th><th>${t('Rests')}</th></tr>${rows}</table>
     <p class="mut">${t('The numbers are places in the player list (1 = top).')}</p>
     <p>${t('With 4 players nobody rests: the same teams play best of 3, then change teams, until everyone has played with everyone.')}</p>
+    <p>${t('Results: the player resting during a match records the winner, and the one resting in the next match confirms it (or says the other team won). With nobody resting, or a guest resting, any player of the night does it. After a day is closed an admin can change a winner; a player of the team that would then lose confirms it.')}</p>
     <p>${t('Short on time? ⋯ More → "One match per pairing": from the next match, every pairing plays once instead of a best of 3. Anyone can close the day; only admins can reopen it.')}</p>
     <p>${t('With 3 players you play singles: the winner stays on court, but after 3 games in a row the winner sits out one game.')}</p>
     <h2 class="sec">${t('Rating')}</h2><p>${t('Doubles and singles have separate ratings, both starting at 1000. Win and you gain points, lose and you drop; beating stronger players earns more.')}</p>
@@ -522,13 +523,31 @@ const changeLineup = (id, leaving) => {
   const playing = [...most.slice(1), most[0]], order = [...playing, ...off, ...leaving ? [id] : []], mode = playing.length, rotFrom = d.matches.length;
   act(patchDay(d.id, { player_order: order, mode, rot_from: rotFrom }), () => Object.assign(d, { order, mode, rotFrom }));
 };
+// ---- who records a result and who confirms it: the player resting during the match records it, the one resting in the
+// next match confirms it. Nobody resting (4 or 2 players) or a guest: any player of the night, but never your own result.
+// The database checks the same (guard_match, confirm_match, answer_fix).
+const myPid = () => (db.players.find(p => p.user === session.user.id) || {}).id;
+const standsIn = (pid, d, extra = []) => { const p = pid && player(pid); if (p && p.user) return p.user === session.user.id;
+  const me_ = myPid(); return !!me_ && (extra.includes(me_) || (d.order || []).includes(me_)); };
+const canRecord = (d, x) => isAdmin() || standsIn(x.rest, d, [...x.t1, ...x.t2]);
+const canConfirm = (d, m) => m.confirmed === false && m.id && m.created_by !== session.user.id && (isAdmin() || standsIn(m.confirm_player, d, [...m.t1, ...m.t2]));
+const canAnswerFix = (d, m) => { if (m.fix_win == null || m.fix_by === session.user.id) return false;
+  const losers = m.win === 1 ? m.t1 : m.t2;   // the team that loses if the change goes through
+  return losers.some(id => (player(id) || {}).user === session.user.id) || (!losers.some(id => (player(id) || {}).user) && standsIn(null, d, [...m.t1, ...m.t2])); };
+const findMatch = (dayId, n) => { const d = db.days.find(x => x.id === dayId); return [d, d && d.matches.find(m => m.n === n)]; };
+const confirmMatch = (dayId, n, right) => { const [, m] = findMatch(dayId, n); if (m) act(async () => ok(await sb.rpc('confirm_match', { mid: m.id, ok: right })), () => { m.confirmed = true; if (!right) m.win = 3 - m.win; }); };
+const proposeFix = (dayId, n) => { const [, m] = findMatch(dayId, n); if (m && confirm(t('Change the winner of match {n}? A player of the team that would then lose has to confirm it.', { n })))
+  act(async () => ok(await sb.rpc('propose_fix', { mid: m.id })), () => { m.fix_win = 3 - m.win; m.fix_by = session.user.id; }); };
+const answerFix = (dayId, n, yes) => { const [, m] = findMatch(dayId, n); if (m) act(async () => ok(await sb.rpc('answer_fix', { mid: m.id, ok: yes })), () => { if (yes) { m.win = m.fix_win; m.confirmed = true; } m.fix_win = null; }); };
 const recordWin = team => {
   if (performance.now() - lastWin < 700) return; lastWin = performance.now(); // a double tap must not record two matches
-  primeAudio();
   const d = cur(), { t1, t2, rest } = nextTeams(d);
+  if (!canRecord(d, { t1, t2, rest })) return;
+  primeAudio();
   const row = { day_id: d.id, n: d.matches.length + 1, t1, t2, rest: rest || null, win: team };
+  row.confirm_player = nextTeams({ ...d, matches: [...d.matches, row] }).rest || null;   // the one resting next confirms it
   return act(async () => ok(await sb.from('matches').insert(row)), () => {
-    d.matches.push({ ...row, id: null, created_at: new Date().toISOString() }); celebrate(); const at = lastRec = Date.now(); setTimeout(() => lastRec === at && view === 'play' && render(), 5100); // the "recorded" note with its undo goes away after 5 s (only redraw the play screen, never a half-filled form)
+    d.matches.push({ ...row, id: null, confirmed: false, created_by: session.user.id, created_at: new Date().toISOString() }); celebrate(); const at = lastRec = Date.now(); setTimeout(() => lastRec === at && view === 'play' && render(), 5100); // the "recorded" note with its undo goes away after 5 s (only redraw the play screen, never a half-filled form)
   });
 };
 

@@ -2,6 +2,9 @@
 const st = { players: ['Vali','Dani','Costi','Zjepko','Ciprian'].map((name,i)=>({id:i+1,name,avatar:null,active:true,user_id:null})), days: [], matches: [], profiles: [], receipts: [], usage: [], rsvps: [], rsvp_unlocks: [], reactions: [], play_dates: [], chat: [], chat_reactions: [], tips: [], log: [], attempts: {}, schedule: [{ id: true, tz: 'Europe/Berlin', dow: 4, play_time: '18:30:00', opens_minutes: 60, rsvp_until_minutes: 120, rsvp_hide_minutes: 90 }], now: null, users: {}, files: {}, seq: { p: 5, d: 0, m: 0 } };
 const pages = [];
 const emit = () => pages.forEach(p => p.evaluate(() => window.__emit && window.__emit()).catch(() => {}));
+// "this player, or anyone of the night when the player is a guest or there is nobody" (like is_or_stands_in() in the database)
+const standsIn = (u, pid, d, extra) => { const p = pid && st.players.find(x => x.id === pid); if (p && p.user_id) return p.user_id === u;
+  return st.players.some(x => x.user_id === u && (extra.includes(x.id) || (d && (d.player_order || []).includes(x.id)))); };
 const isAdmin = u => (st.profiles.find(p => p.id === u) || {}).is_admin;
 const err = (message, code) => ({ error: { message, code } });
 const logAct = (u, action, detail) => st.log.push({ id: st.log.length + 1, at: new Date().toISOString(), actor: u, actor_name: (st.profiles.find(p => p.id === u) || {}).username || null, action, detail });
@@ -25,7 +28,7 @@ function rpc(u, r) {
   const match = row => r.f.every(([op, c, v]) => op === 'eq' ? row[c] === v : op === 'gte' ? row[c] >= v : row[c] > v);
   switch (r.op) {
     case 'rpc': {
-      if (r.name === 'db_version') return { data: st.dbVersion ?? 20261120 };
+      if (r.name === 'db_version') return { data: st.dbVersion ?? 20261121 };
       if (r.name === 'track') {
         if (!u) return { data: null };
         const f = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(st.now || Date.now())), g = x => f.find(p => p.type === x).value;
@@ -63,6 +66,18 @@ function rpc(u, r) {
         const email = pr && Object.keys(st.users).find(e => st.users[e].id === pr.id);
         if (email && st.users[email].password === r.args.pw) { delete st.attempts[k]; return { data: email }; }
         st.attempts[k] = (st.attempts[k] || 0) + 1; return { data: null };
+      }
+      if (r.name === 'confirm_match' || r.name === 'propose_fix' || r.name === 'answer_fix') {   // same rules as the database functions
+        const m = st.matches.find(x => x.id === r.args.mid), d = m && st.days.find(x => x.id === m.day_id); if (!m) return { data: null };
+        if (r.name === 'confirm_match') { if (m.confirmed === true || m.confirmed === undefined) return { data: null };
+          if (!isAdmin(u) && (m.created_by === u || !standsIn(u, m.confirm_player, d, [...m.t1, ...m.t2]))) return err('The next resting player confirms this match');
+          Object.assign(m, { confirmed: true, confirmed_by: u, win: r.args.ok ? m.win : 3 - m.win }); emit(); return { data: null }; }
+        if (r.name === 'propose_fix') { if (!isAdmin(u)) return err('Admins only'); if (!d.closed) return err('Close the day first'); Object.assign(m, { fix_win: 3 - m.win, fix_by: u }); emit(); return { data: null }; }
+        if (m.fix_win == null) return { data: null };
+        const losers = m.win === 1 ? m.t1 : m.t2, mine = losers.some(id => (st.players.find(p => p.id === id) || {}).user_id === u) || (!losers.some(id => (st.players.find(p => p.id === id) || {}).user_id) && standsIn(u, null, d, [...m.t1, ...m.t2]));
+        if (!mine || m.fix_by === u) return err('A player of the team that would lose confirms this change');
+        if (r.args.ok) { Object.assign(m, { win: m.fix_win, fix_win: null, fix_by: null, confirmed: true }); logAct(u, 'fix_match', { date: d.date, n: m.n }); } else Object.assign(m, { fix_win: null, fix_by: null });
+        emit(); return { data: null };
       }
       if (r.name === 'standings') {
         const sm = new Map(); for (const mt of st.matches) for (const [ids, won] of [[mt.t1, mt.win === 1], [mt.t2, mt.win === 2]]) for (const id of ids) { const x = sm.get(id) || { player_id: id, played: 0, wins: 0 }; x.played++; x.wins += won ? 1 : 0; sm.set(id, x); }
@@ -115,6 +130,7 @@ function rpc(u, r) {
         const d = st.days.find(d => d.id === row.day_id);
         if (!d || !d.started || d.closed) return err('new row violates row-level security policy');
         if (st.matches.some(m => m.day_id === row.day_id && m.n === row.n)) return err('duplicate key', '23505');
+        row.created_by = u; if (!isAdmin(u)) { row.confirmed = false; row.fix_win = null; if (!standsIn(u, row.rest, d, [...row.t1, ...row.t2])) return err('The resting player records this match'); } else row.confirmed = !!row.confirmed;
         row.id = ++st.seq.m; row.created_at = new Date().toISOString();
       }
       T.push(row); emit(); return { data: r.single ? row : [row] };

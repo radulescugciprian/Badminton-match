@@ -37,13 +37,13 @@ run('sign-in, rights, photos and the play schedule', async h => {
   await A.click('nav >> text=Board'); await B.click('nav >> text=Board');
   assert((await A.textContent('.podium')) === (await B.textContent('.podium')), 'same leaderboard');
   // stale double-record -> friendly message, no duplicate
-  await B.evaluate(() => { cur().matches.pop(); }); // B believes match 2 is still open
-  await B.click('nav >> text=Play'); await win(B, 1).catch(() => {});
-  await B.waitForTimeout(400);
-  assert(B.alerts.some(a => a.includes('already recorded')), 'duplicate warned: ' + B.alerts);
+  await A.evaluate(() => { cur().matches.pop(); }); // the admin's phone believes match 2 is still open (members may only record when resting)
+  await A.click('nav >> text=Play'); await win(A, 1).catch(() => {});
+  await A.waitForTimeout(400);
+  assert(A.alerts.some(a => a.includes('already recorded')), 'duplicate warned: ' + A.alerts);
   assert(st.matches.length === 2, 'no duplicate match stored');
   // close day (admin) -> member photo -> shared library
-  await A.click('nav >> text=Play'); await h.more(A); await A.click('text=Close day'); await B.waitForSelector('h1:has-text("Results")'); assert.equal(await B.locator('text=Reopen day').count(), 0, 'only admins reopen');
+  await A.click('nav >> text=Play'); await B.click('nav >> text=Play'); await h.more(A); await A.click('text=Close day'); await B.waitForSelector('h1:has-text("Results")'); assert.equal(await B.locator('text=Reopen day').count(), 0, 'only admins reopen');
   await B.click('text=Take group photo'); await B.setInputFiles('#shot', S + 'red.png'); await B.click('#crop [data-ok]');
   await B.waitForSelector('text=Photo saved'); await A.waitForSelector('text=Photo saved');
   await A.click('nav >> text=Photos'); await A.waitForSelector('.grid img');

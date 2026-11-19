@@ -196,12 +196,24 @@ function closedExtras(d, part) {
     ${nightAwards(an, d.id).map(x => `<span class="badge">${name(x.id)}: ${AWARD[x.kind]()}</span>`).join('')}<div style="height:10px"></div>`;
 }
 
+// results waiting for me: confirm a match I watched while resting, or an admin's change that makes my team lose
+function resultCards() {
+  const recent = db.days.filter(d => d.date >= addDays(tzParts().date, -14)), out = [];
+  for (const d of recent) for (const m of d.matches) {
+    const w = m.win === 1 ? m.t1 : m.t2, l = m.win === 1 ? m.t2 : m.t1;
+    if (canConfirm(d, m)) out.push(`<div class="card rescard"><b>${t('Please confirm match {n}', { n: m.n })}</b><span>${t('{winners} beat {losers}?', { winners: pair(w), losers: pair(l) })}</span>
+      <div class="nextup"><button class="primary" onclick="confirmMatch(${d.id}, ${m.n}, true)">✓ ${t('Right')}</button><button class="add" onclick="confirmMatch(${d.id}, ${m.n}, false)">${t('The other team won')}</button></div></div>`);
+    if (canAnswerFix(d, m)) out.push(`<div class="card rescard"><b>${t('An admin wants to change match {n} ({date})', { n: m.n, date: esc(niceDate(d.date)) })}</b><span>${t('New result: {winners} beat {losers}. You would be on the losing team, so you confirm it.', { winners: pair(l), losers: pair(w) })}</span>
+      <div class="nextup"><button class="primary" onclick="answerFix(${d.id}, ${m.n}, true)">✓ ${t('Confirm the change')}</button><button class="add" onclick="answerFix(${d.id}, ${m.n}, false)">${t('Decline')}</button></div></div>`);
+  }
+  return out.join('');
+}
 // every match of a day, in order: on the closed-day screen and under the Board's Day view
 function matchList(d, where) {
   const side = (m, k) => { const ids = k === 1 ? m.t1 : m.t2, nm = m['team' + k + '_name'];
     return `${m.win === k ? '🏆 ' : ''}${nm ? `<b>${esc(nm)}</b> (${pair(ids)})` : pair(ids)}`; };
   return `<details class="fold" ${matchesOpen[where] ? 'open' : ''} ontoggle="matchesOpen['${where}']=this.open"><summary>${t('Matches')} (${d.matches.length})</summary><div class="card" style="padding:4px 16px">${d.matches.map(m => `<div class="mrow"><span class="r">${m.n}</span><span class="kind ${m.t1.length === 1 ? 'single' : 'double'}">${m.t1.length === 1 ? '1v1' : '2v2'}</span>
-    <span style="flex:1">${side(m, 1)} <span class="mut">${t('vs')}</span> ${side(m, 2)}</span><span class="mut">${m.created_at ? new Date(m.created_at).toLocaleTimeString(LOCALE[lang], { hour: '2-digit', minute: '2-digit' }) : ''}</span></div>`).join('')}</div></details>`;
+    <span style="flex:1">${side(m, 1)} <span class="mut">${t('vs')}</span> ${side(m, 2)}</span><span class="mut">${m.created_at ? new Date(m.created_at).toLocaleTimeString(LOCALE[lang], { hour: '2-digit', minute: '2-digit' }) : ''}</span>${m.fix_win != null ? `<span class="mstate">⏳ ${t('change waiting')}</span>` : m.confirmed === false ? `<span class="mstate">⏳ ${t('to confirm')}</span>` : d.closed && isAdmin() && m.id ? `<button class="link mfix" onclick="proposeFix(${d.id}, ${m.n})" aria-label="${t('Change the winner of match {n}', { n: m.n })}">✎</button>` : ''}</div>`).join('')}</div></details>`;
 }
 
 function play() {
@@ -225,12 +237,14 @@ function play() {
   // the match after this one, for either result (they differ with "winner stays" and at the end of a best of 3)
   const peek = w => nextTeams({ ...d, matches: [...d.matches, { t1, t2, rest, win: w }] }), vs = m => `${pair(m.t1)} <span class="mut">${t('vs')}</span> ${pair(m.t2)}`;
   const [n1, n2] = [vs(peek(1)), vs(peek(2))];
-  const team = k => `<button class="team" style="--c:var(--t${k})" onclick="recordWin(${k})"><small>${k === 1 ? t('Team 1') : t('Team 2')}</small>${(k === 1 ? t1 : t2).map(who).join('')}<span class="wbar">🏆 ${k === 1 ? t('Team 1 Wins') : t('Team 2 Wins')}</span></button>`;
+  const may = canRecord(d, { t1, t2, rest });   // the resting player records (anyone of the night when nobody rests or a guest rests)
+  const team = k => `<button class="team" style="--c:var(--t${k})" onclick="recordWin(${k})" ${may ? '' : 'disabled'}><small>${k === 1 ? t('Team 1') : t('Team 2')}</small>${(k === 1 ? t1 : t2).map(who).join('')}<span class="wbar">🏆 ${k === 1 ? t('Team 1 Wins') : t('Team 2 Wins')}</span></button>`;
   const fresh = n && Date.now() - lastRec < 5000, lw = fresh && d.matches[n - 1];
   return `<div class="stage">
     <div class="pchips"><span>${t1.length === 1 ? t('Singles') : t('Doubles')}</span>${rule ? `<span>${rule}</span>` : ''}<span>${t('{n} played', { n })}</span></div>
     <p class="num">${t('Match {n}', { n: n + 1 })}</p>
     <div class="teams">${team(1)}${team(2)}</div>
+    ${may ? '' : `<p class="mut whorec" role="status">🔒 ${rest && player(rest).user ? t('{name} is resting and records this match.', { name: name(rest) }) : t('A player of tonight records this match.')}</p>`}
     ${rest ? `<div class="rest">${av(rest, 22)} ${t('Resting:')} <b>${name(rest)}</b></div>` : ''}
     ${lw ? `<div class="toast">✓ ${pair(lw.win === 1 ? lw.t1 : lw.t2)} <button class="link" onclick="lastRec=0;undo()">↶ ${t('Undo')}</button></div>` : ''}
     <div class="upnext"><b>${t('Next')}:</b> ${n1 === n2 ? n1 : `<div>${t('If team {n} wins: {m}', { n: 1, m: n1 })}</div><div>${t('If team {n} wins: {m}', { n: 2, m: n2 })}</div>`}</div>
@@ -693,7 +707,7 @@ const coin = (k, c, cls = '') => `<span class="coin ${cls}" style="--c:${COINC[c
 const medal = i => coin(String(i + 1), ['gold', 'silver', 'bronze'][i]);
 const svgIcon = (k, cls = '') => `<svg class="lic ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LINE[k]}</svg>`;
 const ICON = svgIcon, topIcon = svgIcon;   // one icon family: line icons that follow the light or dark theme
-const NAV = { play: () => ICON('play') + '<span>' + t('Play') + (session && loaded && (invites().length || (isAdmin() && unlocks.some(u => !u.opened && u.day_date >= tzParts().date))) ? ' •' : '') + '</span>', board: () => ICON('board') + '<span>' + t('Board') + '</span>',
+const NAV = { play: () => ICON('play') + '<span>' + t('Play') + (session && loaded && (invites().length || resultCards() || (isAdmin() && unlocks.some(u => !u.opened && u.day_date >= tzParts().date))) ? ' •' : '') + '</span>', board: () => ICON('board') + '<span>' + t('Board') + '</span>',
   group: () => svgIcon(chatOn ? 'chat' : 'members') + '<span>' + t('Group') + '</span>' + (session && loaded && chatOn && chatUnread() ? `<i class="cbadge">${chatUnread()}</i>` : ''), photos: () => ICON('photos') + '<span>' + t('Photos') + '</span>', stats: () => ICON('stats') + '<span>' + t('Stats') + '</span>' };
 
 // an empty screen: an icon, what is missing, how it fills up, and the next step
@@ -723,7 +737,7 @@ function render() {
   const behind = me.is_admin && dbBehind ? `<div class="strip"><span>⚠️ ${t('The database is missing updates, so some buttons may fail. Apply the newest migrations in Supabase (see SETUP.md).')}</span></div>` : '';
   const strip = behind;
   const nearEnd = view === 'chat' && innerHeight + scrollY >= document.body.scrollHeight - 120;   // reading older messages: do not jump
-  app.innerHTML = top + strip + (view === 'play' ? play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'admin' && isAdmin() ? adminView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : view === 'chat' && chatOn ? chatView() : view === 'tips' ? tipsView() : view === 'records' ? recordsView() : view === 'backfill' && bf ? backfillView() : `<h1>${t('Photos')}</h1><div class="seg" style="margin-bottom:12px"><button class="${photosTab === 'photos' ? 'on' : ''}" onclick="photosTab='photos';render()">📷 ${t('Photos')}</button><button class="${photosTab === 'receipts' ? 'on' : ''}" onclick="photosTab='receipts';render()">🧾 ${t('Receipts')}</button></div><div id="gal"></div>`);
+  app.innerHTML = top + strip + (view === 'play' ? resultCards() + play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'admin' && isAdmin() ? adminView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : view === 'chat' && chatOn ? chatView() : view === 'tips' ? tipsView() : view === 'records' ? recordsView() : view === 'backfill' && bf ? backfillView() : `<h1>${t('Photos')}</h1><div class="seg" style="margin-bottom:12px"><button class="${photosTab === 'photos' ? 'on' : ''}" onclick="photosTab='photos';render()">📷 ${t('Photos')}</button><button class="${photosTab === 'receipts' ? 'on' : ''}" onclick="photosTab='receipts';render()">🧾 ${t('Receipts')}</button></div><div id="gal"></div>`);
   drawReactions();
   const sl = document.querySelector('.slides'); shownSlide = slideIdx; if (sl && slideIdx) sl.scrollLeft = slideIdx * sl.clientWidth;
   minimalize(app);

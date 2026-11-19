@@ -334,4 +334,32 @@ update login_attempts set since = now() - interval '16 minutes';
 set role anon;
 select check_that(login_email('member1', 'secret1') = 'member@x.com', 'the lock expires after 15 minutes');
 reset role;
+-- ================= recording and confirming results; fixing a closed day =================
+-- accounts left here: Admin1 (player 1), member1 (player 2) and the latecomer; Kid is a guest
+insert into players (name) values ('Kid');
+insert into days (date, player_order, mode, started) select '2099-03-04', array[1, 2, (select id from players where user_id = '00000000-0000-0000-0000-00000000000d'), (select id from players where name = 'Kid')], 5, true;
+set role authenticated; select as_user((select m1 from ids));
+select must_fail($$insert into matches (day_id, n, t1, t2, rest, win) select id, 1, array[2, (select id from players where name = 'Kid')], array[1, 5], (select id from players where user_id = '00000000-0000-0000-0000-00000000000d'), 1 from days where date = '2099-03-04'$$, 'resting player records');   -- the latecomer rests, not member1
+insert into matches (day_id, n, t1, t2, rest, win, confirm_player, confirmed) select id, 1, array[1, (select id from players where name = 'Kid')], array[(select id from players where user_id = '00000000-0000-0000-0000-00000000000d'), 5], 2, 1, (select id from players where user_id = '00000000-0000-0000-0000-00000000000d'), true from days where date = '2099-03-04';   -- member1 rests: records
+select check_that((select not m.confirmed and m.created_by = (select m1 from ids) from matches m join days d on d.id = m.day_id where d.date = '2099-03-04' and m.n = 1), 'waits for confirmation (whatever the app sends), recorder kept');
+select must_fail($$select confirm_match((select m.id from matches m join days d on d.id = m.day_id where d.date = '2099-03-04' and m.n = 1), true)$$, 'next resting player confirms');   -- not the recorder
+insert into matches (day_id, n, t1, t2, rest, win) select id, 2, array[1, 2], array[(select id from players where user_id = '00000000-0000-0000-0000-00000000000d'), 5], (select id from players where name = 'Kid'), 2 from days where date = '2099-03-04';   -- a guest rests: any player of the night records
+select as_user('00000000-0000-0000-0000-00000000000d');
+select confirm_match((select m.id from matches m join days d on d.id = m.day_id where d.date = '2099-03-04' and m.n = 1), false);   -- the latecomer rests next: the other team won
+select check_that((select m.confirmed and m.win = 2 from matches m join days d on d.id = m.day_id where d.date = '2099-03-04' and m.n = 1), 'confirmed, with the winner swapped');
+select must_fail($$select propose_fix((select m.id from matches m join days d on d.id = m.day_id where d.date = '2099-03-04' and m.n = 2))$$, 'Admins only');
+select as_user((select adm from ids));
+select must_fail($$select propose_fix((select m.id from matches m join days d on d.id = m.day_id where d.date = '2099-03-04' and m.n = 2))$$, 'Close the day first');
+update days set closed = true where date = '2099-03-04';
+select propose_fix((select m.id from matches m join days d on d.id = m.day_id where d.date = '2099-03-04' and m.n = 2));   -- team 2 (the latecomer and 5) won; the admin says team 1 did
+select must_fail($$select answer_fix((select m.id from matches m join days d on d.id = m.day_id where d.date = '2099-03-04' and m.n = 2), true)$$, 'team that would lose');   -- not the admin who proposed it
+select as_user((select m1 from ids));
+select must_fail($$select answer_fix((select m.id from matches m join days d on d.id = m.day_id where d.date = '2099-03-04' and m.n = 2), true)$$, 'team that would lose');   -- member1 would win: cannot confirm
+select as_user('00000000-0000-0000-0000-00000000000d');
+select answer_fix((select m.id from matches m join days d on d.id = m.day_id where d.date = '2099-03-04' and m.n = 2), true);   -- the latecomer would lose: confirms
+select check_that((select m.win = 1 and m.fix_win is null from matches m join days d on d.id = m.day_id where d.date = '2099-03-04' and m.n = 2), 'the change went through');
+select check_that(rows_changed($$update matches set win = 2$$) = 0, 'nobody edits matches directly');
+reset role;
+select check_that((select count(*) from admin_log where action = 'fix_match') = 1, 'the change is logged');
+
 select 'sql rights tests ok' as result;
