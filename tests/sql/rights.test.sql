@@ -168,9 +168,21 @@ select check_that((select count(*) from play_dates) = 2, 'members can read the c
 select check_that(rsvp_open('2026-10-22', '2026-10-22 14:29Z') and not rsvp_open('2026-10-22', '2026-10-22 14:31Z'), 'answers close at 16:30 on the play day');
 select check_that(rsvp_open('2026-10-29', '2026-10-22 20:00Z') and not rsvp_open('2026-10-21', '2026-10-22 12:00Z'), 'later days stay open, past days are closed');
 select must_fail($$insert into rsvps values ('2020-01-01', 2, 'in')$$, 'Answers are closed');
+-- too late: the member asks the admins to open it (only for themselves, and cannot open it themselves)
+insert into rsvp_unlocks (day_date, player_id) values ('2020-01-01', 2);
+select must_fail($$insert into rsvp_unlocks (day_date, player_id, opened) values ('2020-01-02', 2, true)$$, 'row-level security');
+select must_fail($$insert into rsvp_unlocks (day_date, player_id) values ('2020-01-01', 3)$$, 'row-level security');
+select check_that(rows_changed($$update rsvp_unlocks set opened = true$$) = 0, 'members cannot open it themselves');
+select must_fail($$insert into rsvps values ('2020-01-01', 2, 'in')$$, 'Answers are closed');
 select as_user((select adm from ids));
 insert into rsvps values ('2020-01-01', 4, 'in');
 select check_that(true, 'admins may answer after the deadline');
+select check_that(rows_changed($$update rsvp_unlocks set opened = true where day_date = '2020-01-01' and player_id = 2$$) = 1, 'admins open it');
+select as_user((select m1 from ids));
+insert into rsvps values ('2020-01-01', 2, 'out');                                                   -- now the member answers themselves
+select must_fail($$insert into rsvps values ('2020-01-02', 2, 'in')$$, 'Answers are closed');           -- only for that day
+select must_fail($$insert into rsvps values ('2099-02-01', 3, 'in')$$, 'row-level security');           -- and never for someone else, even while answers are open
+select as_user((select adm from ids));
 select must_fail($$update schedule set rsvp_hide_minutes = 200$$, 'cannot be hidden before');
 select must_fail($$update schedule set rsvp_until_minutes = 5000$$, 'between 0 and 1440');
 -- windows that reach back past midnight (a 00:30 game that opens 60 minutes before, on Wednesday evening Berlin)

@@ -24,9 +24,10 @@ let db = { players: [], days: [] }, members = [], me = {}, session = null, loade
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
-const DB_VERSION = 20261116; // bump together with db_version() in the newest migration
+const DB_VERSION = 20261120; // bump together with db_version() in the newest migration
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
+let unlocks = [];   // late answers: a member asked the admins to open the sign-up for them (opened: an admin did)
 let flipOn = false, loyaltyOpen = false, statsSeg = 'partners', boardKind = 'doubles', boardOpen = null, memFilter = 'all', memSort = 'name', memOpen = null, adminPage = '', admPanel = '', prevView = 'play', profPanel = '', usage = [], lastTracked = '', slideIdx = 0, deepDone = false, logAll = false, receipts = [], photosTab = 'photos', dbBehind = false, benchOpen = false, lineupOpen = false, moreOpen = false, dayMore = false, matchesOpen = {}, lastRec = 0, bgLoaded = false, rsvps = [], reactions = [], statsId = null, lbDay = null; // sign-ups, photo reactions, team names for the next match
 function memberView() { try { return localStorage.getItem('adminView') !== '1'; } catch { return true; } }
 let view = 'play', tab = 'all', selId = null, authMode = 'in', unclaimed = [], helpShown = false, lastWin = 0, manualLogout = false, lostSession = false, asMember = memberView();   // asMember: an admin seeing the app as a normal member (the default; remembered on this phone)
@@ -78,7 +79,7 @@ const canSee = pid => isAdmin() || player(pid).user === session.user.id || shari
 async function refresh() {
   if (!session) return;
   const seq = changeSeq;
-  const [p, d, m, sc, rs, rx, sd, pd, rc, ch, cr, tg] = await Promise.all([
+  const [p, d, m, sc, rs, rx, sd, pd, rc, ch, cr, tg, ul] = await Promise.all([
     sb.from('players').select('*').order('id'),
     sb.from('days').select('*, matches(*)').order('id'),
     sb.from('profiles').select('*').order('name'),
@@ -91,11 +92,12 @@ async function refresh() {
     sb.from('chat').select('*').order('id', { ascending: false }).limit(200),
     sb.from('chat_reactions').select('*'),
     sb.from('tips').select('*').order('id', { ascending: false }),
+    sb.from('rsvp_unlocks').select('*'),
   ]);
   if (pending > 0 || seq !== changeSeq) return; // taps happened while this was loading: its answer is out of date, the next re-fetch will show the truth
   std = sd.error ? null : sd.data; receipts = rc.error ? [] : rc.data; playDates = pd.error ? [] : pd.data;
   sched = !sc.error && sc.data[0] ? sc.data[0] : null;
-  rsvps = rs.error ? [] : rs.data; reactions = rx.error ? [] : rx.data; // empty until the migration has been applied
+  rsvps = rs.error ? [] : rs.data; unlocks = ul.error ? [] : ul.data; reactions = rx.error ? [] : rx.data; // empty until the migration has been applied
   chat = ch.error ? [] : ch.data.reverse(); chatRx = cr.error ? [] : cr.data; tips = tg.error ? [] : tg.data;
   db.players = ok(p).map(x => ({ id: x.id, name: x.name, avatar: x.avatar, removed: !x.active, user: x.user_id, by: x.created_by, at: x.created_at }));
   db.days = ok(d).sort((a, b) => a.closed === b.closed ? (a.closed ? (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) : 0) : a.closed ? -1 : 1).map(x => ({ id: x.id, date: x.date, order: x.player_order, mode: x.mode, rotFrom: x.rot_from || 0, quickFrom: x.quick_from ?? null, started: x.started, closed: x.closed,
@@ -725,6 +727,9 @@ function rsvpPhase(date) {
   if (p && p.answer_by) return Date.now() < Date.parse(p.answer_by) ? 'open' : left <= sched.rsvp_hide_minutes ? 'hidden' : 'locked';
   return left <= sched.rsvp_hide_minutes ? 'hidden' : left <= sched.rsvp_until_minutes ? 'locked' : 'open';
 }
+const unlockOf = (id, date) => unlocks.find(u => u.day_date === date && u.player_id === id);
+const askUnlock = (id, date) => act(async () => ok(await sb.from('rsvp_unlocks').insert({ day_date: date, player_id: id })), () => { unlocks.push({ day_date: date, player_id: id, opened: false }); });
+const openUnlock = (id, date) => act(async () => ok(await sb.from('rsvp_unlocks').update({ opened: true }).eq('day_date', date).eq('player_id', id)), () => { const u = unlockOf(id, date); if (u) u.opened = true; });
 const answerOf = (id, date) => (rsvps.find(r => r.day_date === date && r.player_id === id) || {}).status;
 const setRsvp = (id, status, date = nextPlayDate()) => {
   return act(async () => {

@@ -391,3 +391,4 @@
   /* #crop twice: beats the light theme's text colour on buttons (its selector list includes an id) */
   #crop#crop button{color:#eefaf4;background:none;border:0} #crop#crop .seg button.on{background:rgba(255,255,255,.22)}
   #crop#crop .cact [data-no]{border:1px solid rgba(255,255,255,.35)} #crop#crop .cact .primary{background:var(--acc);color:var(--on-acc)}
+  .unlockreq{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0 0;padding:8px 10px;border-radius:12px;background:var(--chip);font-size:var(--fs-sm)} .unlockreq .link{white-space:nowrap;font-weight:700}

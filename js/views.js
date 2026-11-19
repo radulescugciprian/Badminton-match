@@ -61,14 +61,18 @@ function profileView() {
 function rsvpCard(date = nextPlayDate(), first = true) {
   const mine = db.players.find(p => p.user === session.user.id), act_ = db.players.filter(p => !p.removed), admin = isAdmin();
   const ans = id => answerOf(id, date), icon = id => ({ in: '✅', out: '❌' }[ans(id)] || '⏳');
-  const by = deadlineText(date), phase = rsvpPhase(date), locked = phase !== 'open' && !admin;
-  if (phase === 'hidden' && !admin) return '';
+  const by = deadlineText(date), phase = rsvpPhase(date), late = mine && unlockOf(mine.id, date), locked = phase !== 'open' && !admin && !(late && late.opened);
+  if (phase === 'hidden' && !admin && !(late && late.opened)) return '';
+  const asks = admin ? unlocks.filter(u => u.day_date === date && !u.opened && player(u.player_id)) : [];
   const n = act_.filter(p => ans(p.id) === 'in').length;
   const open = rsvpIsOpen(date);
   return `<div class="card rsvp ${dayTint(date)}" data-day="${date}"><div class="rhead"><div><div class="mut" style="margin:0;font-size:var(--fs-sm)">${first ? t('Next match day') : extraOf(date) ? t('Extra game') : t('Later')}</div><b>${niceDate(date)}${extraOf(date) && extraOf(date).play_time ? ' · ' + hhmm(playMinsOn(date)) : ''}</b>${movedNote(date)}<span class="mut rcount">${t('{n} in', { n })}</span></div>
       <span><button class="link" onclick="shareSignup('${date}')" aria-label="${t('Share on WhatsApp')}" title="${t('Share on WhatsApp')}">💬</button><button class="link" onclick="go('calendar')" aria-label="${t('Calendar')}">📅</button><button class="link" onclick="toggleRsvp('${date}')" aria-expanded="${open}">${open ? '▴' : '▾'} ${t('Details')}</button></span></div>
     ${extraOf(date) && canCallOff(date) ? `<button class="link" onclick="callOff('${date}', true)">🚫 ${t('Cancel this game')}</button>` : ''}
-    ${mine && locked ? `<p class="mut" style="margin:8px 0 0">🔒 ${t('Answers closed at {time}.', { time: by })}</p>` : ''}
+    ${mine && locked ? `<p class="mut" style="margin:8px 0 0">🔒 ${t('Answers closed at {time}.', { time: by })}</p>
+      ${late ? `<p class="mut" style="margin:4px 0 0">⏳ ${t('You asked an admin to open it for you.')}</p>` : `<button class="link" onclick="askUnlock(${mine.id}, '${date}')">🔓 ${t('Ask an admin to change my answer')}</button>`}` : ''}
+    ${mine && late && late.opened && phase !== 'open' ? `<p class="mut" style="margin:8px 0 0">🔓 ${t('An admin opened the sign-up for you.')}</p>` : ''}
+    ${asks.map(u => `<div class="unlockreq"><span>🔓 ${t('{name} asks to change their answer.', { name: name(u.player_id) })}</span><button class="link" onclick="openUnlock(${u.player_id}, '${date}')">${t('Open for {name}', { name: name(u.player_id) })}</button></div>`).join('')}
     ${mine && !locked ? `<div class="seg"><button class="${ans(mine.id) === 'in' ? 'on' : ''}" onclick="setRsvp(${mine.id}, ${ans(mine.id) === 'in' ? 'null' : "'in'"}, '${date}')">✅ ${t("I'm in")}</button>
       <button class="${ans(mine.id) === 'out' ? 'on' : ''}" onclick="setRsvp(${mine.id}, ${ans(mine.id) === 'out' ? 'null' : "'out'"}, '${date}')">❌ ${t("I'm out")}</button></div>` : ''}
     ${open ? `<div class="chips">${act_.map(p => admin ? `<button class="chip ${ans(p.id) || ''}" onclick="cycleRsvp(${p.id}, '${date}')" aria-label="${t('Answer for {name}', { name: esc(p.name) })}">${av(p.id, 22)} ${esc(p.name)} ${icon(p.id)}</button>`
@@ -689,7 +693,7 @@ const coin = (k, c, cls = '') => `<span class="coin ${cls}" style="--c:${COINC[c
 const medal = i => coin(String(i + 1), ['gold', 'silver', 'bronze'][i]);
 const svgIcon = (k, cls = '') => `<svg class="lic ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LINE[k]}</svg>`;
 const ICON = svgIcon, topIcon = svgIcon;   // one icon family: line icons that follow the light or dark theme
-const NAV = { play: () => ICON('play') + '<span>' + t('Play') + (session && loaded && invites().length ? ' •' : '') + '</span>', board: () => ICON('board') + '<span>' + t('Board') + '</span>',
+const NAV = { play: () => ICON('play') + '<span>' + t('Play') + (session && loaded && (invites().length || (isAdmin() && unlocks.some(u => !u.opened && u.day_date >= tzParts().date))) ? ' •' : '') + '</span>', board: () => ICON('board') + '<span>' + t('Board') + '</span>',
   group: () => svgIcon(chatOn ? 'chat' : 'members') + '<span>' + t('Group') + '</span>' + (session && loaded && chatOn && chatUnread() ? `<i class="cbadge">${chatUnread()}</i>` : ''), photos: () => ICON('photos') + '<span>' + t('Photos') + '</span>', stats: () => ICON('stats') + '<span>' + t('Stats') + '</span>' };
 
 // an empty screen: an icon, what is missing, how it fills up, and the next step
