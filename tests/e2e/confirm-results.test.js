@@ -20,10 +20,10 @@ run('record by the resting player, confirm by the next one; admin changes confir
   // match 2: Costi rests and records; Dani (resting next) confirms
   await win(C, 1); await until(() => m(2) && m(2).confirm_player === 2, 'match 2 saved, Dani confirms');
   await B.click('.rescard >> text=Right'); await until(() => m(2).confirmed && m(2).win === 1, 'confirmed as it was');
-  // after closing: the admin changes the winner of match 2; Dani & Vali would lose, so Bob (Dani) confirms — not the admin who proposed it
+  // after closing: the admin changes the winner of match 2; Dani & Vali would lose, so Bob (Dani) confirms — or Anna (Vali), who proposed it but played on that team
   await A.click('.closeday'); await A.waitForSelector('h1:has-text("Results")');
   await A.click('summary:has-text("Matches")'); await A.click('[aria-label="Change the winner of match 2"]'); await until(() => m(2).fix_win === 2, 'change proposed');
-  await A.waitForSelector('.mrow >> text=change waiting'); assert.equal(await A.locator('.rescard').count(), 0, 'the admin who proposed it cannot confirm');
+  await A.waitForSelector('.mrow >> text=change waiting'); await A.waitForSelector('.rescard >> text=An admin wants to change match 2');   // she played on the losing team: she may confirm
   await B.click('nav >> text=Play'); await B.waitForSelector('.rescard >> text=An admin wants to change match 2');
   assert.equal(await C.locator('.rescard').count(), 0, 'Costi was not on that team');
   await B.click('.rescard >> text=Confirm the change'); await until(() => m(2).win === 2 && m(2).fix_win == null, 'changed');

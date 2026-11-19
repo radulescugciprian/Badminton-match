@@ -24,7 +24,7 @@ let db = { players: [], days: [] }, members = [], me = {}, session = null, loade
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
-const DB_VERSION = 20261121; // bump together with db_version() in the newest migration
+const DB_VERSION = 20261122; // bump together with db_version() in the newest migration
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
 let unlocks = [];   // late answers: a member asked the admins to open the sign-up for them (opened: an admin did)
@@ -531,9 +531,9 @@ const standsIn = (pid, d, extra = []) => { const p = pid && player(pid); if (p &
   const me_ = myPid(); return !!me_ && (extra.includes(me_) || (d.order || []).includes(me_)); };
 const canRecord = (d, x) => isAdmin() || standsIn(x.rest, d, [...x.t1, ...x.t2]);
 const canConfirm = (d, m) => m.confirmed === false && m.id && m.created_by !== session.user.id && (isAdmin() || standsIn(m.confirm_player, d, [...m.t1, ...m.t2]));
-const canAnswerFix = (d, m) => { if (m.fix_win == null || m.fix_by === session.user.id) return false;
-  const losers = m.win === 1 ? m.t1 : m.t2;   // the team that loses if the change goes through
-  return losers.some(id => (player(id) || {}).user === session.user.id) || (!losers.some(id => (player(id) || {}).user) && standsIn(null, d, [...m.t1, ...m.t2])); };
+const canAnswerFix = (d, m) => { if (m.fix_win == null) return false;
+  const losers = m.win === 1 ? m.t1 : m.t2;   // the team that loses if the change goes through (the proposing admin too, if they played on it)
+  return losers.some(id => (player(id) || {}).user === session.user.id) || (!losers.some(id => (player(id) || {}).user) && m.fix_by !== session.user.id && standsIn(null, d, [...m.t1, ...m.t2])); };
 const findMatch = (dayId, n) => { const d = db.days.find(x => x.id === dayId); return [d, d && d.matches.find(m => m.n === n)]; };
 const confirmMatch = (dayId, n, right) => { const [, m] = findMatch(dayId, n); if (m) act(async () => ok(await sb.rpc('confirm_match', { mid: m.id, ok: right })), () => { m.confirmed = true; if (!right) m.win = 3 - m.win; }); };
 const proposeFix = (dayId, n) => { const [, m] = findMatch(dayId, n); if (m && confirm(t('Change the winner of match {n}? A player of the team that would then lose has to confirm it.', { n })))

@@ -28,7 +28,7 @@ function rpc(u, r) {
   const match = row => r.f.every(([op, c, v]) => op === 'eq' ? row[c] === v : op === 'gte' ? row[c] >= v : row[c] > v);
   switch (r.op) {
     case 'rpc': {
-      if (r.name === 'db_version') return { data: st.dbVersion ?? 20261121 };
+      if (r.name === 'db_version') return { data: st.dbVersion ?? 20261122 };
       if (r.name === 'track') {
         if (!u) return { data: null };
         const f = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(st.now || Date.now())), g = x => f.find(p => p.type === x).value;
@@ -74,8 +74,8 @@ function rpc(u, r) {
           Object.assign(m, { confirmed: true, confirmed_by: u, win: r.args.ok ? m.win : 3 - m.win }); emit(); return { data: null }; }
         if (r.name === 'propose_fix') { if (!isAdmin(u)) return err('Admins only'); if (!d.closed) return err('Close the day first'); Object.assign(m, { fix_win: 3 - m.win, fix_by: u }); emit(); return { data: null }; }
         if (m.fix_win == null) return { data: null };
-        const losers = m.win === 1 ? m.t1 : m.t2, mine = losers.some(id => (st.players.find(p => p.id === id) || {}).user_id === u) || (!losers.some(id => (st.players.find(p => p.id === id) || {}).user_id) && standsIn(u, null, d, [...m.t1, ...m.t2]));
-        if (!mine || m.fix_by === u) return err('A player of the team that would lose confirms this change');
+        const losers = m.win === 1 ? m.t1 : m.t2, mine = losers.some(id => (st.players.find(p => p.id === id) || {}).user_id === u) || (!losers.some(id => (st.players.find(p => p.id === id) || {}).user_id) && m.fix_by !== u && standsIn(u, null, d, [...m.t1, ...m.t2]));
+        if (!mine) return err('A player of the team that would lose confirms this change');
         if (r.args.ok) { Object.assign(m, { win: m.fix_win, fix_win: null, fix_by: null, confirmed: true }); logAct(u, 'fix_match', { date: d.date, n: m.n }); } else Object.assign(m, { fix_win: null, fix_by: null });
         emit(); return { data: null };
       }

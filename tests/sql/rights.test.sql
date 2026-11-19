@@ -350,16 +350,20 @@ select check_that((select m.confirmed and m.win = 2 from matches m join days d o
 select must_fail($$select propose_fix((select m.id from matches m join days d on d.id = m.day_id where d.date = '2099-03-04' and m.n = 2))$$, 'Admins only');
 select as_user((select adm from ids));
 select must_fail($$select propose_fix((select m.id from matches m join days d on d.id = m.day_id where d.date = '2099-03-04' and m.n = 2))$$, 'Close the day first');
+insert into matches (day_id, n, t1, t2, rest, win) select id, 3, array[1, (select id from players where name = 'Kid')], array[2, 5], null, 1 from days where date = '2099-03-04';   -- the admin's team won
 update days set closed = true where date = '2099-03-04';
 select propose_fix((select m.id from matches m join days d on d.id = m.day_id where d.date = '2099-03-04' and m.n = 2));   -- team 2 (the latecomer and 5) won; the admin says team 1 did
-select must_fail($$select answer_fix((select m.id from matches m join days d on d.id = m.day_id where d.date = '2099-03-04' and m.n = 2), true)$$, 'team that would lose');   -- not the admin who proposed it
+select must_fail($$select answer_fix((select m.id from matches m join days d on d.id = m.day_id where d.date = '2099-03-04' and m.n = 2), true)$$, 'team that would lose');   -- the admin was not on that team
 select as_user((select m1 from ids));
 select must_fail($$select answer_fix((select m.id from matches m join days d on d.id = m.day_id where d.date = '2099-03-04' and m.n = 2), true)$$, 'team that would lose');   -- member1 would win: cannot confirm
 select as_user('00000000-0000-0000-0000-00000000000d');
 select answer_fix((select m.id from matches m join days d on d.id = m.day_id where d.date = '2099-03-04' and m.n = 2), true);   -- the latecomer would lose: confirms
 select check_that((select m.win = 1 and m.fix_win is null from matches m join days d on d.id = m.day_id where d.date = '2099-03-04' and m.n = 2), 'the change went through');
 select check_that(rows_changed($$update matches set win = 2$$) = 0, 'nobody edits matches directly');
+select as_user((select adm from ids));
+select propose_fix((select m.id from matches m join days d on d.id = m.day_id where d.date = '2099-03-04' and m.n = 3)); select answer_fix((select m.id from matches m join days d on d.id = m.day_id where d.date = '2099-03-04' and m.n = 3), true);   -- the admin played on the team that now loses: may confirm their own proposal
+select check_that((select m.win = 2 from matches m join days d on d.id = m.day_id where d.date = '2099-03-04' and m.n = 3), 'a proposing admin on the losing team confirms');
 reset role;
-select check_that((select count(*) from admin_log where action = 'fix_match') = 1, 'the change is logged');
+select check_that((select count(*) from admin_log where action = 'fix_match') = 2, 'the changes are logged');
 
 select 'sql rights tests ok' as result;
