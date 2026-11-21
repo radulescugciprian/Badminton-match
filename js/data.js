@@ -616,17 +616,18 @@ const waShare = text => track('act:whatsapp') || window.open('https://wa.me/?tex
 let deckT;
 const deckIdx = () => { const el = document.querySelector('.cdeck'); if (!el) return 0; const mid = el.scrollLeft + el.clientWidth / 2;
   let best = 0; [...el.children].forEach((c, i) => { if (Math.abs(c.offsetLeft + c.offsetWidth / 2 - mid) < Math.abs(el.children[best].offsetLeft + el.children[best].offsetWidth / 2 - mid)) best = i; }); return best; };
-const deckTo = (i, smooth = true) => { const el = document.querySelector('.cdeck'), c = el && el.children[i]; if (c) el.scrollTo({ left: c.offsetLeft - (el.clientWidth - c.offsetWidth) / 2, behavior: smooth ? 'smooth' : 'auto' }); };
+const deckTo = (i, smooth = !calmMotion()) => { const el = document.querySelector('.cdeck'), c = el && el.children[i]; if (c) el.scrollTo({ left: c.offsetLeft - (el.clientWidth - c.offsetWidth) / 2, behavior: smooth ? 'smooth' : 'auto' }); };
 // ---- the card deck feels physical: while you swipe, every card scales, fades and tilts by its distance from the middle;
-// opening Stats deals the deck; tapping the middle card turns it over in 3D with a lift and a light sweep across the front.
+// opening Stats deals the deck; tapping the middle card turns it over in 3D (a second tap mid-turn turns it back).
 // Reduced motion: no tilt or travel; the flip is a crossfade (CSS) and the deal a fade.
 let statsVisit = 1, dealtFor = 0, shapeQueued = false;
 const calmMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 function shapeDeck() {
-  const el = document.querySelector('.cdeck'); if (!el || calmMotion()) return;
-  const mid = el.scrollLeft + el.clientWidth / 2;
+  const el = document.querySelector('.cdeck'); if (!el) return;
+  const mid = el.scrollLeft + el.clientWidth / 2, calm = calmMotion();
   for (const c of el.children) { const d = Math.max(-1, Math.min(1, (c.offsetLeft + c.offsetWidth / 2 - mid) / (c.offsetWidth + 10))), a = Math.abs(d);
-    c.style.transform = `translateY(${(a * 8).toFixed(1)}px) rotateY(${(-d * 7).toFixed(2)}deg) scale(${(1 - a * .08).toFixed(3)})`; c.style.opacity = (1 - a * .4).toFixed(3); }
+    c.style.opacity = (1 - a * .4).toFixed(3);   // fading is not movement: reduced motion keeps it, so the centred card is always the bright one
+    if (!calm) c.style.transform = `translateY(${(a * 8).toFixed(1)}px) rotateY(${(-d * 7).toFixed(2)}deg) scale(${(1 - a * .08).toFixed(3)})`; }
 }
 function dealDeck() {
   const el = document.querySelector('.cdeck'); if (!el || !Element.prototype.animate) return;
@@ -637,11 +638,12 @@ function dealDeck() {
     c.animate(kf, { duration: side ? 420 : 480, delay: side ? 140 : 0, easing: ease, fill: 'backwards' }); });
 }
 function flipCard(slide) {
-  const f = slide.querySelector('.flip'); flipOn = !flipOn; f.classList.toggle('on', flipOn);
+  const f = slide.querySelector('.flip'), running = f.getAnimations ? f.getAnimations()[0] : null;
+  flipOn = !flipOn; f.classList.toggle('on', flipOn);
   if (calmMotion() || !f.animate) return;   // reduced motion: the CSS crossfade does it
+  if (running) return running.reverse();     // tapped again mid-turn: turn back from where it is
   const a = flipOn ? 0 : 180, b = flipOn ? 180 : 0;
-  f.animate([{ transform: `rotateY(${a}deg) scale(1)` }, { transform: `rotateY(${(a + b) / 2}deg) scale(1.06)`, offset: .5 }, { transform: `rotateY(${b}deg) scale(1)` }], { duration: 560, easing: 'cubic-bezier(.45,0,.2,1)' });
-  const g = slide.querySelector('.glint'); if (g) g.animate([{ opacity: 0, transform: 'translateX(-60%)' }, { opacity: .55, offset: .3 }, { opacity: 0, transform: 'translateX(60%)' }], { duration: 560, easing: 'ease-in-out' });
+  f.animate([{ transform: `rotateY(${a}deg)` }, { transform: `rotateY(${b}deg)` }], { duration: 560, easing: 'cubic-bezier(.45,0,.2,1)' });
 }
 function onDeck(el) {
   if (!shapeQueued) { shapeQueued = true; requestAnimationFrame(() => { shapeQueued = false; shapeDeck(); }); }
