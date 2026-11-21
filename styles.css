@@ -360,11 +360,10 @@
 
   /* stats: everyone's card as a deck to swipe; the neighbours peek in, smaller */
   .cdeck{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;margin:4px -16px 0;padding:4px 9vw 8px} .cdeck::-webkit-scrollbar{display:none}
-  .cslide{flex:0 0 min(82vw,340px);scroll-snap-align:center;transition:transform .25s cubic-bezier(.2,.8,.2,1),opacity .25s} .cslide:not(.on){transform:scale(.92);opacity:.6;cursor:pointer}
+  .cslide{flex:0 0 min(82vw,340px);scroll-snap-align:center;perspective:1100px} .cslide:not(.on){cursor:pointer}   /* scale, fade and tilt come from shapeDeck() while swiping */
   .cslide .pcslot{margin:0}
   .cbar{display:flex;justify-content:space-between;align-items:center;margin:-4px 0 4px} .cbar span{font-size:var(--fs-sm);font-weight:700} .cbar .up{color:var(--acc)} .cbar .down{color:var(--danger)}
   :root:not([data-theme=light]) img.pcimg{filter:brightness(.9)}
-  @media (prefers-reduced-motion:reduce){.cslide{transition:none}}
   /* coins: things you earn (medals, badges, stickers, records) as a metal-style disc in their colour, with a solid white icon or a place number */
   .coin{--s:40px;display:inline-grid;place-items:center;flex:none;width:var(--s);height:var(--s);border-radius:50%;color:#fff;vertical-align:middle;
     background:linear-gradient(145deg,color-mix(in srgb,var(--c) 65%,#fff),var(--c) 55%,color-mix(in srgb,var(--c) 70%,#000));box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 1px 2px rgba(0,0,0,.25)}
@@ -373,8 +372,9 @@
   .rank .r .coin{--s:28px} .pod .medal .coin{--s:36px} .hof .stk .coin{--s:36px} .album .stk .si{filter:none;opacity:1;font-size:0} .album .stk .si .coin{--s:44px}
   .newrec .coin.sm{margin:-3px 4px 0 0}
   /* the middle card flips on tap: the back shows that player's details, like the back of a sports card */
-  .flip{position:relative;transform-style:preserve-3d;transition:transform .5s cubic-bezier(.2,.8,.2,1)} .flip.on{transform:rotateY(180deg)}
-  .flip .face{backface-visibility:hidden;-webkit-backface-visibility:hidden}
+  .flip{position:relative;transform-style:preserve-3d} .flip.on{transform:rotateY(180deg)}   /* the turn itself is flipCard()'s animation */
+  .flip .face{backface-visibility:hidden;-webkit-backface-visibility:hidden} .flip .face:first-child{position:relative}
+  .glint{position:absolute;inset:6px;border-radius:16px;pointer-events:none;opacity:0;background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.9) 50%,transparent 70%);mix-blend-mode:soft-light}
   .cback{position:absolute;inset:0;transform:rotateY(180deg);overflow-y:auto;border-radius:18px;padding:16px 14px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:6px;font-size:var(--fs-sm);color:var(--text)}
   .cback .bh{display:flex;flex-direction:column} .cback .bh b{font-family:var(--disp);font-weight:400;font-size:28px;line-height:1.05;letter-spacing:.03em}
   .cback .br{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap} .cback .br b{font-family:var(--disp);font-weight:400;font-size:40px;line-height:1} .cback .br .mut{font-size:var(--fs-xs)}
@@ -382,7 +382,7 @@
   .cback .bsec{font-size:var(--fs-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin-top:6px}
   .cback .bbad{display:flex;flex-wrap:wrap;gap:4px} .cback .badge{margin:0;font-size:var(--fs-xs);padding:3px 8px 3px 6px} .cback .brec{display:flex;align-items:center;gap:6px} .cback .brec .coin{--s:22px}
   .flipnote{text-align:center;font-size:var(--fs-xs);margin:-6px 0 8px}
-  @media (prefers-reduced-motion:reduce){.flip{transition:none}}
+  @media (prefers-reduced-motion:reduce){.flip.on{transform:none} .flip .face{transition:opacity .2s} .flip .cback{transform:none;opacity:0} .flip.on .cback{opacity:1} .flip.on .face:first-child{opacity:0} .cslide:not(.on){opacity:.6}}   /* the flip is a crossfade */
   /* crop a picture before upload: the picture fills the screen, the frame shows what is kept */
   #crop{position:fixed;inset:0;z-index:40;display:flex;flex-direction:column;background:#05080f;color:#eefaf4;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
   #crop .cstage{flex:1;min-height:0;position:relative} #crop canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}

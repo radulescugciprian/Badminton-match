@@ -434,8 +434,8 @@ function loyaltyHtml(an, id) {
 function cardDeck(an, played, id) {
   const k = played.findIndex(p => p.id === id), lastDay = [...db.days].reverse().find(d => (an.night.get(d.id) || new Map()).has(id)), r = lastDay && an.night.get(lastDay.id).get(id);
   const g = r && !ratingHidden(id) ? Math.round(r.delta + (seasonKey(lastDay.date) === seasonKey(tzParts().date) ? nightBonus(r) : 0)) : 0;
-  return `<div class="cdeck" onscroll="onDeck(this)">${played.map((p, i) => `<div class="cslide ${i === k ? 'on' : ''}" onclick="if(${i}!==deckIdx())deckTo(${i});else{flipOn=!flipOn;this.querySelector('.flip').classList.toggle('on',flipOn)}">
-      <div class="flip ${i === k && flipOn ? 'on' : ''}"><div class="face">${playerCardHtml(cardSpec(p.id, an))}</div><div class="face cback" role="note">${i === k ? cardBack(an, p.id) : ''}</div></div></div>`).join('')}</div>
+  return `<div class="cdeck" onscroll="onDeck(this)">${played.map((p, i) => `<div class="cslide ${i === k ? 'on' : ''}" onclick="if(${i}!==deckIdx())deckTo(${i});else flipCard(this)">
+      <div class="flip ${i === k && flipOn ? 'on' : ''}"><div class="face">${playerCardHtml(cardSpec(p.id, an))}<i class="glint" aria-hidden="true"></i></div><div class="face cback" role="note">${i === k ? cardBack(an, p.id) : ''}</div></div></div>`).join('')}</div>
     ${played.length > 1 ? `<div class="dots">${played.map((_, i) => `<i class="${i === k ? 'on' : ''}"></i>`).join('')}</div>` : ''}
     <p class="mut flipnote">${t('Tap the card to flip it')}</p>
     <div class="cbar">${g ? `<span class="${g > 0 ? 'up' : 'down'}">${g > 0 ? '▲' : '▼'}${Math.abs(g)} ${t('last night')}</span>` : '<span></span>'}<button class="link" onclick="sharePlayerCard(${id})">📤 ${t('Share card')}</button></div>`;
@@ -778,7 +778,8 @@ function render() {
   if (before) playMotion(before);
   const sl = document.querySelector('.slides'); shownSlide = slideIdx; if (sl && slideIdx) sl.scrollLeft = slideIdx * sl.clientWidth;
   minimalize(app);
-  if (view === 'stats') { const k = [...document.querySelectorAll('.cslide')].findIndex(x => x.classList.contains('on')); if (k > 0) deckTo(k, false); fillCards(); }
+  if (view === 'stats') { const k = [...document.querySelectorAll('.cslide')].findIndex(x => x.classList.contains('on')); if (k > 0) deckTo(k, false); shapeDeck(); if (dealtFor !== statsVisit) { dealtFor = statsVisit; dealDeck(); } fillCards(); }
+  if (view !== 'stats') statsVisit++;
   let cf = document.querySelector('.cform');   // made once, outside #app: redraws never interrupt typing
   if (!cf && session) { cf = document.createElement('form'); cf.className = 'cform'; cf.onsubmit = sendChat; document.body.append(cf); }
   if (cf) {

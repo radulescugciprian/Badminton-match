@@ -617,7 +617,34 @@ let deckT;
 const deckIdx = () => { const el = document.querySelector('.cdeck'); if (!el) return 0; const mid = el.scrollLeft + el.clientWidth / 2;
   let best = 0; [...el.children].forEach((c, i) => { if (Math.abs(c.offsetLeft + c.offsetWidth / 2 - mid) < Math.abs(el.children[best].offsetLeft + el.children[best].offsetWidth / 2 - mid)) best = i; }); return best; };
 const deckTo = (i, smooth = true) => { const el = document.querySelector('.cdeck'), c = el && el.children[i]; if (c) el.scrollTo({ left: c.offsetLeft - (el.clientWidth - c.offsetWidth) / 2, behavior: smooth ? 'smooth' : 'auto' }); };
+// ---- the card deck feels physical: while you swipe, every card scales, fades and tilts by its distance from the middle;
+// opening Stats deals the deck; tapping the middle card turns it over in 3D with a lift and a light sweep across the front.
+// Reduced motion: no tilt or travel; the flip is a crossfade (CSS) and the deal a fade.
+let statsVisit = 1, dealtFor = 0, shapeQueued = false;
+const calmMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+function shapeDeck() {
+  const el = document.querySelector('.cdeck'); if (!el || calmMotion()) return;
+  const mid = el.scrollLeft + el.clientWidth / 2;
+  for (const c of el.children) { const d = Math.max(-1, Math.min(1, (c.offsetLeft + c.offsetWidth / 2 - mid) / (c.offsetWidth + 10))), a = Math.abs(d);
+    c.style.transform = `translateY(${(a * 8).toFixed(1)}px) rotateY(${(-d * 7).toFixed(2)}deg) scale(${(1 - a * .08).toFixed(3)})`; c.style.opacity = (1 - a * .4).toFixed(3); }
+}
+function dealDeck() {
+  const el = document.querySelector('.cdeck'); if (!el || !Element.prototype.animate) return;
+  const on = el.querySelector('.cslide.on') || el.children[0], k = [...el.children].indexOf(on), ease = 'cubic-bezier(.16,1,.3,1)';
+  [...el.children].forEach((c, i) => { const side = Math.sign(i - k), far = Math.abs(i - k) > 1;
+    if (far) return;
+    const kf = calmMotion() ? [{ opacity: 0 }, {}] : side ? [{ opacity: 0, translate: `${-side * 45}% 0` }, {}] : [{ opacity: 0, translate: '0 28px' }, {}];
+    c.animate(kf, { duration: side ? 420 : 480, delay: side ? 140 : 0, easing: ease, fill: 'backwards' }); });
+}
+function flipCard(slide) {
+  const f = slide.querySelector('.flip'); flipOn = !flipOn; f.classList.toggle('on', flipOn);
+  if (calmMotion() || !f.animate) return;   // reduced motion: the CSS crossfade does it
+  const a = flipOn ? 0 : 180, b = flipOn ? 180 : 0;
+  f.animate([{ transform: `rotateY(${a}deg) scale(1)` }, { transform: `rotateY(${(a + b) / 2}deg) scale(1.06)`, offset: .5 }, { transform: `rotateY(${b}deg) scale(1)` }], { duration: 560, easing: 'cubic-bezier(.45,0,.2,1)' });
+  const g = slide.querySelector('.glint'); if (g) g.animate([{ opacity: 0, transform: 'translateX(-60%)' }, { opacity: .55, offset: .3 }, { opacity: 0, transform: 'translateX(60%)' }], { duration: 560, easing: 'ease-in-out' });
+}
 function onDeck(el) {
+  if (!shapeQueued) { shapeQueued = true; requestAnimationFrame(() => { shapeQueued = false; shapeDeck(); }); }
   const i = deckIdx(); document.querySelectorAll('.cdeck + .dots i').forEach((x, k) => x.classList.toggle('on', k === i));
   clearTimeout(deckT); deckT = setTimeout(() => { if (!el.isConnected) return;   // a redraw replaced this deck meanwhile
     const s = el.children[i], id = s && +s.querySelector('.pcslot').dataset.id; if (id && id !== statsId) { statsId = id; flipOn = false; render(); } }, 180);
