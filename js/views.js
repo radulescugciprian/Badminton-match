@@ -908,6 +908,7 @@ let shownView = null;
 function pageIn(from, to) {
   if (!Element.prototype.animate) return;
   const a = TABS.indexOf(tabOf(from)), b = TABS.indexOf(tabOf(to)), dir = a < 0 || b < 0 || a === b ? 0 : Math.sign(b - a), fade = calmNow() || !dir;
+  if (a >= 0 && b >= 0) return;   // between the five tabs: no animation for now (checking a reported glitch)
   [...app.children].filter(e => !e.matches('.top, .strip')).forEach(e => e.animate(fade ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: `translateX(${dir * 18}px)` }, { opacity: 1, transform: 'none' }],
     { duration: fade ? 160 : 240, easing: EASE, fill: 'backwards' }));
 }
