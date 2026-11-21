@@ -4,6 +4,7 @@ run('video tips', async h => {
   const { mk, signup, st, assert, until } = h;
   const A = await mk(); await signup(A, 'Anna', 'a@x.com', '1');
   const B = await mk(); await signup(B, 'Bob', 'b@x.com', '2');
+  for (const P of [A, B]) await P.route(/youtube(-nocookie)?\.com|ytimg\.com/, r => r.fulfill({ contentType: 'text/html', body: '<!doctype html><title>video</title>' }));   // no network to YouTube in tests
   await A.click('nav [data-v=group]'); assert.equal(await A.locator('.seg >> text=Chat').count(), 0, 'the chat is off'); await A.click('.seg >> text=Videos'); await A.waitForSelector('text=No video tips yet');
   await A.click('button:has-text("Add a video tip")');
   await A.fill('[name=title]', 'x'); await A.click('text=Share with everyone'); await A.waitForSelector('.msg:has-text("Paste the link")');   // a title alone is not enough

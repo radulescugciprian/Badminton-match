@@ -68,7 +68,7 @@ const seasonLabel = key => { const [k, y] = key.split(' '); return { winter: t('
 const loyal = id => seasonsPlayed().filter(s => s !== seasonKey(tzParts().date))
   .filter(s => [...loyalty(db.days, db.players, s)].sort((x, y) => y[1].bonus - x[1].bonus).slice(0, 3).some(([pid]) => pid === id)).length;
 // the rating everyone sees = the match rating (pure, used for odds and upsets) + this season's loyalty bonus
-const loyaltyOf = (an, id) => (an.bonus || (an.bonus = loyalty(db.days, db.players, seasonKey(tzParts().date), an))).get(id) || { bonus: 0, nights: 0, matches: 0, challenges: 0 };
+const loyaltyOf = (an, id) => (s => an['bonus ' + s] || (an['bonus ' + s] = loyalty(db.days, db.players, s, an)))(seasonKey(tzParts().date)).get(id) || { bonus: 0, nights: 0, matches: 0, challenges: 0 };
 const bonusOf = (an, id) => loyaltyOf(an, id).bonus;
 const matchRatingOf = (an, id) => (an.main(id) === 'singles' ? an.ratingS : an.rating).get(id);
 const ratingOf = (an, id) => matchRatingOf(an, id) + bonusOf(an, id);   // in the kind a player plays most

@@ -4,7 +4,15 @@ const START_RATING = 1000, K_FACTOR = 32;
 
 // days: [{id, date, matches: [{n, t1: [ids], t2: [ids], win: 1|2}]}] in play order; players: [{id}]
 // doubles and singles have separate ratings (rating / ratingS, hist / histS); a match only moves the rating of its own kind
+// the whole match log worked out once per set of results: screens ask for it many times per redraw
+const dayKey = days => days.map(d => d.id + ':' + d.date + ':' + d.matches.map(m => m.t1 + 'v' + m.t2 + m.win).join(',')).join('|'), analyseMemo = new Map();
 function analyse(days, players) {
+  const key = players.map(p => p.id).join() + '#' + dayKey(days);
+  if (analyseMemo.has(key)) return analyseMemo.get(key);
+  if (analyseMemo.size > 8) analyseMemo.clear();
+  const a = analyseRaw(days, players); analyseMemo.set(key, a); return a;
+}
+function analyseRaw(days, players) {
   const rating = new Map(players.map(p => [p.id, START_RATING])), ratingS = new Map(players.map(p => [p.id, START_RATING]));
   const hist = new Map(players.map(p => [p.id, []])), histS = new Map(players.map(p => [p.id, []]));   // rating after each match the player played
   const results = new Map(players.map(p => [p.id, []]));   // win/loss in play order
@@ -170,11 +178,16 @@ const LOYALTY = { night: 3, match: 1, maxMatches: 2, challenge: 2 };
 const seasonKey = iso => { const s = seasonOf(iso); return s.k + ' ' + s.y; };
 const nightBonus = r => LOYALTY.night + Math.min(LOYALTY.maxMatches, r.p * LOYALTY.match);   // r = a.night.get(dayId).get(playerId)
 // the season's bonus per player: Map(id -> { bonus, nights, challenges })
+const loyaltyMemo = new Map();
 function loyalty(days, players, season, a = analyse(days, players)) {
-  const out = new Map(), row = id => out.get(id) || out.set(id, { bonus: 0, nights: 0, matches: 0, challenges: 0 }).get(id);
+  const key = season + '#' + players.map(p => p.id).join() + '#' + dayKey(days);
+  if (loyaltyMemo.has(key)) return loyaltyMemo.get(key);
+  if (loyaltyMemo.size > 32) loyaltyMemo.clear();
+  const out = new Map(); row = id => out.get(id) || out.set(id, { bonus: 0, nights: 0, matches: 0, challenges: 0 }).get(id);
   const ds = days.filter(d => d.matches.length && seasonKey(d.date) === season);
   for (const d of ds) for (const [id, r] of a.night.get(d.id) || []) { const x = row(id); x.nights++; x.matches += nightBonus(r) - LOYALTY.night; x.bonus += nightBonus(r); }
   for (const w of new Set(ds.map(d => mondayOf(d.date)))) for (const [id, c] of challenge(days, players, w, a).of) if (c.done) { const x = row(id); x.challenges++; x.bonus += LOYALTY.challenge; }
+  loyaltyMemo.set(key, out);
   return out;
 }
 
@@ -206,10 +219,16 @@ function challenge(days, players, monday, a = analyse(days, players)) {
   return { kind, need, of };
 }
 // how many weekly challenges each player has completed: Map(playerId -> n)
+// remembered per set of results: badges and the album ask the same question once per player and redraw
+const winsMemo = new Map();
 function challengeWins(days, players) {
+  const key = players.map(p => p.id).join() + '#' + dayKey(days);
+  if (winsMemo.has(key)) return winsMemo.get(key);
   const a = analyse(days, players), out = new Map();
   for (const w of new Set(days.filter(d => d.matches.length).map(d => mondayOf(d.date))))
     for (const [id, x] of challenge(days, players, w, a).of) if (x.done) out.set(id, (out.get(id) || 0) + 1);
+  if (winsMemo.size > 8) winsMemo.clear();
+  winsMemo.set(key, out);
   return out;
 }
 
@@ -239,10 +258,22 @@ function records(days, players, a = analyse(days, players)) {
 }
 
 // the rating people see after each match: match rating + that season's loyalty bonus up to that day (the chart on Stats)
+const historyMemo = new Map();
 function shownHistory(days, players, pid, a = analyse(days, players)) {
-  const cache = new Map(), bonus = date => cache.has(date) ? cache.get(date)
-    : cache.set(date, (loyalty(days.filter(d => d.date <= date), players, seasonKey(date), a).get(pid) || { bonus: 0 }).bonus).get(date);
-  return ((a.main(pid) === 'singles' ? a.histS : a.hist).get(pid) || []).map(e => e.r + bonus(e.date));
+  const key = pid + '#' + players.map(p => p.id).join() + '#' + dayKey(days);
+  if (historyMemo.has(key)) return historyMemo.get(key);
+  if (historyMemo.size > 32) historyMemo.clear();
+  // the same sum as loyalty() on the days up to each date, in one pass: a finished week's challenge is worked out once
+  // (later days never change it); only the week the date falls in is worked out on the days up to that date
+  const done = (ds, w) => !!(challenge(ds, players, w, a).of.get(pid) || {}).done, weekDone = new Map(), cache = new Map();
+  const bonus = date => { if (cache.has(date)) return cache.get(date);
+    const s = seasonKey(date), now = mondayOf(date), ds = days.filter(d => d.matches.length && d.date <= date && seasonKey(d.date) === s);
+    let b = 0; for (const d of ds) { const r = (a.night.get(d.id) || new Map()).get(pid); if (r) b += nightBonus(r); }
+    for (const w of new Set(ds.map(d => mondayOf(d.date))))
+      if (w === now ? done(days.filter(d => d.date <= date), w) : weekDone.has(w) ? weekDone.get(w) : weekDone.set(w, done(days, w)).get(w)) b += LOYALTY.challenge;
+    cache.set(date, b); return b; };
+  const out = ((a.main(pid) === 'singles' ? a.histS : a.hist).get(pid) || []).map(e => e.r + bonus(e.date));
+  historyMemo.set(key, out); return out;
 }
 
 // ---- card collection: you collect someone's card the first time you beat them or win with them as your partner

@@ -188,4 +188,17 @@ assert(ratingChart([1000, 1032, 1010]).includes('1032'));
   assert(sh[0] > an.hist.get(1)[0].r, 'the first night already counts its bonus');
 }
 
+{ // the chart's one-pass loyalty bonus equals loyalty() on the days up to each date (the slow, obvious way)
+  const A = require('../analytics.js'), P = [1, 2, 3, 4, 5, 6].map(id => ({ id }));
+  const slow = (days, pid, a) => ((a.main(pid) === 'singles' ? a.histS : a.hist).get(pid) || []).map(e => e.r + (A.loyalty(days.filter(d => d.date <= e.date), P, A.seasonKey(e.date), a).get(pid) || { bonus: 0 }).bonus);
+  for (let k = 0; k < 30; k++) {
+    const days = []; let t = Date.UTC(2026, 0, 1);
+    for (let i = 0; i < 20; i++) { t += (1 + Math.floor(Math.random() * 9)) * 864e5; const ms = [];
+      for (let j = 0; j < 1 + Math.floor(Math.random() * 8); j++) { const sh = [...P].sort(() => Math.random() - .5).map(p => p.id), one = Math.random() < .2;
+        ms.push({ n: j + 1, t1: one ? [sh[0]] : sh.slice(0, 2), t2: one ? [sh[1]] : sh.slice(2, 4), win: 1 + (Math.random() < .5) }); }
+      days.push({ id: i, date: new Date(t).toISOString().slice(0, 10), matches: ms }); }
+    const a = A.analyse(days, P);
+    for (const p of P) assert.deepEqual(A.shownHistory(days, P, p.id, a).map(v => v.toFixed(6)), slow(days, p.id, a).map(v => v.toFixed(6)), 'same chart');
+  }
+}
 console.log('analytics tests passed');
