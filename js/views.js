@@ -878,17 +878,24 @@ function winShow(m) {
 }
 // "New teams": the two arrows (in the team colours) swap once when the change is first shown, after the win popup and the
 // teams' glide; afterwards (redraws, coming back to Play) it is a still frame. Without the Lottie file: the line icon stays.
-let teamSeen = '', teamMo = null;
+let teamSeen = '', teamMo = null, teamAnim = null;
 async function teamNote() {
   const note = document.querySelector('#app .newteams'); if (!note || !fxOn() || !LOTTIE.swap) return;
-  const key = note.dataset.key, box = note.querySelector('.ntic'), fresh = teamSeen !== key && !winPending;
-  if (fresh) { teamSeen = key; teamMo = { key, at: performance.now() }; }
-  const t = teamMo && teamMo.key === key ? performance.now() - teamMo.at : Infinity, still = winPending || t > 2100;
-  const fb = box.innerHTML; box.innerHTML = '';
-  const anim = await playLottie(box, LOTTIE.swap, still);
-  if (!anim) { box.innerHTML = fb; return; }
+  const key = note.dataset.key, box = note.querySelector('.ntic');
+  if (teamSeen !== key && !winPending) { teamSeen = key; teamMo = { key, at: performance.now() }; }
+  const wait = teamSeen !== key, since = () => teamMo && teamMo.key === key ? performance.now() - teamMo.at : Infinity;
+  // the arrows already on screen (held on their first frame under the win popup): start them, no reload
+  if (teamAnim && teamAnim.key === key && teamAnim.box === box && box.isConnected) { if (!wait && since() < 100 && !calmNow()) teamAnim.a.play(); return; }
+  const tmp = document.createElement('span'); tmp.className = 'ntlot';
+  const anim = await playLottie(tmp, LOTTIE.swap, true);   // loaded aside as a still; the line icon stays until it is ready
+  if (!anim) return;
   if (!box.isConnected) return anim.destroy();
-  if (!still && t > 30 && !calmNow()) anim.goToAndPlay(t, false);   // a redraw while it plays: carry on where it was
+  const t = since();
+  if (wait) anim.goToAndStop(0, true);                                    // under the popup: the first frame, so starting later never jumps
+  else if (!calmNow() && t < 2100) anim.goToAndPlay(Math.max(0, t), false);   // the first showing, or a redraw while it plays: carry on
+  box.replaceChildren(tmp);                                               // otherwise the finished still (reduced motion, later visits)
+  if (teamAnim && teamAnim.a !== anim) teamAnim.a.destroy();
+  teamAnim = { key, box, a: anim };
 }
 // the app's own drawing: a shuttlecock arcs over the header onto a gold trophy
 function drawnNight() {

@@ -116,7 +116,7 @@
   .nightshow .ntro{--s:56px;position:absolute} .nightshow .nlot{position:absolute}
   .newteams{display:flex;align-items:center;gap:6px;margin:2px 0 -2px;padding:2px 12px 2px 2px;border-radius:999px;background:var(--card);border:1px solid var(--line);width:fit-content;max-width:100%;font-size:var(--fs-sm);line-height:1.25}
   .newteams .mut{margin:0}
-  .newteams .ntic{display:grid;place-items:center;width:40px;height:40px;flex:none;color:var(--acc)} .newteams .ntic .lic{width:22px;height:22px}
+  .newteams .ntic{display:grid;place-items:center;width:40px;height:40px;flex:none;color:var(--acc)} .newteams .ntic .lic{width:22px;height:22px} .newteams .ntlot{display:block;width:100%;height:100%}
   .winpop{position:absolute;z-index:21;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px;border-radius:16px;background:var(--card);border:2px solid var(--c);box-shadow:0 10px 30px rgba(0,0,0,.18);text-align:center;cursor:pointer;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
   .winpop .wlot{width:min(130px,46%);aspect-ratio:1;display:grid;place-items:center;margin-bottom:-6px} .winpop .wlot .coin{--s:64px}
   .winpop .wavs{display:flex;justify-content:center;position:relative} .winpop .wavs .av{box-shadow:0 0 0 3px var(--c),0 4px 12px rgba(0,0,0,.2)} .winpop .wavs .av+.av{margin-left:-10px}
