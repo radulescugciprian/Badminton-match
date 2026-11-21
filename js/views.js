@@ -734,9 +734,9 @@ function playMotion(before) {
         if (!rest && Math.abs(k - 1) > .02) go_(face, [{ transform: `scale(${k})` }, { transform: 'none' }], o);   // coming on from the resting row: the avatar grows
         if (rest) go_(e.querySelector('.lbl'), [{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: i * 30 + 260 });
       });
-      const note = document.querySelector('#app .stage .toast'); if (note) go_(note, rise(8), { duration: 220 });
+      const note = document.querySelector('#app .stage .toast'); if (note && !motion.replay) go_(note, rise(8), { duration: 220 });   // a replay after the win popup moves only the players
     }
-    if (motion.closedNow) { const after = fxOn() && !calm ? 650 : 0;   // after the trophy lands
+    if (motion.closedNow) { const after = fxOn() && !calm ? (LOTTIE.potn ? 100 : 650) : 0;   // the drawn trophy lands at 650; the Lottie one comes with the card
       [...app.children].filter(e => !e.matches('.top, .strip, h1, h1 + .mut')).forEach((e, i) => go_(e, rise(14), { duration: 450, delay: after + Math.min(i, 5) * 80 })); }
   }
   document.querySelectorAll('#app .rescard:not(.done)').forEach(e => { if (!seenCards.has(e.textContent)) { seenCards.add(e.textContent); e.animate(matchMedia('(prefers-reduced-motion: reduce)').matches ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 300, easing: EASE }); } });
@@ -837,7 +837,7 @@ function potnShow() {
   const c = document.querySelector('#app .potn'); if (!c) return Promise.resolve(false);
   if (c.getBoundingClientRect().top < 0) scrollTo(0, 0);
   const r = c.getBoundingClientRect(), S = 120;
-  return lottieOver(LOTTIE.potn, { left: r.right - S - 4, top: r.top + r.height / 2 - S / 2 }, S, { delay: 650 });
+  return lottieOver(LOTTIE.potn, { left: r.right - S - 4, top: r.top + r.height / 2 - S / 2 }, S, { delay: 100 });
 }
 // a match won: a popup on the teams card names the winners, with the racket smashing the shuttle (in place of the confetti).
 // It goes when the animation ends or on a tap (the Undo note below stays reachable); the fanfare as before.
@@ -847,12 +847,15 @@ function winShow(m) {
     dropShows('.winpop');
     const w = m.win === 1 ? m.t1 : m.t2, x = analyse(db.days, db.players).log.find(e => e.day === m.day_id && e.n === m.n), gain = x && !w.some(ratingHidden) ? Math.round(K_FACTOR * (1 - x.chance)) : 0;
     const r = tm.getBoundingClientRect(), calm = calmNow(), el = document.createElement('div');
-    el.className = 'winpop'; el.setAttribute('role', 'status'); el.style.setProperty('--c', `var(--t${m.win})`);
-    Object.assign(el.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
-    el.innerHTML = `<div class="wlot" aria-hidden="true"></div><b>${w.length === 1 ? t('{name} won!', { name: pair(w) }) : t('{names} won!', { names: pair(w) })}</b>${gain ? `<span class="gain">+${gain}</span>` : ''}`;
+    el.className = 'winpop'; el.style.setProperty('--c', `var(--t${m.win})`);
+    Object.assign(el.style, { left: r.left + scrollX + 'px', top: r.top + scrollY + 'px', width: r.width + 'px', height: r.height + 'px' });   // on the page: it stays on the cards when scrolling
+    el.innerHTML = `<div class="wlot" aria-hidden="true"></div><div class="wtxt" role="status"></div>`;
     document.body.append(el);
+    // the live region exists first and gets its text a moment later, so screen readers announce it
+    requestAnimationFrame(() => { el.querySelector('.wtxt').innerHTML = `<b>${w.length === 1 ? t('{name} won!', { name: pair(w) }) : t('{names} won!', { names: pair(w) })}</b>${gain ? `<span class="gain">+${gain}</span>` : ''}`; });
     el.animate(calm ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: 'scale(.94)' }, { opacity: 1, transform: 'none' }], { duration: calm ? 200 : 260, easing: EASE });
     const out = () => { if (!el.isConnected || el.closing) return; el.closing = true;
+      if (motion && motion.changed) { motion = { ...motion, at: performance.now(), replay: true }; playMotion(motion.before); }   // the new teams glide into place now, where everyone sees it
       el.animate([{ opacity: 1 }, { opacity: 0, transform: calm ? 'none' : 'scale(.98)' }], { duration: 200, easing: 'ease-in', fill: 'forwards' }).finished.then(() => { if (el.anim) el.anim.destroy(); el.remove(); }); };
     el.onclick = out;
     const box = el.querySelector('.wlot'), anim = await playLottie(box, LOTTIE.win);
@@ -942,6 +945,7 @@ function render() {
   app.innerHTML = top + strip + (view === 'play' ? resultCards() + play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'admin' && isAdmin() ? adminView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : view === 'chat' && chatOn ? chatView() : view === 'tips' ? tipsView() : view === 'records' ? recordsView() : view === 'backfill' && bf ? backfillView() : `<h1>${t('Photos')}</h1><div class="seg" style="margin-bottom:12px"><button class="${photosTab === 'photos' ? 'on' : ''}" onclick="photosTab='photos';render()">📷 ${t('Photos')}</button><button class="${photosTab === 'receipts' ? 'on' : ''}" onclick="photosTab='receipts';render()">🧾 ${t('Receipts')}</button></div><div id="gal"></div>`);
   drawReactions();
   if (before) playMotion(before);
+  if (view === 'play' && !lottieWarm && (d => d && d.started && !d.closed)(cur())) warmLottie();
   const sl = document.querySelector('.slides'); shownSlide = slideIdx; if (sl && slideIdx) sl.scrollLeft = slideIdx * sl.clientWidth;
   minimalize(app);
   if (shownView && shownView !== view) pageIn(shownView, view);

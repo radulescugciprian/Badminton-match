@@ -42,6 +42,9 @@ const LOTTIE = {
 };                                     // (Lottie Simple License; recoloured gold and its English "AWARD" text removed)
 let lottieLib = null;
 const loadLottie = () => lottieLib || (lottieLib = new Promise((ok, no) => { const s = document.createElement('script'); s.src = 'js/vendor/lottie_light-5.13.0.min.js'; s.onload = () => ok(window.lottie); s.onerror = no; document.head.append(s); }));
+// once a match day is under way: fetch the player and the files early, so the first win already has its picture
+let lottieWarm = false;
+function warmLottie() { if (lottieWarm || !fxOn()) return; lottieWarm = true; loadLottie().catch(() => { lottieLib = null; }); Object.values(LOTTIE).forEach(p => p && fetch(p).catch(() => {})); }
 // plays a Lottie file once in `box`; false when it can't (no file, offline, a broken file), so the caller shows its own animation instead
 async function playLottie(box, path) {
   if (!path) return false;
