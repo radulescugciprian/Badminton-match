@@ -475,7 +475,8 @@ async function fillCards() {
   for (const el of all.map((x, i) => [x, Math.abs(i - on)]).sort((a, b) => a[1] - b[1]).map(x => x[0])) {   // the card in the middle first, then its neighbours
     const key = el.dataset.key, img = el.querySelector('img'); if (cardCache[key]) { img.src = cardCache[key]; continue; }
     const c = JSON.parse(key), blob = await drawPlayerCard({ ...c, ...(await cardArt(c.id)) });
-    cardCache[key] = URL.createObjectURL(blob); if (img.isConnected) img.src = cardCache[key];
+    cardCache[key] = URL.createObjectURL(blob);
+    if (img.isConnected) { img.onload = () => img.animate && img.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: EASE }); img.src = cardCache[key]; }   // the first draw fades in over the placeholder
   }
 }
 
@@ -854,7 +855,7 @@ function winShow(m) {
     const r = tm.getBoundingClientRect(), calm = calmNow(), el = document.createElement('div');
     el.className = 'winpop'; el.style.setProperty('--c', `var(--t${m.win})`);
     Object.assign(el.style, { left: r.left + scrollX + 'px', top: r.top + scrollY + 'px', width: r.width + 'px', height: r.height + 'px' });   // on the page: it stays on the cards when scrolling
-    el.innerHTML = `<div class="wlot" aria-hidden="true"></div><div class="wtxt" role="status"></div>`;
+    el.innerHTML = `<div class="wlot" aria-hidden="true"></div><div class="wavs" aria-hidden="true">${w.map(id => av(id, 52)).join('')}</div><div class="wtxt" role="status"></div>`;   // the winners' photos; their names follow in the live region
     document.body.append(el);
     // the live region exists first and gets its text a moment later, so screen readers announce it
     requestAnimationFrame(() => { el.querySelector('.wtxt').innerHTML = `<b>${w.length === 1 ? t('{name} won!', { name: pair(w) }) : t('{names} won!', { names: pair(w) })}</b>${gain ? `<span class="gain">+${gain}</span>` : ''}`; });

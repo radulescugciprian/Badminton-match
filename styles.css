@@ -115,7 +115,8 @@
   .nightshow .shut{position:absolute;left:-17px;top:-17px;width:34px;height:34px;color:var(--acc)} .nightshow .shut .lic{width:34px;height:34px}
   .nightshow .ntro{--s:56px;position:absolute} .nightshow .nlot{position:absolute}
   .winpop{position:absolute;z-index:21;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px;border-radius:16px;background:var(--card);border:2px solid var(--c);box-shadow:0 10px 30px rgba(0,0,0,.18);text-align:center;cursor:pointer;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
-  .winpop .wlot{width:min(170px,60%);aspect-ratio:1;display:grid;place-items:center} .winpop .wlot .coin{--s:72px}
+  .winpop .wlot{width:min(130px,46%);aspect-ratio:1;display:grid;place-items:center;margin-bottom:-6px} .winpop .wlot .coin{--s:64px}
+  .winpop .wavs{display:flex;justify-content:center;position:relative} .winpop .wavs .av{box-shadow:0 0 0 3px var(--c),0 4px 12px rgba(0,0,0,.2)} .winpop .wavs .av+.av{margin-left:-10px}
   .winpop .wtxt{display:flex;flex-direction:column;align-items:center;gap:4px} .winpop b{font-family:var(--disp);font-weight:400;font-size:var(--fs-2xl);line-height:1.1;color:var(--c)} .winpop .gain{font-weight:700;color:var(--acc);font-variant-numeric:tabular-nums}
   .rx{padding:8px 12px;border-radius:999px;font-size:var(--fs-md);background:var(--line);color:var(--text)}
   .rx.on{background:var(--acc);color:var(--on-acc)}
@@ -300,7 +301,7 @@
   .addold{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
   .chal{margin:12px 0;border-color:var(--acc);display:flex;flex-direction:column;gap:4px} .chal .mut{margin:0;font-size:var(--fs-sm)} .chal b{font-size:var(--fs-md)} .chalme{font-weight:700;color:var(--acc)}
   /* player card: a picture drawn by drawPlayerCard */
-  .pcimg{width:100%;aspect-ratio:1080/1512;display:block;border-radius:22px;margin-top:12px;background:linear-gradient(135deg,#d4a83a33,#0000)}
+  .pcimg{width:100%;aspect-ratio:1080/1512;display:block;border-radius:22px;margin-top:12px;background:linear-gradient(135deg,#d4a83a33,#0000)} .pcimg:not([src]){color:transparent;font-size:0}   /* while the card is drawn: the soft placeholder, not the alt text */
   /* comfort and accessibility: touch targets of at least 44px, a visible keyboard focus, less motion when the phone asks for it */
   .top .link{min-width:44px;min-height:44px} .seg button,select{min-height:44px} .fold>summary,.more summary{min-height:44px;display:flex;align-items:center;gap:6px} .actions .link,button.link.danger{min-height:44px}
   :focus-visible{outline:3px solid var(--acc);outline-offset:2px;border-radius:8px} :focus:not(:focus-visible){outline:none}
