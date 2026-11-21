@@ -812,6 +812,23 @@ function earnMotion() {
 function nightShow() {
   if (!fxOn() || !Element.prototype.animate) return;
   document.querySelectorAll('.nightshow').forEach(e => e.remove());
+  if (LOTTIE.closeDay) lottieNight().then(ok => ok || drawnNight()); else drawnNight();
+}
+// a Lottie file (fx.js, LOTTIE.closeDay) beside the Results heading, fading out when it ends
+async function lottieNight() {
+  const h = document.querySelector('#app h1'); if (!h) return true;
+  if (h.getBoundingClientRect().top < 0) scrollTo(0, 0);
+  const r = h.getBoundingClientRect(), a = app.getBoundingClientRect(), S = 150, el = document.createElement('div'), box = document.createElement('div');
+  el.className = 'nightshow'; el.setAttribute('aria-hidden', 'true'); box.className = 'nlot';
+  Object.assign(box.style, { width: S + 'px', height: S + 'px', left: a.right - 8 - S + 'px', top: r.top + r.height / 2 - S / 2 + 'px' });
+  el.append(box); document.body.append(el);
+  const anim = await playLottie(box, LOTTIE.closeDay); if (!anim) { el.remove(); return false; }
+  const out = () => el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: 'ease-in', fill: 'forwards' }).finished.then(() => { anim.destroy(); el.remove(); });
+  calmNow() ? setTimeout(out, 1300) : anim.addEventListener('complete', out);
+  return true;
+}
+// the app's own drawing: a shuttlecock arcs over the header onto a gold trophy
+function drawnNight() {
   const h = document.querySelector("#app h1"); if (!h) return;
   if (h.getBoundingClientRect().top < 0) { scrollTo(0, 0); }
   const r = h.getBoundingClientRect(), a = app.getBoundingClientRect(), y = r.top + r.height / 2, x0 = a.left + 10, x1 = a.right - 44, top = Math.max(16, y - 95);
