@@ -17,7 +17,8 @@ run('play: next day by itself, safer match buttons', async h => {
   await A.evaluate(() => { asMember = false; render(); }); assert(await A.locator('[aria-label="Move up"]').count() > 0, 'admins can still arrange');
   // match night: one Undo at a time, no "Next match day" during play, closing shows the results
   await A.evaluate(() => { window.__t = Date.parse('2026-11-12T17:00:00Z'); start(); }); await A.waitForSelector('.team');
-  await win(A, 1); await A.waitForSelector('.toast'); assert.equal(await A.locator('.pbtns >> text=Undo last').count(), 0, 'the toast has the only Undo');
+  await win(A, 1); await A.waitForSelector('.toast'); assert.equal(await A.locator('text=Undo last').count(), 0, 'the toast has the only Undo');
+  assert(await A.evaluate(() => { lastRec = Date.now() - UNDO_MS - 1; render(); return !document.querySelector('.toast') && ![...document.querySelectorAll('button')].some(b => /Undo/.test(b.textContent)); }), 'after 10 s there is no Undo at all');
   await h.more(A); assert.equal(await A.locator('.pmore >> text=Next match day').count(), 0, 'no new day in the middle of play');
   await A.evaluate(() => { LOTTIE.potn = 'tests/e2e/fixtures/pulse.lottie.json'; });   // a Lottie file plays beside the heading, then goes
   await A.click('.closeday'); await A.waitForSelector('h1:has-text("Results")');

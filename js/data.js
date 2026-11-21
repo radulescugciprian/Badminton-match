@@ -547,7 +547,7 @@ const recordWin = team => {
   const row = { day_id: d.id, n: d.matches.length + 1, t1, t2, rest: rest || null, win: team };
   row.confirm_player = nextTeams({ ...d, matches: [...d.matches, row] }).rest || null;   // the one resting next confirms it
   return act(async () => ok(await sb.from('matches').insert(row)), () => {
-    d.matches.push({ ...row, id: null, confirmed: false, created_by: session.user.id, created_at: new Date().toISOString() }); winShow(row); const at = lastRec = Date.now(); setTimeout(() => lastRec === at && view === 'play' && render(), 5100); // the "recorded" note with its undo goes away after 5 s (only redraw the play screen, never a half-filled form)
+    d.matches.push({ ...row, id: null, confirmed: false, created_by: session.user.id, created_at: new Date().toISOString() }); winShow(row); const at = lastRec = Date.now(); setTimeout(() => lastRec === at && view === 'play' && render(), UNDO_MS + 100); // the "recorded" note with the only Undo goes away after 10 s (only redraw the play screen, never a half-filled form)
   });
 };
 
@@ -970,6 +970,7 @@ async function shareCard(dayId) {
   if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: t('Badminton night') }).catch(() => {});
   else saveFile(blob, file.name);
 }
+const UNDO_MS = 10000;   // a wrong tap can be undone for 10 s; later the confirm step ("The other team won") or an admin's change fixes it
 const undo = () => { const d = cur(), last = d.matches[d.matches.length - 1], n = d.matches.length - 1;   // by day and number: the last match may not have reached the server yet
   const back = d.rotFrom > n, quick = d.quickFrom > n; // undoing the match before a line-up change (or the short-on-time switch): it starts one match earlier
   return act(async () => { ok(await sb.from('matches').delete().eq('day_id', d.id).eq('n', last.n)); if (back || quick) await patchDay(d.id, { ...(back && { rot_from: n }), ...(quick && { quick_from: n }) })(); },

@@ -10,7 +10,7 @@ run('instant taps', async h => {
   assert(Date.now() - t - sleepMs < 600, 'first tap is instant');
   assert(st.matches.length === 0, 'the server has not even seen it yet');
   await win(A, 2); await A.waitForSelector('text=Match 3', { timeout: 600 });   // a second tap while the first is still in flight
-  await A.click('text=Undo last'); await A.waitForSelector('text=Match 2', { timeout: 600 });   // undo is instant too
+  await A.click('.toast >> text=Undo'); await A.waitForSelector('text=Match 2', { timeout: 600 });   // undo is instant too
   await win(A, 2); await A.waitForSelector('text=Match 3', { timeout: 600 });
   await sleep(6000);                                                    // let the queue finish
   assert.deepEqual(st.matches.map(m => [m.n, m.win]), [[1, 1], [2, 2]], 'the server got them in order: ' + JSON.stringify(st.matches.map(m => [m.n, m.win])));

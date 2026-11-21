@@ -19,7 +19,7 @@ run('admin tools', async h => {
   assert(st.matches.every(m => m.created_at), 'matches are timestamped');
 
   // Bob (a member) undoes the last match; Anna closes the day and deletes it: all of it lands in the log, only admins can read it
-  await B.click('text=Undo last'); await A.waitForFunction(() => cur().matches.length === 2);
+  await B.evaluate(() => undo());   // (in the app only within 10 s of recording it; here the log is what is tested) await A.waitForFunction(() => cur().matches.length === 2);
   await A.click('nav >> text=Play'); await h.more(A); await A.click('text=Close day'); await A.waitForSelector('h1:has-text("Results")');
   await A.click('nav >> text=Board'); await A.evaluate(() => { dayMore = true; render(); }); await A.click('text=Delete this day'); await A.waitForSelector('text=No matches yet');
   await h.menu(A); await A.click('[aria-label="Admin tools"]'); await A.click('[data-adm=log]'); await A.waitForSelector('text=Activity log');

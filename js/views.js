@@ -242,7 +242,7 @@ function play() {
   const [n1, n2] = [vs(peek(1)), vs(peek(2))];
   const may = canRecord(d, { t1, t2, rest });   // the resting player records (anyone of the night when nobody rests or a guest rests)
   const team = k => `<button class="team" style="--c:var(--t${k})" onclick="recordWin(${k})" ${may ? '' : 'disabled'}><small>${k === 1 ? t('Team 1') : t('Team 2')}</small>${(k === 1 ? t1 : t2).map(who).join('')}<span class="wbar">🏆 ${k === 1 ? t('Team 1 Wins') : t('Team 2 Wins')}</span></button>`;
-  const fresh = n && Date.now() - lastRec < 5000, lw = fresh && d.matches[n - 1];
+  const fresh = n && Date.now() - lastRec < UNDO_MS, lw = fresh && d.matches[n - 1];   // only whoever recorded it, for 10 s
   return `<h1 class="vh">${t('Play')}</h1><div class="stage">
     <div class="pchips"><span>${t1.length === 1 ? t('Singles') : t('Doubles')}</span>${rule ? `<span>${rule}</span>` : ''}<span>${t('{n} played', { n })}</span></div>
     <p class="num">${t('Match {n}', { n: n + 1 })}</p>
@@ -250,7 +250,7 @@ function play() {
     ${may ? '' : `<p class="mut whorec" role="status">🔒 ${rest && player(rest).user ? t('{name} is resting and records this match.', { name: name(rest) }) : t('A player of tonight records this match.')}</p>`}
     ${rest ? `<div class="rest" data-pid="${rest}">${av(rest, 22)} <span class="lbl">${t('Resting:')} <b>${name(rest)}</b></span></div>` : ''}
     <div class="noteslot">${lw ? `<div class="toast">✓ ${pair(lw.win === 1 ? lw.t1 : lw.t2)} <button class="link" onclick="lastRec=0;undo()">↶ ${t('Undo')}</button></div>` : `<div class="upnext"><b>${t('Next')}:</b> ${n1 === n2 ? n1 : `<div>${t('If team {n} wins: {m}', { n: 1, m: n1 })}</div><div>${t('If team {n} wins: {m}', { n: 2, m: n2 })}</div>`}</div>`}</div>
-    <div class="pbtns">${lw ? '' : `<button onclick="undo()" ${n ? '' : 'disabled'}>↶ ${t('Undo last')}</button>`}<button class="link closeday" onclick="closeDay()" ${n ? '' : 'disabled'}>🏁 ${t('Close day')}</button></div>
+    <div class="pbtns"><button class="link closeday" onclick="closeDay()" ${n ? '' : 'disabled'}>🏁 ${t('Close day')}</button></div>
     <details class="fold pmore" ${moreOpen ? 'open' : ''} ontoggle="moreOpen=this.open"><summary>⋯ ${t('More')}</summary>
       <div class="actions">
         ${d.mode === 4 && d.quickFrom == null ? `<button class="link" onclick="moreOpen=false;shortNight()">⏱ ${t('Short on time? One match per pairing')}</button>` : ''}
@@ -977,7 +977,7 @@ const TOUR = () => [
   ['.pcount, #app ol', '🔢 ' + t('3, 4 or 5 players'), t('5 players: new teams every match, one rests. 4 players: the same teams play best of 3, then change. 3 players: singles, the winner stays on, at most 3 games in a row.')],
   ['#app ol .row', '👥 ' + t('The players'), t('The first ones in the list play, the others sit out. Move people with ▲ ▼.')],
   ['.startbar, [onclick="start()"], #app ol .row', '▶️ ' + t('Start playing'), t('It opens shortly before play time. Then tap a team to record its win. Someone leaving early or arriving late? Use ⋯ More during play.')],
-  ['.teams', '🏆 ' + t('Record the winner'), t('Tap the team that won. Everyone sees the scores live, and Undo fixes a wrong tap.')],
+  ['.teams', '🏆 ' + t('Record the winner'), t('Tap the team that won. Everyone sees the scores live, and Undo fixes a wrong tap for 10 seconds.')],
   ['nav [data-v=board]', '🏆 ' + t('Board'), t('Rating points won that night, that month, and your rating over all time. Tap a player for their stats.')],
   ['nav [data-v=stats]', '📊 ' + t('Stats'), t("Everyone's player card: swipe through the deck and tap a card to flip it. Below it is your own season: partners, rivals and your collection.")],
   ['nav [data-v=photos]', '📷 ' + t('Photos'), t('The group photo of each day, and receipts for extra courts or shuttles.')],
