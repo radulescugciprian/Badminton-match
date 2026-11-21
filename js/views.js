@@ -167,7 +167,7 @@ function setup(d) {
   // the sign-ups fill the list and decide 4 or 5 players; the date is today's. Only when nobody has answered can an admin pick 4 or 5 by hand.
   const last = [...db.days].reverse().find(x => x.closed && x.matches.length), lastTop = last && last.date >= addDays(tzParts().date, -7) ? playerOfNight(analyse(db.days, db.players), last.id) : null;
   const lastCard = lastTop ? `<button class="card lastnight" onclick="tab='day';selId=${last.id};go('board')"><span class="mut">${t('Last match day')} · ${esc(niceDate(last.date))}</span><span>⭐ <b>${name(lastTop.id)}</b> · ${tp('{n} matches', last.matches.length)}</span><span class="go">›</span></button>` : '';
-  return `${lastCard}${calledOffCards()}${inviteCards()}<div class="dayzone ${dayTint(sel)}">${rsvpSlides()}${sel !== date ? laterList(sel) : `${rsvps.some(x => x.day_date === date) && ins < 3 ? `<p class="mut">${t('Only {n} confirmed so far, you need at least 3.', { n: ins })}</p>` : ''}
+  return `<h1 class="vh">${t('Play')}</h1>${lastCard}${calledOffCards()}${inviteCards()}<div class="dayzone ${dayTint(sel)}">${rsvpSlides()}${sel !== date ? laterList(sel) : `${rsvps.some(x => x.day_date === date) && ins < 3 ? `<p class="mut">${t('Only {n} confirmed so far, you need at least 3.', { n: ins })}</p>` : ''}
       ${auto || !arrange ? '' : `<div class="seg pcount" style="margin:0 0 12px"><button class="${m === 3 ? 'on' : ''}" onclick="setMode(3)" ${o.length < 3 ? 'disabled' : ''}>${t('3 players')}</button><button class="${m === 4 ? 'on' : ''}" onclick="setMode(4)">${t('4 players')}</button>
         <button class="${m === 5 ? 'on' : ''}" onclick="setMode(5)" ${o.length < 5 ? 'disabled' : ''}>${t('5 players')}</button></div>`}
       <ol>${o.slice(0, m).map((id, i) => rowOf(id, i)).join('')}</ol>
@@ -240,14 +240,13 @@ function play() {
   const may = canRecord(d, { t1, t2, rest });   // the resting player records (anyone of the night when nobody rests or a guest rests)
   const team = k => `<button class="team" style="--c:var(--t${k})" onclick="recordWin(${k})" ${may ? '' : 'disabled'}><small>${k === 1 ? t('Team 1') : t('Team 2')}</small>${(k === 1 ? t1 : t2).map(who).join('')}<span class="wbar">🏆 ${k === 1 ? t('Team 1 Wins') : t('Team 2 Wins')}</span></button>`;
   const fresh = n && Date.now() - lastRec < 5000, lw = fresh && d.matches[n - 1];
-  return `<div class="stage">
+  return `<h1 class="vh">${t('Play')}</h1><div class="stage">
     <div class="pchips"><span>${t1.length === 1 ? t('Singles') : t('Doubles')}</span>${rule ? `<span>${rule}</span>` : ''}<span>${t('{n} played', { n })}</span></div>
     <p class="num">${t('Match {n}', { n: n + 1 })}</p>
     <div class="teams">${team(1)}${team(2)}</div>
     ${may ? '' : `<p class="mut whorec" role="status">🔒 ${rest && player(rest).user ? t('{name} is resting and records this match.', { name: name(rest) }) : t('A player of tonight records this match.')}</p>`}
     ${rest ? `<div class="rest" data-pid="${rest}">${av(rest, 22)} <span class="lbl">${t('Resting:')} <b>${name(rest)}</b></span></div>` : ''}
-    ${lw ? `<div class="toast">✓ ${pair(lw.win === 1 ? lw.t1 : lw.t2)} <button class="link" onclick="lastRec=0;undo()">↶ ${t('Undo')}</button></div>` : ''}
-    <div class="upnext"><b>${t('Next')}:</b> ${n1 === n2 ? n1 : `<div>${t('If team {n} wins: {m}', { n: 1, m: n1 })}</div><div>${t('If team {n} wins: {m}', { n: 2, m: n2 })}</div>`}</div>
+    <div class="noteslot">${lw ? `<div class="toast">✓ ${pair(lw.win === 1 ? lw.t1 : lw.t2)} <button class="link" onclick="lastRec=0;undo()">↶ ${t('Undo')}</button></div>` : `<div class="upnext"><b>${t('Next')}:</b> ${n1 === n2 ? n1 : `<div>${t('If team {n} wins: {m}', { n: 1, m: n1 })}</div><div>${t('If team {n} wins: {m}', { n: 2, m: n2 })}</div>`}</div>`}</div>
     <div class="pbtns">${lw ? '' : `<button onclick="undo()" ${n ? '' : 'disabled'}>↶ ${t('Undo last')}</button>`}<button class="link closeday" onclick="closeDay()" ${n ? '' : 'disabled'}>🏁 ${t('Close day')}</button></div>
     <details class="fold pmore" ${moreOpen ? 'open' : ''} ontoggle="moreOpen=this.open"><summary>⋯ ${t('More')}</summary>
       <div class="actions">

@@ -398,3 +398,10 @@
   .rescard{display:flex;flex-direction:column;gap:6px;margin:0 0 12px;border-color:var(--acc)} .rescard .nextup{margin:6px 0 0}
   .mstate{font-size:var(--fs-xs);color:var(--mut);white-space:nowrap} .mrow .mfix{min-height:32px;min-width:32px;padding:0}
   .whorec{text-align:center;margin:8px 0 0} button.team:disabled{opacity:.55;cursor:not-allowed}
+  /* polish: Play */
+  .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}   /* a heading for screen readers only */
+  .noteslot{min-height:68px;display:flex;flex-direction:column;justify-content:center;margin:0 0 8px} .noteslot .toast,.noteslot .upnext{margin:0}
+  nav{padding-inline:max(16px, calc((100% - 480px) / 2))}   /* the tabs line up with the 480px column on wide screens */
+  .row button:not(.ph):not(.nm){min-width:44px;min-height:44px} .row .ph{min-width:44px;min-height:44px;display:grid;place-items:center} .row .nm{min-height:44px}
+  .rsvp button.chip,.rsvp button.link{min-height:44px}
+  .stage .toast .link{min-height:44px;padding:0 6px}
