@@ -811,20 +811,23 @@ function earnMotion() {
 // It lives outside #app, so redraws never cut it; "Confetti and sound" off skips it.
 function nightShow() {
   if (!fxOn() || !Element.prototype.animate) return;
-  document.querySelectorAll('.nightshow').forEach(e => e.remove());
+  dropShows('.nightshow');
   if (LOTTIE.potn) potnShow().then(ok => ok || drawnNight()); else drawnNight();
 }
 // a Lottie file (fx.js LOTTIE) played once in a square of side S at `place` (viewport px), fading out when it ends.
 // delay: wait before showing it (so it appears with the card it belongs to). False when it can't play.
+const dropShows = sel => document.querySelectorAll(sel).forEach(e => { if (e.anim) e.anim.destroy(); e.remove(); });   // a new one replaces a running one
 async function lottieOver(path, place, S, { speed = 1, delay = 0 } = {}) {
-  document.querySelectorAll('.lotshow').forEach(e => e.remove());
+  dropShows('.lotshow'); const t0 = performance.now();
   const el = document.createElement('div'), box = document.createElement('div');
   el.className = 'nightshow lotshow'; el.setAttribute('aria-hidden', 'true'); box.className = 'nlot';
   Object.assign(box.style, { width: S + 'px', height: S + 'px', left: place.left + 'px', top: place.top + 'px', visibility: 'hidden' });
   el.append(box); document.body.append(el);
   const anim = await playLottie(box, path); if (!anim) { el.remove(); return false; }
-  anim.setSpeed(speed); if (delay && !calmNow()) { anim.goToAndStop(0, true); await new Promise(r => setTimeout(r, delay)); if (el.isConnected) anim.play(); }
-  box.style.visibility = '';
+  el.anim = anim; anim.setSpeed(speed);
+  const wait = delay - (performance.now() - t0);   // counted from the call, so a slow download never makes it late
+  if (wait > 0 && !calmNow()) { anim.goToAndStop(0, true); await new Promise(r => setTimeout(r, wait)); if (!el.isConnected) return true; anim.play(); }
+  box.style.visibility = ''; el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, easing: EASE });   // arrives with its card, not ahead of it
   const out = () => el.isConnected && el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: 'ease-in', fill: 'forwards' }).finished.then(() => { anim.destroy(); el.remove(); });
   calmNow() ? setTimeout(out, 1300) : anim.addEventListener('complete', out);
   return true;
