@@ -839,13 +839,28 @@ function potnShow() {
   const r = c.getBoundingClientRect(), S = 120;
   return lottieOver(LOTTIE.potn, { left: r.right - S - 4, top: r.top + r.height / 2 - S / 2 }, S, { delay: 650 });
 }
-// a match won: the racket smashes the shuttle beside the "Match n" heading, clear of the next teams (in place of the confetti); the fanfare as before
-function winShow() {
+// a match won: a popup on the teams card names the winners, with the racket smashing the shuttle (in place of the confetti).
+// It goes when the animation ends or on a tap (the Undo note below stays reachable); the fanfare as before.
+function winShow(m) {
   if (!fxOn()) return; fanfare();
-  requestAnimationFrame(() => { const st = document.querySelector('#app .stage'), num = st && st.querySelector('.num');
-    if (!num || !LOTTIE.win) return confetti();
-    const r = st.getBoundingClientRect(), n = num.getBoundingClientRect(), S = 150;
-    lottieOver(LOTTIE.win, { left: r.right - S, top: Math.max((document.querySelector('.top') || num).getBoundingClientRect().bottom, n.top + n.height / 2 - S / 2 - 10) }, S, { speed: 1.25 }).then(ok => ok || confetti()); });
+  requestAnimationFrame(async () => { const tm = document.querySelector('#app .stage .teams'); if (!tm) return confetti();
+    dropShows('.winpop');
+    const w = m.win === 1 ? m.t1 : m.t2, x = analyse(db.days, db.players).log.find(e => e.day === m.day_id && e.n === m.n), gain = x && !w.some(ratingHidden) ? Math.round(K_FACTOR * (1 - x.chance)) : 0;
+    const r = tm.getBoundingClientRect(), calm = calmNow(), el = document.createElement('div');
+    el.className = 'winpop'; el.setAttribute('role', 'status'); el.style.setProperty('--c', `var(--t${m.win})`);
+    Object.assign(el.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
+    el.innerHTML = `<div class="wlot" aria-hidden="true"></div><b>${w.length === 1 ? t('{name} won!', { name: pair(w) }) : t('{names} won!', { names: pair(w) })}</b>${gain ? `<span class="gain">+${gain}</span>` : ''}`;
+    document.body.append(el);
+    el.animate(calm ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: 'scale(.94)' }, { opacity: 1, transform: 'none' }], { duration: calm ? 200 : 260, easing: EASE });
+    const out = () => { if (!el.isConnected || el.closing) return; el.closing = true;
+      el.animate([{ opacity: 1 }, { opacity: 0, transform: calm ? 'none' : 'scale(.98)' }], { duration: 200, easing: 'ease-in', fill: 'forwards' }).finished.then(() => { if (el.anim) el.anim.destroy(); el.remove(); }); };
+    el.onclick = out;
+    const box = el.querySelector('.wlot'), anim = await playLottie(box, LOTTIE.win);
+    if (!el.isConnected) return anim && anim.destroy();
+    if (!anim) { box.innerHTML = coin('trophy', 'gold'); confetti(); return setTimeout(out, 2200); }
+    el.anim = anim; anim.setSpeed(1.4);
+    calm ? setTimeout(out, 1800) : anim.addEventListener('complete', out);
+  });
 }
 // the app's own drawing: a shuttlecock arcs over the header onto a gold trophy
 function drawnNight() {

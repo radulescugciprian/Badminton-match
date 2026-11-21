@@ -547,7 +547,7 @@ const recordWin = team => {
   const row = { day_id: d.id, n: d.matches.length + 1, t1, t2, rest: rest || null, win: team };
   row.confirm_player = nextTeams({ ...d, matches: [...d.matches, row] }).rest || null;   // the one resting next confirms it
   return act(async () => ok(await sb.from('matches').insert(row)), () => {
-    d.matches.push({ ...row, id: null, confirmed: false, created_by: session.user.id, created_at: new Date().toISOString() }); winShow(); const at = lastRec = Date.now(); setTimeout(() => lastRec === at && view === 'play' && render(), 5100); // the "recorded" note with its undo goes away after 5 s (only redraw the play screen, never a half-filled form)
+    d.matches.push({ ...row, id: null, confirmed: false, created_by: session.user.id, created_at: new Date().toISOString() }); winShow(row); const at = lastRec = Date.now(); setTimeout(() => lastRec === at && view === 'play' && render(), 5100); // the "recorded" note with its undo goes away after 5 s (only redraw the play screen, never a half-filled form)
   });
 };
 
