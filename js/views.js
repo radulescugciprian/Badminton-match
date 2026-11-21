@@ -715,8 +715,9 @@ function playMotion(before) {
   const same = motionSeen.day === d.id, changed = same && motionSeen.n !== d.matches.length && !d.closed, closedNow = same && !motionSeen.closed && d.closed;
   motionSeen = { day: d.id, n: d.matches.length, closed: d.closed };
   if (changed || closedNow) motion = { at: performance.now(), before, changed, closedNow };
+  if (closedNow) nightShow();
   const t = motion ? performance.now() - motion.at : Infinity;
-  if (t < 900) {   // a new change, or a redraw (the server's answer, a live update) while one is still playing: continue at t
+  if (t < (motion && motion.closedNow ? 1700 : 900)) {   // a new change, or a redraw (the server's answer, a live update) while one is still playing: continue at t
     const calm = matchMedia('(prefers-reduced-motion: reduce)').matches, go_ = (e, kf, o) => { const a = e.animate(kf, { easing: EASE, fill: 'backwards', ...o }); a.currentTime = t; };
     const rise = dy => calm ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: `translateY(${dy}px)` }, { opacity: 1, transform: 'none' }];
     if (motion.changed) {
@@ -735,7 +736,8 @@ function playMotion(before) {
       });
       const note = document.querySelector('#app .stage .toast'); if (note) go_(note, rise(8), { duration: 220 });
     }
-    if (motion.closedNow) document.querySelectorAll('#app .potn, #app .podcard, #app .nextup').forEach((e, i) => go_(e, rise(14), { duration: 450, delay: i * 90 }));
+    if (motion.closedNow) { const after = fxOn() && !calm ? 650 : 0;   // after the trophy lands
+      [...app.children].filter(e => !e.matches('.top, .strip, h1, h1 + .mut')).forEach((e, i) => go_(e, rise(14), { duration: 450, delay: after + Math.min(i, 5) * 80 })); }
   }
   document.querySelectorAll('#app .rescard:not(.done)').forEach(e => { if (!seenCards.has(e.textContent)) { seenCards.add(e.textContent); e.animate(matchMedia('(prefers-reduced-motion: reduce)').matches ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 300, easing: EASE }); } });
 }
@@ -805,6 +807,49 @@ function earnMotion() {
     run(e, [{ boxShadow: '0 0 0 0 rgba(201,162,39,.65)' }, { boxShadow: '0 0 0 9px rgba(201,162,39,0)' }], { duration: 700, delay: 480 + i * 90, easing: 'ease-out' });
   });
 }
+// ---- the night is over: a shuttlecock arcs onto a gold trophy, then everything fades and the podium is there.
+// It lives outside #app, so redraws never cut it; "Confetti and sound" off skips it.
+function nightShow() {
+  if (!fxOn() || !Element.prototype.animate) return;
+  document.querySelectorAll('.nightshow').forEach(e => e.remove());
+  const h = document.querySelector("#app h1"); if (!h) return;
+  if (h.getBoundingClientRect().top < 0) { scrollTo(0, 0); }
+  const r = h.getBoundingClientRect(), a = app.getBoundingClientRect(), y = r.top + r.height / 2, x0 = a.left + 10, x1 = a.right - 44, top = Math.max(16, y - 95);
+  const calm = calmNow(), el = document.createElement('div'); el.className = 'nightshow'; el.setAttribute('aria-hidden', 'true');
+  el.innerHTML = `<svg><path class="trail" d="M${x0 - 6} ${y + 60} Q${(x0 + x1) / 2} ${top - 40} ${x1} ${y}" pathLength="1"/></svg><span class="shut">${svgIcon('play')}</span>${coin('trophy', 'gold', 'ntro')}`;
+  document.body.append(el);
+  const path = el.querySelector('path'), shut = el.querySelector('.shut'), tro = el.querySelector('.ntro'), len = path.getTotalLength(), END = 1850;
+  tro.style.left = x1 - 28 + 'px'; tro.style.top = y - 28 + 'px';
+  const run = (e, kf, o) => e.animate(kf, { fill: 'both', ...o });
+  if (calm) {
+    path.remove(); shut.remove();
+    run(tro, [{ opacity: 0 }, { opacity: 1 }], { duration: 250 });
+    run(el, [{ opacity: 1 }, { opacity: 0 }], { duration: 300, delay: 1300 });
+  } else {
+    // the shuttle follows the drawn arc point by point, cork first, so the trail's tip is always the shuttle
+    const pts = Array.from({ length: 17 }, (_, i) => { const a = path.getPointAtLength(len * i / 16), b = path.getPointAtLength(Math.min(len, len * i / 16 + 1)), c = i === 16 ? path.getPointAtLength(len - 1) : a;
+      const ang = Math.atan2(i === 16 ? a.y - c.y : b.y - a.y, i === 16 ? a.x - c.x : b.x - a.x) * 180 / Math.PI - 90;
+      return { transform: `translate(${a.x}px, ${a.y}px) rotate(${ang}deg)` }; });
+    const fly = { duration: 720, easing: 'cubic-bezier(.33,.1,.4,1)' };
+    run(shut, pts, fly); run(path, [{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], fly);
+    run(shut, [{ opacity: 1, scale: '1' }, { opacity: 0, scale: '.5' }], { duration: 120, delay: 660 });   // into the trophy
+    run(tro, [{ opacity: 0, transform: 'scale(.5)' }, { opacity: 1, transform: 'scale(1.12)', offset: .6 }, { opacity: 1, transform: 'none' }], { duration: 440, delay: 640, easing: EASE });
+    run(tro, [{ boxShadow: '0 0 0 0 rgba(201,162,39,.6)' }, { boxShadow: '0 0 0 16px rgba(201,162,39,0)' }], { duration: 650, delay: 800, easing: 'ease-out' });
+    run(path, [{ opacity: .55 }, { opacity: 0 }], { duration: 400, delay: 900 });
+    run(el, [{ opacity: 1 }, { opacity: 0 }], { duration: 300, delay: 1500, easing: 'ease-in' });
+  }
+  setTimeout(() => el.remove(), END);
+}
+
+// ---- moving between the tabs: the new page slides in from the side its tab is on (other pages just fade in)
+const TABS = ['play', 'board', 'stats', 'photos', 'group'], tabOf = v => ['chat', 'tips', 'members', 'records'].includes(v) ? 'group' : v;
+let shownView = null;
+function pageIn(from, to) {
+  if (!Element.prototype.animate) return;
+  const a = TABS.indexOf(tabOf(from)), b = TABS.indexOf(tabOf(to)), dir = a < 0 || b < 0 || a === b ? 0 : Math.sign(b - a), fade = calmNow() || !dir;
+  [...app.children].filter(e => !e.matches('.top, .strip')).forEach(e => e.animate(fade ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: `translateX(${dir * 18}px)` }, { opacity: 1, transform: 'none' }],
+    { duration: fade ? 160 : 240, easing: EASE, fill: 'backwards' }));
+}
 // a coin for something you earned: a solid icon (COIN) or a place number on a metal-style disc in the item's colour
 const COINC = { gold: '#c9a227', silver: '#9aa3ae', bronze: '#b8743a', orange: '#ea580c', violet: '#7c3aed', pink: '#db2777', blue: '#2563eb', teal: '#0f766e', green: '#16a34a', slate: '#475569' };
 const coin = (k, c, cls = '') => `<span class="coin ${cls}" style="--c:${COINC[c] || c}" aria-hidden="true">${/^\d$/.test(k) ? `<b>${k}</b>` : `<svg viewBox="0 0 256 256" fill="currentColor"><path d="${COIN[k]}"/></svg>`}</span>`;
@@ -847,6 +892,8 @@ function render() {
   if (before) playMotion(before);
   const sl = document.querySelector('.slides'); shownSlide = slideIdx; if (sl && slideIdx) sl.scrollLeft = slideIdx * sl.clientWidth;
   minimalize(app);
+  if (shownView && shownView !== view) pageIn(shownView, view);
+  shownView = view;
   if (rbefore) rsvpMotion(rbefore);
   if (view === 'play') doneMotion();
   if (view === 'stats') earnMotion();

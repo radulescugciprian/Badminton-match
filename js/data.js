@@ -976,7 +976,7 @@ const undo = () => { const d = cur(), last = d.matches[d.matches.length - 1], n 
     () => { d.matches.pop(); if (back) d.rotFrom = n; if (quick) d.quickFrom = n; }); };
 // short on time (4 players): from the next match on, one match per pairing so every pairing still gets played
 const shortNight = () => { const d = cur(); return confirm(t('Short on time? From the next match on, every pairing plays one match instead of a best of 3.')) && act(patchDay(d.id, { quick_from: d.matches.length }), () => { d.quickFrom = d.matches.length; }); };
-const closeDay = () => { const d = cur(); return confirm(t('Close the day? No more matches can be added.')) && act(patchDay(d.id, { closed: true }), () => { d.closed = true; celebrate(); }); };
+const closeDay = () => { const d = cur(); return confirm(t('Close the day? No more matches can be added.')) && act(patchDay(d.id, { closed: true }), () => { d.closed = true; if (fxOn()) fanfare(); }); };   // the picture is nightShow (views.js), for everyone watching
 const reopenDay = () => { const d = cur(); return act(patchDay(d.id, { closed: false }), () => { d.closed = false; }); };
 const dropPhotos = async paths => { paths = paths.filter(Boolean); if (paths.length) ok(await sb.storage.from('photos').remove(paths)); };
 const resetDay = () => confirm(t('Reset today? This deletes all matches of this day and goes back to player order.')) && act(async () => {
