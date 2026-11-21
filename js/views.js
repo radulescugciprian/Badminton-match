@@ -812,20 +812,37 @@ function earnMotion() {
 function nightShow() {
   if (!fxOn() || !Element.prototype.animate) return;
   document.querySelectorAll('.nightshow').forEach(e => e.remove());
-  if (LOTTIE.closeDay) lottieNight().then(ok => ok || drawnNight()); else drawnNight();
+  if (LOTTIE.potn) potnShow().then(ok => ok || drawnNight()); else drawnNight();
 }
-// a Lottie file (fx.js, LOTTIE.closeDay) beside the Results heading, fading out when it ends
-async function lottieNight() {
-  const h = document.querySelector('#app h1'); if (!h) return true;
-  if (h.getBoundingClientRect().top < 0) scrollTo(0, 0);
-  const r = h.getBoundingClientRect(), a = app.getBoundingClientRect(), S = 150, el = document.createElement('div'), box = document.createElement('div');
-  el.className = 'nightshow'; el.setAttribute('aria-hidden', 'true'); box.className = 'nlot';
-  Object.assign(box.style, { width: S + 'px', height: S + 'px', left: a.right - 8 - S + 'px', top: r.top + r.height / 2 - S / 2 + 'px' });
+// a Lottie file (fx.js LOTTIE) played once in a square of side S at `place` (viewport px), fading out when it ends.
+// delay: wait before showing it (so it appears with the card it belongs to). False when it can't play.
+async function lottieOver(path, place, S, { speed = 1, delay = 0 } = {}) {
+  document.querySelectorAll('.lotshow').forEach(e => e.remove());
+  const el = document.createElement('div'), box = document.createElement('div');
+  el.className = 'nightshow lotshow'; el.setAttribute('aria-hidden', 'true'); box.className = 'nlot';
+  Object.assign(box.style, { width: S + 'px', height: S + 'px', left: place.left + 'px', top: place.top + 'px', visibility: 'hidden' });
   el.append(box); document.body.append(el);
-  const anim = await playLottie(box, LOTTIE.closeDay); if (!anim) { el.remove(); return false; }
-  const out = () => el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: 'ease-in', fill: 'forwards' }).finished.then(() => { anim.destroy(); el.remove(); });
+  const anim = await playLottie(box, path); if (!anim) { el.remove(); return false; }
+  anim.setSpeed(speed); if (delay && !calmNow()) { anim.goToAndStop(0, true); await new Promise(r => setTimeout(r, delay)); if (el.isConnected) anim.play(); }
+  box.style.visibility = '';
+  const out = () => el.isConnected && el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: 'ease-in', fill: 'forwards' }).finished.then(() => { anim.destroy(); el.remove(); });
   calmNow() ? setTimeout(out, 1300) : anim.addEventListener('complete', out);
   return true;
+}
+// closing the night: the trophy goes up on the right of the "Player of the night" card as the card arrives
+function potnShow() {
+  const c = document.querySelector('#app .potn'); if (!c) return Promise.resolve(false);
+  if (c.getBoundingClientRect().top < 0) scrollTo(0, 0);
+  const r = c.getBoundingClientRect(), S = 120;
+  return lottieOver(LOTTIE.potn, { left: r.right - S - 4, top: r.top + r.height / 2 - S / 2 }, S, { delay: 650 });
+}
+// a match won: the racket smashes the shuttle beside the "Match n" heading, clear of the next teams (in place of the confetti); the fanfare as before
+function winShow() {
+  if (!fxOn()) return; fanfare();
+  requestAnimationFrame(() => { const st = document.querySelector('#app .stage'), num = st && st.querySelector('.num');
+    if (!num || !LOTTIE.win) return confetti();
+    const r = st.getBoundingClientRect(), n = num.getBoundingClientRect(), S = 150;
+    lottieOver(LOTTIE.win, { left: r.right - S, top: Math.max((document.querySelector('.top') || num).getBoundingClientRect().bottom, n.top + n.height / 2 - S / 2 - 10) }, S, { speed: 1.25 }).then(ok => ok || confetti()); });
 }
 // the app's own drawing: a shuttlecock arcs over the header onto a gold trophy
 function drawnNight() {

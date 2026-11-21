@@ -19,7 +19,7 @@ run('play: next day by itself, safer match buttons', async h => {
   await A.evaluate(() => { window.__t = Date.parse('2026-11-12T17:00:00Z'); start(); }); await A.waitForSelector('.team');
   await win(A, 1); await A.waitForSelector('.toast'); assert.equal(await A.locator('.pbtns >> text=Undo last').count(), 0, 'the toast has the only Undo');
   await h.more(A); assert.equal(await A.locator('.pmore >> text=Next match day').count(), 0, 'no new day in the middle of play');
-  await A.evaluate(() => { LOTTIE.closeDay = 'tests/e2e/fixtures/pulse.lottie.json'; });   // a Lottie file plays beside the heading, then goes
+  await A.evaluate(() => { LOTTIE.potn = 'tests/e2e/fixtures/pulse.lottie.json'; });   // a Lottie file plays beside the heading, then goes
   await A.click('.closeday'); await A.waitForSelector('h1:has-text("Results")');
   await A.waitForSelector('.nightshow .nlot svg'); assert.equal(await A.locator('.nightshow .ntro').count(), 0, 'the Lottie file, not the drawing');
   await A.waitForSelector('.nightshow', { state: 'detached', timeout: 4000 });

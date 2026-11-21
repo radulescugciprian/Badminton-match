@@ -41,7 +41,7 @@ run('sign-up list, ratings, badges, result card and reactions', async h => {
   // ---- play: celebration
   await A.click('text=Start playing'); await A.waitForSelector('text=Match 1');
   await win(A, 1);
-  await A.waitForSelector('canvas.confetti', { timeout: 3000 });
+  await A.waitForSelector('.lotshow .nlot svg', { timeout: 3000 });   // the win animation (Lottie) over the teams
   await A.waitForSelector('text=Match 2');
   for (let i = 0; i < 3; i++) await win(A, 1);
   await A.waitForSelector('text=Match 5');

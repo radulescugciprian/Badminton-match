@@ -35,8 +35,11 @@ function confetti() {
   })(t0);
 }
 // ---- Lottie animations: the lottie-web light player (js/vendor, MIT), loaded only the first time an animation plays.
-// To use one: put its .json file in anim/ and name it here, e.g. closeDay: 'anim/close-day.json'. Unset, the app's own drawing plays.
-const LOTTIE = { closeDay: null };
+// To change one: put its .json file in anim/ and name it here. Unset, missing or broken, the app's own animation plays.
+const LOTTIE = {
+  win: 'anim/team-win.json',           // a match won: "Badminton Match Night Win", made with LottieFiles' AI tool
+  potn: 'anim/player-of-night.json',   // closing the day, on the player of the night: "Trophy Award Animation" by LottieFiles
+};                                     // (Lottie Simple License; recoloured gold and its English "AWARD" text removed)
 let lottieLib = null;
 const loadLottie = () => lottieLib || (lottieLib = new Promise((ok, no) => { const s = document.createElement('script'); s.src = 'js/vendor/lottie_light-5.13.0.min.js'; s.onload = () => ok(window.lottie); s.onerror = no; document.head.append(s); }));
 // plays a Lottie file once in `box`; false when it can't (no file, offline, a broken file), so the caller shows its own animation instead
@@ -50,8 +53,6 @@ async function playLottie(box, path) {
     return a;
   } catch { lottieLib = null; return false; }
 }
-// confetti is left out when the phone asks for less motion; the sound stays (it has its own switch)
-function celebrate() { if (fxOn()) { if (!matchMedia('(prefers-reduced-motion: reduce)').matches) confetti(); fanfare(); } }
 
 // ---- result card: group photo (or a plain background) with the night's podium on top, as a PNG
 // texts are prepared (and translated) by the caller; rows: top 3 [{name, line, img: ImageBitmap|null, hue, initial}], potn: same, with `line` = text under the name
