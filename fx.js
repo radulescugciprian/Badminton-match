@@ -39,20 +39,22 @@ function confetti() {
 const LOTTIE = {
   win: 'anim/team-win.json',           // a match won: "Badminton Match Night Win", made with LottieFiles' AI tool
   potn: 'anim/player-of-night.json',   // closing the day, on the player of the night: "Trophy Award Animation" by LottieFiles
-};                                     // (Lottie Simple License; recoloured gold and its English "AWARD" text removed)
+                                       // (Lottie Simple License; recoloured gold and its English "AWARD" text removed)
+  swap: 'anim/new-teams.json',         // new teams: "Transfer arrows" by Sardor on LottieFiles (Lottie Simple License; in the team colours)
+};
 let lottieLib = null;
 const loadLottie = () => lottieLib || (lottieLib = new Promise((ok, no) => { const s = document.createElement('script'); s.src = 'js/vendor/lottie_light-5.13.0.min.js'; s.onload = () => ok(window.lottie); s.onerror = no; document.head.append(s); }));
 // once a match day is under way: fetch the player and the files early, so the first win already has its picture
 let lottieWarm = false;
 function warmLottie() { if (lottieWarm || !fxOn()) return; lottieWarm = true; loadLottie().catch(() => { lottieLib = null; }); Object.values(LOTTIE).forEach(p => p && fetch(p).catch(() => {})); }
 // plays a Lottie file once in `box`; false when it can't (no file, offline, a broken file), so the caller shows its own animation instead
-async function playLottie(box, path) {
+async function playLottie(box, path, still = false) {
   if (!path) return false;
   try {
-    const lib = await loadLottie(), calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const lib = await loadLottie(), calm = still || matchMedia('(prefers-reduced-motion: reduce)').matches;
     const a = lib.loadAnimation({ container: box, renderer: 'svg', loop: false, autoplay: !calm, path });
     await new Promise((ok, no) => { a.addEventListener('DOMLoaded', ok); a.addEventListener('data_failed', no); });
-    if (calm) a.goToAndStop(a.totalFrames - 1, true);   // less motion: just the finished picture
+    if (calm) a.goToAndStop(a.totalFrames - 1, true);   // less motion (or asked for a still): just the finished picture
     return a;
   } catch { lottieLib = null; return false; }
 }

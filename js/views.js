@@ -243,9 +243,13 @@ function play() {
   const may = canRecord(d, { t1, t2, rest });   // the resting player records (anyone of the night when nobody rests or a guest rests)
   const team = k => `<button class="team" style="--c:var(--t${k})" onclick="recordWin(${k})" ${may ? '' : 'disabled'}><small>${k === 1 ? t('Team 1') : t('Team 2')}</small>${(k === 1 ? t1 : t2).map(who).join('')}<span class="wbar">🏆 ${k === 1 ? t('Team 1 Wins') : t('Team 2 Wins')}</span></button>`;
   const fresh = n && Date.now() - lastRec < UNDO_MS, lw = fresh && d.matches[n - 1];   // only whoever recorded it, for 10 s
+  // new teams: the pairing that just played a series (2 matches or more, e.g. a best of 3) gives way to new partners
+  const pk = m => [m.t1, m.t2].map(x => [...x].sort().join('+')).sort().join(' v '), last = d.matches[n - 1];
+  const run = last ? d.matches.slice().reverse().findIndex(m => pk(m) !== pk(last)) : 0, newTeams = last && (run < 0 ? n : run) >= 2 && pk({ t1, t2 }) !== pk(last);
   return `<h1 class="vh">${t('Play')}</h1><div class="stage">
     <div class="pchips"><span>${t1.length === 1 ? t('Singles') : t('Doubles')}</span>${rule ? `<span>${rule}</span>` : ''}<span>${t('{n} played', { n })}</span></div>
     <p class="num">${t('Match {n}', { n: n + 1 })}</p>
+    ${newTeams ? `<div class="newteams" role="status" data-key="${d.id}:${n}"><span class="ntic" aria-hidden="true">${svgIcon('undo')}</span><span><b>${t('New teams')}</b> <span class="mut">${t('New partners from this match')}</span></span></div>` : ''}
     <div class="teams">${team(1)}${team(2)}</div>
     ${may ? '' : `<p class="mut whorec" role="status">🔒 ${rest && player(rest).user ? t('{name} is resting and records this match.', { name: name(rest) }) : t('A player of tonight records this match.')}</p>`}
     ${rest ? `<div class="rest" data-pid="${rest}">${av(rest, 22)} <span class="lbl">${t('Resting:')} <b>${name(rest)}</b></span></div>` : ''}
@@ -710,7 +714,8 @@ function minimalize(root) {
 // With reduced motion nothing travels; things fade in instead.
 let motionSeen = { day: null, n: -1, closed: false }, motion = null, winPending = false, heldAnims = [];
 // the win popup closed: the teams, waiting in their old places under it, glide to the new ones now, where everyone sees it
-function releaseGlide() { winPending = false; if (motion && motion.glideAt === null) { motion.glideAt = performance.now(); heldAnims.forEach(a => a.play()); heldAnims = []; } }   // motion: the change being animated, so a redraw mid-way carries on
+function releaseGlide() { winPending = false; if (motion && motion.glideAt === null) { motion.glideAt = performance.now(); heldAnims.forEach(a => a.play()); heldAnims = []; }
+  setTimeout(() => view === 'play' && teamNote(), 450); }   // then the "New teams" arrows swap, once the players have moved   // motion: the change being animated, so a redraw mid-way carries on
 const seenCards = new Set(), EASE = 'cubic-bezier(.16,1,.3,1)';
 const playRects = () => new Map([...document.querySelectorAll('#app [data-pid]')].map(e => [e.dataset.pid, (e.querySelector('.av') || e).getBoundingClientRect()]));
 function playMotion(before) {
@@ -860,7 +865,7 @@ function winShow(m) {
     // the live region exists first and gets its text a moment later, so screen readers announce it
     requestAnimationFrame(() => { el.querySelector('.wtxt').innerHTML = `<b>${w.length === 1 ? t('{name} won!', { name: pair(w) }) : t('{names} won!', { names: pair(w) })}</b>${gain ? `<span class="gain">+${gain}</span>` : ''}`; });
     el.animate(calm ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: 'scale(.94)' }, { opacity: 1, transform: 'none' }], { duration: calm ? 200 : 260, easing: EASE });
-    const out = () => { if (!el.isConnected || el.closing) return; el.closing = true;
+    const out = () => { if (!el.isConnected || el.closing) return; el.closing = true; el.style.pointerEvents = 'none';   // closing: taps go to the buttons again
       releaseGlide();
       el.animate([{ opacity: 1 }, { opacity: 0, transform: calm ? 'none' : 'scale(.98)' }], { duration: 200, easing: 'ease-in', fill: 'forwards' }).finished.then(() => { if (el.anim) el.anim.destroy(); el.remove(); }); };
     el.onclick = out;
@@ -870,6 +875,20 @@ function winShow(m) {
     el.anim = anim; anim.setSpeed(1.4);
     calm ? setTimeout(out, 1800) : anim.addEventListener('complete', out);
   });
+}
+// "New teams": the two arrows (in the team colours) swap once when the change is first shown, after the win popup and the
+// teams' glide; afterwards (redraws, coming back to Play) it is a still frame. Without the Lottie file: the line icon stays.
+let teamSeen = '', teamMo = null;
+async function teamNote() {
+  const note = document.querySelector('#app .newteams'); if (!note || !fxOn() || !LOTTIE.swap) return;
+  const key = note.dataset.key, box = note.querySelector('.ntic'), fresh = teamSeen !== key && !winPending;
+  if (fresh) { teamSeen = key; teamMo = { key, at: performance.now() }; }
+  const t = teamMo && teamMo.key === key ? performance.now() - teamMo.at : Infinity, still = winPending || t > 2100;
+  const fb = box.innerHTML; box.innerHTML = '';
+  const anim = await playLottie(box, LOTTIE.swap, still);
+  if (!anim) { box.innerHTML = fb; return; }
+  if (!box.isConnected) return anim.destroy();
+  if (!still && t > 30 && !calmNow()) anim.goToAndPlay(t, false);   // a redraw while it plays: carry on where it was
 }
 // the app's own drawing: a shuttlecock arcs over the header onto a gold trophy
 function drawnNight() {
@@ -959,7 +978,7 @@ function render() {
   if (view !== 'play' && winPending) { dropShows('.winpop'); releaseGlide(); }   // leaving Play closes the win popup
   shownView = view;
   if (rbefore) rsvpMotion(rbefore);
-  if (view === 'play') doneMotion();
+  if (view === 'play') { doneMotion(); teamNote(); }
   if (view === 'stats') earnMotion();
   if (view === 'stats') { const k = [...document.querySelectorAll('.cslide')].findIndex(x => x.classList.contains('on')); if (k > 0) deckTo(k, false); shapeDeck(); if (dealtFor !== statsVisit) { dealtFor = statsVisit; dealDeck(); } fillCards(); }
   if (view !== 'stats') statsVisit++;
