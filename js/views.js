@@ -707,18 +707,23 @@ function minimalize(root) {
 // play next (team 1, team 2 or resting), so the rotation explains itself. Everything else is feedback that plays once per
 // change (never on a mere redraw): the "won" note, a result waiting for you, and the results arriving when a night closes.
 // With reduced motion nothing travels; things fade in instead.
-let motionSeen = { day: null, n: -1, closed: false }, motion = null;   // motion: the change being animated, so a redraw mid-way carries on
+let motionSeen = { day: null, n: -1, closed: false }, motion = null, winPending = false, heldAnims = [];
+// the win popup closed: the teams, waiting in their old places under it, glide to the new ones now, where everyone sees it
+function releaseGlide() { winPending = false; if (motion && motion.glideAt === null) { motion.glideAt = performance.now(); heldAnims.forEach(a => a.play()); heldAnims = []; } }   // motion: the change being animated, so a redraw mid-way carries on
 const seenCards = new Set(), EASE = 'cubic-bezier(.16,1,.3,1)';
 const playRects = () => new Map([...document.querySelectorAll('#app [data-pid]')].map(e => [e.dataset.pid, (e.querySelector('.av') || e).getBoundingClientRect()]));
 function playMotion(before) {
   const d = cur(); if (!d || !Element.prototype.animate) return;
   const same = motionSeen.day === d.id, changed = same && motionSeen.n !== d.matches.length && !d.closed, closedNow = same && !motionSeen.closed && d.closed;
   motionSeen = { day: d.id, n: d.matches.length, closed: d.closed };
-  if (changed || closedNow) motion = { at: performance.now(), before, changed, closedNow };
+  if (changed || closedNow) motion = { at: performance.now(), before, changed, closedNow, glideAt: changed && winPending ? null : performance.now() };
   if (closedNow) nightShow();
-  const t = motion ? performance.now() - motion.at : Infinity;
-  if (t < (motion && motion.closedNow ? 1700 : 900)) {   // a new change, or a redraw (the server's answer, a live update) while one is still playing: continue at t
-    const calm = matchMedia('(prefers-reduced-motion: reduce)').matches, go_ = (e, kf, o) => { const a = e.animate(kf, { easing: EASE, fill: 'backwards', ...o }); a.currentTime = t; };
+  // glideAt: when the teams start gliding; null while the win popup is up (they wait in their old places under it, see releaseGlide)
+  const now = performance.now(), t = motion ? now - motion.at : Infinity, held = !!motion && motion.changed && motion.glideAt === null, tg = held ? 0 : motion ? now - motion.glideAt : Infinity;
+  if (t < (motion && motion.closedNow ? 1700 : 900) || held || tg < 900) {   // a new change, or a redraw (the server's answer, a live update) while one is still playing: continue where it is
+    const calm = matchMedia('(prefers-reduced-motion: reduce)').matches, go_ = (e, kf, o, at = t) => { const a = e.animate(kf, { easing: EASE, fill: 'backwards', ...o }); a.currentTime = at; return a; };
+    if (held) heldAnims = [];
+    const glide = (e, kf, o) => { const a = go_(e, kf, o, tg); if (held) { a.pause(); heldAnims.push(a); } };
     const rise = dy => calm ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: `translateY(${dy}px)` }, { opacity: 1, transform: 'none' }];
     if (motion.changed) {
       // in the teams the whole chip (avatar and name) glides, so nobody's name ever disappears; for the resting row only the
@@ -727,16 +732,16 @@ function playMotion(before) {
         const face = e.querySelector('.av') || e, a = motion.before.get(e.dataset.pid), b = face.getBoundingClientRect();
         const dx = a ? a.left + a.width / 2 - b.left - b.width / 2 : 0, dy = a ? a.top + a.height / 2 - b.top - b.height / 2 : 0, k = a ? a.width / b.width || 1 : 1;
         if (a && Math.abs(dx) + Math.abs(dy) <= 2) return;   // stayed put: nothing to show
-        if (!a || calm) return go_(e, [{ opacity: .3 }, { opacity: 1 }], { duration: 200 });
+        if (!a || calm) return glide(e, [{ opacity: .3 }, { opacity: 1 }], { duration: 200 });
         const o = { duration: 420, delay: i * 30 }, rest = e.classList.contains('rest');
         const mover = rest ? face : e; mover.style.position = 'relative'; mover.style.zIndex = 5;   // above the other card while flying
-        go_(mover, [{ transform: `translate(${dx}px, ${dy}px)${rest ? ` scale(${k})` : ''}` }, { transform: 'none' }], o);
-        if (!rest && Math.abs(k - 1) > .02) go_(face, [{ transform: `scale(${k})` }, { transform: 'none' }], o);   // coming on from the resting row: the avatar grows
-        if (rest) go_(e.querySelector('.lbl'), [{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: i * 30 + 260 });
+        glide(mover, [{ transform: `translate(${dx}px, ${dy}px)${rest ? ` scale(${k})` : ''}` }, { transform: 'none' }], o);
+        if (!rest && Math.abs(k - 1) > .02) glide(face, [{ transform: `scale(${k})` }, { transform: 'none' }], o);   // coming on from the resting row: the avatar grows
+        if (rest) glide(e.querySelector('.lbl'), [{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: i * 30 + 260 });
       });
-      const note = document.querySelector('#app .stage .toast'); if (note && !motion.replay) go_(note, rise(8), { duration: 220 });   // a replay after the win popup moves only the players
+      const note = document.querySelector('#app .stage .toast'); if (note && t < 900) go_(note, rise(8), { duration: 220 });
     }
-    if (motion.closedNow) { const after = fxOn() && !calm ? (LOTTIE.potn ? 100 : 650) : 0;   // the drawn trophy lands at 650; the Lottie one comes with the card
+    if (motion.closedNow && t < 1700) { const after = fxOn() && !calm ? (LOTTIE.potn ? 100 : 650) : 0;   // the drawn trophy lands at 650; the Lottie one comes with the card
       [...app.children].filter(e => !e.matches('.top, .strip, h1, h1 + .mut')).forEach((e, i) => go_(e, rise(14), { duration: 450, delay: after + Math.min(i, 5) * 80 })); }
   }
   document.querySelectorAll('#app .rescard:not(.done)').forEach(e => { if (!seenCards.has(e.textContent)) { seenCards.add(e.textContent); e.animate(matchMedia('(prefers-reduced-motion: reduce)').matches ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 300, easing: EASE }); } });
@@ -842,8 +847,8 @@ function potnShow() {
 // a match won: a popup on the teams card names the winners, with the racket smashing the shuttle (in place of the confetti).
 // It goes when the animation ends or on a tap (the Undo note below stays reachable); the fanfare as before.
 function winShow(m) {
-  if (!fxOn()) return; fanfare();
-  requestAnimationFrame(async () => { const tm = document.querySelector('#app .stage .teams'); if (!tm) return confetti();
+  if (!fxOn()) return; fanfare(); winPending = true;   // set before the redraw, so the teams wait under the popup
+  requestAnimationFrame(async () => { const tm = document.querySelector('#app .stage .teams'); if (!tm) { releaseGlide(); return confetti(); }
     dropShows('.winpop');
     const w = m.win === 1 ? m.t1 : m.t2, x = analyse(db.days, db.players).log.find(e => e.day === m.day_id && e.n === m.n), gain = x && !w.some(ratingHidden) ? Math.round(K_FACTOR * (1 - x.chance)) : 0;
     const r = tm.getBoundingClientRect(), calm = calmNow(), el = document.createElement('div');
@@ -855,7 +860,7 @@ function winShow(m) {
     requestAnimationFrame(() => { el.querySelector('.wtxt').innerHTML = `<b>${w.length === 1 ? t('{name} won!', { name: pair(w) }) : t('{names} won!', { names: pair(w) })}</b>${gain ? `<span class="gain">+${gain}</span>` : ''}`; });
     el.animate(calm ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: 'scale(.94)' }, { opacity: 1, transform: 'none' }], { duration: calm ? 200 : 260, easing: EASE });
     const out = () => { if (!el.isConnected || el.closing) return; el.closing = true;
-      if (motion && motion.changed) { motion = { ...motion, at: performance.now(), replay: true }; playMotion(motion.before); }   // the new teams glide into place now, where everyone sees it
+      releaseGlide();
       el.animate([{ opacity: 1 }, { opacity: 0, transform: calm ? 'none' : 'scale(.98)' }], { duration: 200, easing: 'ease-in', fill: 'forwards' }).finished.then(() => { if (el.anim) el.anim.destroy(); el.remove(); }); };
     el.onclick = out;
     const box = el.querySelector('.wlot'), anim = await playLottie(box, LOTTIE.win);
@@ -949,6 +954,7 @@ function render() {
   const sl = document.querySelector('.slides'); shownSlide = slideIdx; if (sl && slideIdx) sl.scrollLeft = slideIdx * sl.clientWidth;
   minimalize(app);
   if (shownView && shownView !== view) pageIn(shownView, view);
+  if (view !== 'play' && winPending) { dropShows('.winpop'); releaseGlide(); }   // leaving Play closes the win popup
   shownView = view;
   if (rbefore) rsvpMotion(rbefore);
   if (view === 'play') doneMotion();
