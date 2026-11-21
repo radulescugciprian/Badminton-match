@@ -237,9 +237,9 @@
   .pchips{display:flex;flex-wrap:wrap;gap:6px} .pchips span{background:var(--chip);border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:var(--fs-xs);font-weight:600;color:var(--mut)}
   .stage .num{margin:4px 0 0;line-height:1.1}
   .stage .teams{margin:12px 0 8px}
-  button.team{display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:2px;padding:12px 8px 0;font:inherit;color:var(--text);cursor:pointer;overflow:hidden;min-height:150px}
+  button.team{display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:2px;padding:12px 8px 0;font:inherit;color:var(--text);cursor:pointer;min-height:150px}   /* no clipping: players fly between the cards */
   button.team .who b{font-size:var(--fs-lg)} button.team:active{transform:scale(.98)}
-  .wbar{align-self:stretch;margin:10px -8px 0;padding:12px 4px;background:var(--c);color:#fff;font-weight:800;font-size:var(--fs-md)}
+  .wbar{align-self:stretch;margin:10px -8px 0;padding:12px 4px;border-radius:0 0 14px 14px;background:var(--c);color:#fff;font-weight:800;font-size:var(--fs-md)}
   .stage .rest{display:flex;align-items:center;justify-content:center;gap:6px;padding:4px;margin:0 0 6px;background:none;border:0;font-size:var(--fs-sm)}
   .upnext{font-size:var(--fs-sm);color:var(--mut);text-align:center;margin:4px 0 10px}
   .stage .actions{margin-top:10px} .pmore{margin:4px 0 0;text-align:center} .pmore .actions{margin-top:0} .pmore .lineup{text-align:left}
@@ -297,7 +297,9 @@
   /* comfort and accessibility: touch targets of at least 44px, a visible keyboard focus, less motion when the phone asks for it */
   .top .link{min-width:44px;min-height:44px} .seg button,select{min-height:44px} .fold>summary,.more summary{min-height:44px;display:flex;align-items:center;gap:6px} .actions .link,button.link.danger{min-height:44px}
   :focus-visible{outline:3px solid var(--acc);outline-offset:2px;border-radius:8px} :focus:not(:focus-visible){outline:none}
-  @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+  /* reduced motion: nothing travels or loops; colour and opacity changes stay, so feedback is still visible */
+  @media (prefers-reduced-motion: reduce){*,*::before,*::after{scroll-behavior:auto!important} .skel i{animation:none} .flash{animation:none;box-shadow:0 0 0 3px var(--acc)}
+    #tour .spot,#tour .tip{transition:none} #toast{transition:opacity .2s;transform:translate(-50%,0)} button:not(:disabled):active,summary:active{transform:none}}
   /* ---- group B: a sports look. Bebas Neue for headings and big numbers, gold only for achievements, calmer photo behind Board and Stats */
   @font-face{font-family:'Bebas Neue';src:url(fonts/bebas-neue-latin.woff2) format('woff2');font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2212}
   @font-face{font-family:'Bebas Neue';src:url(fonts/bebas-neue-latin-ext.woff2) format('woff2');font-display:swap;unicode-range:U+0100-02AF,U+1E00-1E9F,U+1EF2-1EFF,U+2C60-2C7F,U+A720-A7FF}

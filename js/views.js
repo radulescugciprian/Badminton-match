@@ -222,7 +222,7 @@ function play() {
   if (d.closed) {
     return `<h1>${t('Results')}</h1><p class="mut">${esc(niceDate(d.date))} · ${tp('{n} matches', n)}</p>
       ${closedExtras(d, 'potn')}
-      <div class="card" style="padding:4px 16px;margin-bottom:16px">${stats(d.matches).slice(0, 3).map((r, i) => `<div class="rank"><span class="r">${medal(i)}</span>${av(r.id, 32)}
+      <div class="card podcard" style="padding:4px 16px;margin-bottom:16px">${stats(d.matches).slice(0, 3).map((r, i) => `<div class="rank"><span class="r">${medal(i)}</span>${av(r.id, 32)}
         <b>${esc(r.name)}</b><span class="mut" style="margin:0">${r.w}/${r.p}</span><b>${Math.round(pct(r) * 100)}%</b></div>`).join('')}</div>
       <div class="nextup"><button class="primary" onclick="photo(${d.id})">📷 ${d.photo ? t('Retake group photo') : t('Take group photo')}</button>
         <button class="add" onclick="shareCard(${d.id})">📤 ${t('Share result card')}</button></div>
@@ -245,7 +245,7 @@ function play() {
     <p class="num">${t('Match {n}', { n: n + 1 })}</p>
     <div class="teams">${team(1)}${team(2)}</div>
     ${may ? '' : `<p class="mut whorec" role="status">🔒 ${rest && player(rest).user ? t('{name} is resting and records this match.', { name: name(rest) }) : t('A player of tonight records this match.')}</p>`}
-    ${rest ? `<div class="rest">${av(rest, 22)} ${t('Resting:')} <b>${name(rest)}</b></div>` : ''}
+    ${rest ? `<div class="rest" data-pid="${rest}">${av(rest, 22)} <span class="lbl">${t('Resting:')} <b>${name(rest)}</b></span></div>` : ''}
     ${lw ? `<div class="toast">✓ ${pair(lw.win === 1 ? lw.t1 : lw.t2)} <button class="link" onclick="lastRec=0;undo()">↶ ${t('Undo')}</button></div>` : ''}
     <div class="upnext"><b>${t('Next')}:</b> ${n1 === n2 ? n1 : `<div>${t('If team {n} wins: {m}', { n: 1, m: n1 })}</div><div>${t('If team {n} wins: {m}', { n: 2, m: n2 })}</div>`}</div>
     <div class="pbtns">${lw ? '' : `<button onclick="undo()" ${n ? '' : 'disabled'}>↶ ${t('Undo last')}</button>`}<button class="link closeday" onclick="closeDay()" ${n ? '' : 'disabled'}>🏁 ${t('Close day')}</button></div>
@@ -701,6 +701,42 @@ function minimalize(root) {
   while (w.nextNode()) { EMO_RE.lastIndex = 0; if (EMO_RE.test(w.currentNode.data) && !skip(w.currentNode)) hits.push(w.currentNode); }
   for (const n of hits) { const s = document.createElement('span'); s.innerHTML = esc(n.data).replace(EMO_RE, (_, e) => svgIcon(EMO[e], 'inl i-' + EMO[e])); n.replaceWith(...s.childNodes); }
 }
+// ---- motion on Play. The one authored moment: after a result, the players glide from where they were to where they
+// play next (team 1, team 2 or resting), so the rotation explains itself. Everything else is feedback that plays once per
+// change (never on a mere redraw): the "won" note, a result waiting for you, and the results arriving when a night closes.
+// With reduced motion nothing travels; things fade in instead.
+let motionSeen = { day: null, n: -1, closed: false }, motion = null;   // motion: the change being animated, so a redraw mid-way carries on
+const seenCards = new Set(), EASE = 'cubic-bezier(.16,1,.3,1)';
+const playRects = () => new Map([...document.querySelectorAll('#app [data-pid]')].map(e => [e.dataset.pid, (e.querySelector('.av') || e).getBoundingClientRect()]));
+function playMotion(before) {
+  const d = cur(); if (!d || !Element.prototype.animate) return;
+  const same = motionSeen.day === d.id, changed = same && motionSeen.n !== d.matches.length && !d.closed, closedNow = same && !motionSeen.closed && d.closed;
+  motionSeen = { day: d.id, n: d.matches.length, closed: d.closed };
+  if (changed || closedNow) motion = { at: performance.now(), before, changed, closedNow };
+  const t = motion ? performance.now() - motion.at : Infinity;
+  if (t < 900) {   // a new change, or a redraw (the server's answer, a live update) while one is still playing: continue at t
+    const calm = matchMedia('(prefers-reduced-motion: reduce)').matches, go_ = (e, kf, o) => { const a = e.animate(kf, { easing: EASE, fill: 'backwards', ...o }); a.currentTime = t; };
+    const rise = dy => calm ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: `translateY(${dy}px)` }, { opacity: 1, transform: 'none' }];
+    if (motion.changed) {
+      // in the teams the whole chip (avatar and name) glides, so nobody's name ever disappears; for the resting row only the
+      // avatar flies in (it changes size) and its "Resting: name" label fades in on arrival
+      document.querySelectorAll('#app [data-pid]').forEach((e, i) => {
+        const face = e.querySelector('.av') || e, a = motion.before.get(e.dataset.pid), b = face.getBoundingClientRect();
+        const dx = a ? a.left + a.width / 2 - b.left - b.width / 2 : 0, dy = a ? a.top + a.height / 2 - b.top - b.height / 2 : 0, k = a ? a.width / b.width || 1 : 1;
+        if (a && Math.abs(dx) + Math.abs(dy) <= 2) return;   // stayed put: nothing to show
+        if (!a || calm) return go_(e, [{ opacity: .3 }, { opacity: 1 }], { duration: 200 });
+        const o = { duration: 420, delay: i * 30 }, rest = e.classList.contains('rest');
+        const mover = rest ? face : e; mover.style.position = 'relative'; mover.style.zIndex = 5;   // above the other card while flying
+        go_(mover, [{ transform: `translate(${dx}px, ${dy}px)${rest ? ` scale(${k})` : ''}` }, { transform: 'none' }], o);
+        if (!rest && Math.abs(k - 1) > .02) go_(face, [{ transform: `scale(${k})` }, { transform: 'none' }], o);   // coming on from the resting row: the avatar grows
+        if (rest) go_(e.querySelector('.lbl'), [{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: i * 30 + 260 });
+      });
+      const note = document.querySelector('#app .stage .toast'); if (note) go_(note, rise(8), { duration: 220 });
+    }
+    if (motion.closedNow) document.querySelectorAll('#app .potn, #app .podcard, #app .nextup').forEach((e, i) => go_(e, rise(14), { duration: 450, delay: i * 90 }));
+  }
+  document.querySelectorAll('#app .rescard').forEach(e => { if (!seenCards.has(e.textContent)) { seenCards.add(e.textContent); e.animate(matchMedia('(prefers-reduced-motion: reduce)').matches ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 300, easing: EASE }); } });
+}
 // a coin for something you earned: a solid icon (COIN) or a place number on a metal-style disc in the item's colour
 const COINC = { gold: '#c9a227', silver: '#9aa3ae', bronze: '#b8743a', orange: '#ea580c', violet: '#7c3aed', pink: '#db2777', blue: '#2563eb', teal: '#0f766e', green: '#16a34a', slate: '#475569' };
 const coin = (k, c, cls = '') => `<span class="coin ${cls}" style="--c:${COINC[c] || c}" aria-hidden="true">${/^\d$/.test(k) ? `<b>${k}</b>` : `<svg viewBox="0 0 256 256" fill="currentColor"><path d="${COIN[k]}"/></svg>`}</span>`;
@@ -737,8 +773,10 @@ function render() {
   const behind = me.is_admin && dbBehind ? `<div class="strip"><span>⚠️ ${t('The database is missing updates, so some buttons may fail. Apply the newest migrations in Supabase (see SETUP.md).')}</span></div>` : '';
   const strip = behind;
   const nearEnd = view === 'chat' && innerHeight + scrollY >= document.body.scrollHeight - 120;   // reading older messages: do not jump
+  const before = view === 'play' ? playRects() : null;
   app.innerHTML = top + strip + (view === 'play' ? resultCards() + play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'admin' && isAdmin() ? adminView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : view === 'chat' && chatOn ? chatView() : view === 'tips' ? tipsView() : view === 'records' ? recordsView() : view === 'backfill' && bf ? backfillView() : `<h1>${t('Photos')}</h1><div class="seg" style="margin-bottom:12px"><button class="${photosTab === 'photos' ? 'on' : ''}" onclick="photosTab='photos';render()">📷 ${t('Photos')}</button><button class="${photosTab === 'receipts' ? 'on' : ''}" onclick="photosTab='receipts';render()">🧾 ${t('Receipts')}</button></div><div id="gal"></div>`);
   drawReactions();
+  if (before) playMotion(before);
   const sl = document.querySelector('.slides'); shownSlide = slideIdx; if (sl && slideIdx) sl.scrollLeft = slideIdx * sl.clientWidth;
   minimalize(app);
   if (view === 'stats') { const k = [...document.querySelectorAll('.cslide')].findIndex(x => x.classList.contains('on')); if (k > 0) deckTo(k, false); fillCards(); }

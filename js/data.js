@@ -45,7 +45,7 @@ const av = (id, s = 40) => {
   return p.avatar ? `<img class="av" style="--s:${s}px" src="${p.avatar}" alt="">`
     : `<span class="av" style="--s:${s}px;background:hsl(${id * 67 % 360} 50% 30%)">${esc(p.name[0].toUpperCase())}</span>`;
 };
-const who = id => `<div class="who">${av(id, 34)}<b>${name(id)}</b></div>`;
+const who = id => `<div class="who" data-pid="${id}">${av(id, 34)}<b>${name(id)}</b></div>`;
 const slots = (order, ids) => ids.map(s => order[s - 1]);
 // a short "✓ done" note at the bottom instead of a pop-up that has to be closed
 const toast = m => { let el = document.getElementById('toast'); if (!el) { el = document.createElement('div'); el.id = 'toast'; el.setAttribute('role', 'status'); document.body.append(el); }
