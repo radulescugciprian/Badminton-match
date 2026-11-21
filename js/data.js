@@ -535,10 +535,10 @@ const canAnswerFix = (d, m) => { if (m.fix_win == null) return false;
   const losers = m.win === 1 ? m.t1 : m.t2;   // the team that loses if the change goes through (the proposing admin too, if they played on it)
   return losers.some(id => (player(id) || {}).user === session.user.id) || (!losers.some(id => (player(id) || {}).user) && m.fix_by !== session.user.id && standsIn(null, d, [...m.t1, ...m.t2])); };
 const findMatch = (dayId, n) => { const d = db.days.find(x => x.id === dayId); return [d, d && d.matches.find(m => m.n === n)]; };
-const confirmMatch = (dayId, n, right) => { const [, m] = findMatch(dayId, n); if (m) act(async () => ok(await sb.rpc('confirm_match', { mid: m.id, ok: right })), () => { m.confirmed = true; if (!right) m.win = 3 - m.win; }); };
+const confirmMatch = (dayId, n, right) => { const [, m] = findMatch(dayId, n); if (m) cardDone(dayId, n), act(async () => ok(await sb.rpc('confirm_match', { mid: m.id, ok: right })), () => { m.confirmed = true; if (!right) m.win = 3 - m.win; }); };
 const proposeFix = (dayId, n) => { const [, m] = findMatch(dayId, n); if (m && confirm(t('Change the winner of match {n}? A player of the team that would then lose has to confirm it.', { n })))
   act(async () => ok(await sb.rpc('propose_fix', { mid: m.id })), () => { m.fix_win = 3 - m.win; m.fix_by = session.user.id; }); };
-const answerFix = (dayId, n, yes) => { const [, m] = findMatch(dayId, n); if (m) act(async () => ok(await sb.rpc('answer_fix', { mid: m.id, ok: yes })), () => { if (yes) { m.win = m.fix_win; m.confirmed = true; } m.fix_win = null; }); };
+const answerFix = (dayId, n, yes) => { const [, m] = findMatch(dayId, n); if (m) cardDone(dayId, n, !yes), act(async () => ok(await sb.rpc('answer_fix', { mid: m.id, ok: yes })), () => { if (yes) { m.win = m.fix_win; m.confirmed = true; } m.fix_win = null; }); };
 const recordWin = team => {
   if (performance.now() - lastWin < 700) return; lastWin = performance.now(); // a double tap must not record two matches
   const d = cur(), { t1, t2, rest } = nextTeams(d);

@@ -155,7 +155,7 @@ function setup(d) {
   const open = admin || startOpen(), arrange = admin || date === tzParts().date;
   // the swipe cards pick the day; the list below belongs to that day (the editable line-up only exists for the next match day)
   const sd = slideDates(), sel = slideIdx && sd[Math.min(slideIdx, sd.length - 1)] || date;
-  const rowOf = (id, i) => `<li class="row ${i >= m ? 'bench' : ''}">
+  const rowOf = (id, i) => `<li class="row ${i >= m ? 'bench' : ''}" data-rp="${id}">
         <span class="slot">${i + 1}</span>
         ${player(id).user === session.user.id ? `<button class="ph" onclick="avatar(${id})" aria-label="${t('Change your photo')}">${av(id, 36)}</button>` : `<span class="ph">${av(id, 36)}</span>`}
         <button class="nm" ${admin || player(id).user === session.user.id ? `onclick="rename(${id})" aria-label="${t('Rename {name}', { name: name(id) })}"` : 'tabindex="-1"'}>${icon(id)} ${name(id)}${admin || player(id).user === session.user.id ? ' ✎' : ''}${player(id).user ? '' : `<span class="tag">${t('no account')}</span>`}</button>
@@ -198,15 +198,18 @@ function closedExtras(d, part) {
 
 // results waiting for me: confirm a match I watched while resting, or an admin's change that makes my team lose
 function resultCards() {
+  const done = doneCards.filter(c => performance.now() - c.at < DONE_MS).map(c => { const [d, m] = findMatch(c.day, c.n); if (!m) return '';
+    const w = m.win === 1 ? m.t1 : m.t2, x = analyse(db.days, db.players).log.find(e => e.day === d.id && e.n === m.n), gain = x && !w.some(ratingHidden) ? Math.round(K_FACTOR * (1 - x.chance)) : 0;
+    return `<div class="card rescard done" role="status" data-rcd="${c.day}-${c.n}"><span class="stamp">${svgIcon('check')}</span><b>${c.declined ? t('Change declined') : t('Confirmed: {winners} won', { winners: pair(w) })}</b>${gain && !c.declined ? `<span class="gain">+${gain}</span>` : ''}</div>`; }).join('');
   const recent = db.days.filter(d => d.date >= addDays(tzParts().date, -14)), out = [];
   for (const d of recent) for (const m of d.matches) {
     const w = m.win === 1 ? m.t1 : m.t2, l = m.win === 1 ? m.t2 : m.t1;
-    if (canConfirm(d, m)) out.push(`<div class="card rescard"><b>${t('Please confirm match {n}', { n: m.n })}</b><span>${t('{winners} beat {losers}?', { winners: pair(w), losers: pair(l) })}</span>
+    if (canConfirm(d, m)) out.push(`<div class="card rescard" data-rc="${d.id}-${m.n}"><b>${t('Please confirm match {n}', { n: m.n })}</b><span>${t('{winners} beat {losers}?', { winners: pair(w), losers: pair(l) })}</span>
       <div class="nextup"><button class="primary" onclick="confirmMatch(${d.id}, ${m.n}, true)">✓ ${t('Right')}</button><button class="add" onclick="confirmMatch(${d.id}, ${m.n}, false)">${t('The other team won')}</button></div></div>`);
-    if (canAnswerFix(d, m)) out.push(`<div class="card rescard"><b>${t('An admin wants to change match {n} ({date})', { n: m.n, date: esc(niceDate(d.date)) })}</b><span>${t('New result: {winners} beat {losers}. You would be on the losing team, so you confirm it.', { winners: pair(l), losers: pair(w) })}</span>
+    if (canAnswerFix(d, m)) out.push(`<div class="card rescard" data-rc="${d.id}-${m.n}"><b>${t('An admin wants to change match {n} ({date})', { n: m.n, date: esc(niceDate(d.date)) })}</b><span>${t('New result: {winners} beat {losers}. You would be on the losing team, so you confirm it.', { winners: pair(l), losers: pair(w) })}</span>
       <div class="nextup"><button class="primary" onclick="answerFix(${d.id}, ${m.n}, true)">✓ ${t('Confirm the change')}</button><button class="add" onclick="answerFix(${d.id}, ${m.n}, false)">${t('Decline')}</button></div></div>`);
   }
-  return out.join('');
+  return done + out.join('');
 }
 // every match of a day, in order: on the closed-day screen and under the Board's Day view
 function matchList(d, where) {
@@ -447,11 +450,11 @@ function collectionHtml(id, played) {
   const got = collection(db.days.filter(d => seasonKey(d.date) === season), id), others = played.filter(p => p.id !== id && !p.removed);
   return `<h2 class="sec">${t('Season album')} · ${esc(seasonLabel(season))}</h2>
     <p class="mut">${done === st.length ? '🏆 ' + t('Album complete: this season your card has a gold edge!') : t('{n} of {m} stickers. Fill the album for a gold-edge card this season.', { n: done, m: st.length })}</p>
-    <div class="album">${st.map(x => `<div class="stk ${x.done ? 'done' : ''}"><span class="si">${coin(S[x.k][0][0], x.done ? S[x.k][0][1] : 'slate', x.done ? '' : 'off')}</span><span>${S[x.k][1]}</span><small>${x.done ? '✓' : `${x.have}/${x.need}`}</small></div>`).join('')}</div>
+    <div class="album">${st.map(x => `<div class="stk ${x.done ? 'done' : ''}" ${x.done ? `data-earn="stk ${season} ${x.k}"` : ''}><span class="si">${coin(S[x.k][0][0], x.done ? S[x.k][0][1] : 'slate', x.done ? '' : 'off')}</span><span>${S[x.k][1]}</span><small>${x.done ? '✓' : `${x.have}/${x.need}`}</small></div>`).join('')}</div>
     <h2 class="sec">${t('Card collection')} · ${others.filter(p => got.has(p.id)).length}/${others.length}</h2>
     <p class="mut">${t('Collect a card by beating that player or winning together this season.')}</p>
     <div class="cards">${others.map(p => { const g = got.get(p.id);
-      return `<div class="ccard ${g ? 'got' : ''}">${av(p.id, 44)}<b>${esc(p.name)}</b><small class="mut">${g ? (g.how === 'beat' ? t('beaten') : t('won together')) : '🔒'}</small></div>`; }).join('')}</div>`;
+      return `<div class="ccard ${g ? 'got' : ''}" ${g ? `data-earn="card ${season} ${p.id}"` : ''}>${av(p.id, 44)}<b>${esc(p.name)}</b><small class="mut">${g ? (g.how === 'beat' ? t('beaten') : t('won together')) : '🔒'}</small></div>`; }).join('')}</div>`;
 }
 function cardSpec(id, an = analyse(db.days, db.players)) {
   const c = playerCard(db.days, db.players, id, an), s = seasonOf(tzParts().date), [te, tn, td] = TITLES()[c.title], hid = ratingHidden(id);
@@ -734,7 +737,73 @@ function playMotion(before) {
     }
     if (motion.closedNow) document.querySelectorAll('#app .potn, #app .podcard, #app .nextup').forEach((e, i) => go_(e, rise(14), { duration: 450, delay: i * 90 }));
   }
-  document.querySelectorAll('#app .rescard').forEach(e => { if (!seenCards.has(e.textContent)) { seenCards.add(e.textContent); e.animate(matchMedia('(prefers-reduced-motion: reduce)').matches ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 300, easing: EASE }); } });
+  document.querySelectorAll('#app .rescard:not(.done)').forEach(e => { if (!seenCards.has(e.textContent)) { seenCards.add(e.textContent); e.animate(matchMedia('(prefers-reduced-motion: reduce)').matches ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 300, easing: EASE }); } });
+}
+const calmNow = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+// every motion below plays from the moment its change happened, so a redraw half-way (the server's answer, a live update) carries on
+const runAt = (t, fill) => (e, kf, o) => { const a = e.animate(kf, { easing: EASE, fill, ...o }); a.currentTime = t; return a; };
+
+// ---- signing up: the line-up makes room, your row arrives from the "I'm in" button and the "n in" count rolls over
+let rsvpSig = null, rsvpMo = null;
+const rowTops = () => new Map([...document.querySelectorAll('#app [data-rp]')].map(e => [e.dataset.rp, e.getBoundingClientRect().top - e.parentNode.getBoundingClientRect().top]));
+const rsvpSnap = () => { const cards = [...document.querySelectorAll('#app .rsvp[data-day]')], inBtn = document.querySelector(`#app .rsvp[data-day="${nextPlayDate()}"] .seg button`);
+  return { cards: cards.length, rows: rowTops(),
+    counts: new Map(cards.map(c => [c.dataset.day, (c.querySelector('.rcount') || {}).textContent])), btn: inBtn && inBtn.getBoundingClientRect(),
+    ons: new Set(cards.flatMap(c => [...c.querySelectorAll('.seg button')].map((b, i) => b.classList.contains('on') ? c.dataset.day + i : '')).filter(Boolean)) }; };
+function rsvpMotion(o) {
+  const key = rsvps.map(r => r.day_date + ' ' + r.player_id + ' ' + r.status).sort().join(), was = rsvpSig; rsvpSig = key;
+  if (was !== null && was !== key && o.cards) rsvpMo = { at: performance.now(), o };   // o.cards: Play was already on screen (not just opened)
+  const t = rsvpMo ? performance.now() - rsvpMo.at : Infinity; if (t >= 700 || !Element.prototype.animate) return;
+  const b = rsvpMo.o, calm = calmNow(), run = runAt(t, 'backwards'), mine = db.players.find(p => p.user === session.user.id);
+  const now = rowTops();
+  document.querySelectorAll('#app [data-rp]').forEach(e => { const a = b.rows.get(e.dataset.rp), dy = a - now.get(e.dataset.rp);
+    if (a != null) { if (!calm && Math.abs(dy) > 1) run(e, [{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 360 }); return; }
+    const face = e.querySelector('.ph'); [...e.children].filter(c => c !== face).forEach(c => run(c, [{ opacity: 0 }, { opacity: 1 }], { duration: 220, delay: calm ? 0 : 220 }));
+    if (!face) return;
+    if (calm) return run(face, [{ opacity: 0 }, { opacity: 1 }], { duration: 220 });
+    const f = face.getBoundingClientRect(), from = mine && +e.dataset.rp === mine.id && b.btn;
+    face.style.position = 'relative'; face.style.zIndex = 5;
+    run(face, from ? [{ transform: `translate(${from.left + from.width / 2 - f.left - f.width / 2}px, ${from.top + from.height / 2 - f.top - f.height / 2}px) scale(.6)`, opacity: .5 }, { transform: 'none', opacity: 1 }]
+      : [{ transform: 'scale(.6)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: from ? 480 : 300 });
+  });
+  document.querySelectorAll('#app .rsvp[data-day]').forEach(c => { const n = c.querySelector('.rcount'), was_ = b.counts.get(c.dataset.day);
+    if (n && was_ != null && was_ !== n.textContent) run(n, calm ? [{ opacity: .2 }, { opacity: 1 }] : [{ opacity: 0, transform: 'translateY(.6em)' }, { opacity: 1, transform: 'none' }], { duration: 260 });
+    if (!calm) c.querySelectorAll('.seg button').forEach((x, i) => { if (x.classList.contains('on') && !b.ons.has(c.dataset.day + i)) run(x, [{ transform: 'scale(.94)' }, { transform: 'none' }], { duration: 240 }); });
+  });
+}
+
+// ---- a result confirmed: the card stamps a check, the winners' rating change rises, then the card folds away
+let doneCards = []; const DONE_MS = 1700;
+function cardDone(day, n, declined = false) {
+  const e = document.querySelector(`#app [data-rc="${day}-${n}"]`), c = { day, n, declined, at: performance.now(), h: e ? e.offsetHeight : 0 };
+  doneCards.push(c); setTimeout(() => { doneCards = doneCards.filter(x => x !== c); if (view === 'play') render(); }, DONE_MS + 30);
+}
+function doneMotion() {
+  if (!Element.prototype.animate) return;
+  document.querySelectorAll('#app .rescard.done').forEach(e => { const c = doneCards.find(x => `${x.day}-${x.n}` === e.dataset.rcd); if (!c) return;
+    const t = performance.now() - c.at, calm = calmNow(), run = runAt(t, 'both'), h = e.offsetHeight, st = e.querySelector('.stamp'), g = e.querySelector('.gain'), ease = EASE;
+    run(e, calm ? [{ opacity: 1 }, { opacity: 1, offset: .82 }, { opacity: 0, offset: .92 }, { opacity: 0 }]
+      : [{ height: (c.h || h) + 'px', easing: ease }, { height: h + 'px', offset: .18 }, { height: h + 'px', opacity: 1, offset: .82 }, { height: h + 'px', opacity: 0, offset: .88, easing: 'cubic-bezier(.4,0,.2,1)' },
+         { height: '0px', opacity: 0, paddingTop: '0px', paddingBottom: '0px', marginBottom: '0px', borderTopWidth: '0px', borderBottomWidth: '0px' }], { duration: DONE_MS, easing: 'linear' });
+    if (st) run(st, calm ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: 'scale(.4) rotate(-25deg)' }, { opacity: 1, transform: 'scale(1.12)', offset: .6 }, { transform: 'none' }], { duration: 380, delay: 60 });
+    if (g) run(g, calm ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 420, delay: 260 });
+  });
+}
+
+// ---- something new in your collection: the first time you see it, its coin drops into place and a gold ring goes out
+let earnMo = null;
+function earnMotion() {
+  const els = [...document.querySelectorAll('#app [data-earn]')], mine = db.players.find(p => p.user === session.user.id); if (!els.length || !mine) return;
+  const k = 'earned ' + mine.id; let seen = null; try { seen = JSON.parse(localStorage.getItem(k)); } catch {}
+  const fresh = seen ? els.filter(e => !seen.includes(e.dataset.earn)) : [];   // no list yet (first visit, new phone): remember everything quietly
+  if (!seen || fresh.length) try { localStorage.setItem(k, JSON.stringify([...new Set([...(seen || []), ...els.map(e => e.dataset.earn)])])); } catch {}
+  if (fresh.length) earnMo = { at: performance.now(), keys: new Set(fresh.map(e => e.dataset.earn)) };
+  const t = earnMo ? performance.now() - earnMo.at : Infinity; if (t > 1600 || !Element.prototype.animate) return;
+  const calm = calmNow(), run = runAt(t, 'backwards');
+  els.filter(e => earnMo.keys.has(e.dataset.earn)).slice(0, 8).forEach((e, i) => { const face = e.querySelector('.si, .av') || e;
+    run(face, calm ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: 'translateY(-18px) scale(1.3)' }, { opacity: 1, transform: 'translateY(2px) scale(.94)', offset: .55 }, { transform: 'none' }], { duration: 560, delay: 150 + i * 90 });
+    run(e, [{ boxShadow: '0 0 0 0 rgba(201,162,39,.65)' }, { boxShadow: '0 0 0 9px rgba(201,162,39,0)' }], { duration: 700, delay: 480 + i * 90, easing: 'ease-out' });
+  });
 }
 // a coin for something you earned: a solid icon (COIN) or a place number on a metal-style disc in the item's colour
 const COINC = { gold: '#c9a227', silver: '#9aa3ae', bronze: '#b8743a', orange: '#ea580c', violet: '#7c3aed', pink: '#db2777', blue: '#2563eb', teal: '#0f766e', green: '#16a34a', slate: '#475569' };
@@ -772,12 +841,15 @@ function render() {
   const behind = me.is_admin && dbBehind ? `<div class="strip"><span>⚠️ ${t('The database is missing updates, so some buttons may fail. Apply the newest migrations in Supabase (see SETUP.md).')}</span></div>` : '';
   const strip = behind;
   const nearEnd = view === 'chat' && innerHeight + scrollY >= document.body.scrollHeight - 120;   // reading older messages: do not jump
-  const before = view === 'play' ? playRects() : null;
+  const before = view === 'play' ? playRects() : null, rbefore = view === 'play' ? rsvpSnap() : null;
   app.innerHTML = top + strip + (view === 'play' ? resultCards() + play() : view === 'board' ? board() : view === 'members' ? membersView() : view === 'admin' && isAdmin() ? adminView() : view === 'profile' ? profileView() : view === 'stats' ? statsView() : view === 'calendar' ? calendarView() : view === 'chat' && chatOn ? chatView() : view === 'tips' ? tipsView() : view === 'records' ? recordsView() : view === 'backfill' && bf ? backfillView() : `<h1>${t('Photos')}</h1><div class="seg" style="margin-bottom:12px"><button class="${photosTab === 'photos' ? 'on' : ''}" onclick="photosTab='photos';render()">📷 ${t('Photos')}</button><button class="${photosTab === 'receipts' ? 'on' : ''}" onclick="photosTab='receipts';render()">🧾 ${t('Receipts')}</button></div><div id="gal"></div>`);
   drawReactions();
   if (before) playMotion(before);
   const sl = document.querySelector('.slides'); shownSlide = slideIdx; if (sl && slideIdx) sl.scrollLeft = slideIdx * sl.clientWidth;
   minimalize(app);
+  if (rbefore) rsvpMotion(rbefore);
+  if (view === 'play') doneMotion();
+  if (view === 'stats') earnMotion();
   if (view === 'stats') { const k = [...document.querySelectorAll('.cslide')].findIndex(x => x.classList.contains('on')); if (k > 0) deckTo(k, false); shapeDeck(); if (dealtFor !== statsVisit) { dealtFor = statsVisit; dealDeck(); } fillCards(); }
   if (view !== 'stats') statsVisit++;
   let cf = document.querySelector('.cform');   // made once, outside #app: redraws never interrupt typing

@@ -395,6 +395,9 @@
   .unlockreq{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0 0;padding:8px 10px;border-radius:12px;background:var(--chip);font-size:var(--fs-sm)} .unlockreq .link{white-space:nowrap;font-weight:700}
   /* results waiting for a confirmation; who records the match */
   .rescard{display:flex;flex-direction:column;gap:6px;margin:0 0 12px;border-color:var(--acc)} .rescard .nextup{margin:6px 0 0}
+  .rescard.done{flex-direction:row;align-items:center;gap:10px;overflow:hidden} .rescard.done b{flex:1;min-width:0}
+  .rescard .stamp{display:grid;place-items:center;flex:none;width:30px;height:30px;border-radius:50%;background:var(--acc);color:#fff} .rescard .stamp .lic{width:18px;height:18px;stroke-width:2.6}
+  .rescard .gain{flex:none;font-weight:700;color:var(--acc);font-variant-numeric:tabular-nums}
   .mstate{font-size:var(--fs-xs);color:var(--mut);white-space:nowrap} .mrow .mfix{min-height:32px;min-width:32px;padding:0}
   .whorec{text-align:center;margin:8px 0 0} button.team:disabled{opacity:.55;cursor:not-allowed}
   /* polish: Play */

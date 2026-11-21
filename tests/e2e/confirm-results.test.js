@@ -20,6 +20,7 @@ run('record by the resting player, confirm by the next one; admin changes confir
   // match 2: Costi rests and records; Dani (resting next) confirms
   await win(C, 1); await until(() => m(2) && m(2).confirm_player === 2, 'match 2 saved, Dani confirms');
   await B.click('.rescard >> text=Right'); await until(() => m(2).confirmed && m(2).win === 1, 'confirmed as it was');
+  await B.waitForSelector('.rescard.done >> text=Confirmed: Dani & Vali won'); await B.waitForSelector('.rescard', { state: 'detached', timeout: 4000 });   // the stamp shows, then folds away
   // after closing: the admin changes the winner of match 2; Dani & Vali would lose, so Bob (Dani) confirms — or Anna (Vali), who proposed it but played on that team
   await A.click('.closeday'); await A.waitForSelector('h1:has-text("Results")');
   await A.click('summary:has-text("Matches")'); await A.click('[aria-label="Change the winner of match 2"]'); await until(() => m(2).fix_win === 2, 'change proposed');
