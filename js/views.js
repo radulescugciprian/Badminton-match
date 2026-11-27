@@ -204,7 +204,7 @@ function resultCards() {
   const recent = db.days.filter(d => d.date >= addDays(tzParts().date, -14)), out = [];
   for (const d of recent) for (const m of d.matches) {
     const w = m.win === 1 ? m.t1 : m.t2, l = m.win === 1 ? m.t2 : m.t1;
-    if (canConfirm(d, m)) out.push(`<div class="card rescard" data-rc="${d.id}-${m.n}"><b>${t('Please confirm match {n}', { n: m.n })}</b><span>${t('{winners} beat {losers}?', { winners: pair(w), losers: pair(l) })}</span>
+    if (canConfirm(d, m)) out.push(`<div class="card rescard" data-rc="${d.id}-${m.n}"><b>${lateForAdmin(d) ? t('Match {n} ({date}) is still not confirmed', { n: m.n, date: esc(niceDate(d.date)) }) : t('Please confirm match {n}', { n: m.n })}</b><span>${t('{winners} beat {losers}?', { winners: pair(w), losers: pair(l) })}</span>
       <div class="nextup"><button class="primary" onclick="confirmMatch(${d.id}, ${m.n}, true)">✓ ${t('Right')}</button><button class="add" onclick="confirmMatch(${d.id}, ${m.n}, false)">${t('The other team won')}</button></div></div>`);
     if (canAnswerFix(d, m)) out.push(`<div class="card rescard" data-rc="${d.id}-${m.n}"><b>${t('An admin wants to change match {n} ({date})', { n: m.n, date: esc(niceDate(d.date)) })}</b><span>${t('New result: {winners} beat {losers}. You would be on the losing team, so you confirm it.', { winners: pair(l), losers: pair(w) })}</span>
       <div class="nextup"><button class="primary" onclick="answerFix(${d.id}, ${m.n}, true)">✓ ${t('Confirm the change')}</button><button class="add" onclick="answerFix(${d.id}, ${m.n}, false)">${t('Decline')}</button></div></div>`);
@@ -216,7 +216,7 @@ function matchList(d, where) {
   const side = (m, k) => { const ids = k === 1 ? m.t1 : m.t2, nm = m['team' + k + '_name'];
     return `${m.win === k ? '🏆 ' : ''}${nm ? `<b>${esc(nm)}</b> (${pair(ids)})` : pair(ids)}`; };
   return `<details class="fold" ${matchesOpen[where] ? 'open' : ''} ontoggle="matchesOpen['${where}']=this.open"><summary>${t('Matches')} (${d.matches.length})</summary><div class="card" style="padding:4px 16px">${d.matches.map(m => `<div class="mrow"><span class="r">${m.n}</span><span class="kind ${m.t1.length === 1 ? 'single' : 'double'}">${m.t1.length === 1 ? '1v1' : '2v2'}</span>
-    <span style="flex:1">${side(m, 1)} <span class="mut">${t('vs')}</span> ${side(m, 2)}</span><span class="mut">${m.created_at ? new Date(m.created_at).toLocaleTimeString(LOCALE[lang], { hour: '2-digit', minute: '2-digit' }) : ''}</span>${m.fix_win != null ? `<span class="mstate">⏳ ${t('change waiting')}</span>` : m.confirmed === false ? `<span class="mstate">⏳ ${t('to confirm')}</span>` : d.closed && isAdmin() && m.id ? `<button class="link mfix" onclick="proposeFix(${d.id}, ${m.n})" aria-label="${t('Change the winner of match {n}', { n: m.n })}">✎</button>` : ''}</div>`).join('')}</div></details>`;
+    <span style="flex:1">${side(m, 1)} <span class="mut">${t('vs')}</span> ${side(m, 2)}</span><span class="mut">${m.created_at ? new Date(m.created_at).toLocaleTimeString(LOCALE[lang], { hour: '2-digit', minute: '2-digit' }) : ''}</span>${m.fix_win != null ? `<span class="mstate">⏳ ${t('change waiting')}</span>` : m.confirmed === false ? `<span class="mstate">⏳ ${t('to confirm')}</span>` : (d.closed || d.date < tzParts().date) && isAdmin() && m.id ? `<button class="link mfix" onclick="proposeFix(${d.id}, ${m.n})" aria-label="${t('Change the winner of match {n}', { n: m.n })}">✎</button>` : ''}</div>`).join('')}</div></details>`;
 }
 
 function play() {

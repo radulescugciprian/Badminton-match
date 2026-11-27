@@ -366,4 +366,20 @@ select check_that((select m.win = 2 from matches m join days d on d.id = m.day_i
 reset role;
 select check_that((select count(*) from admin_log where action = 'fix_match') = 2, 'the changes are logged');
 
+-- ================= playing in 3; settling old matches the day after =================
+insert into days (date, player_order, mode, started) select '2099-03-05', array[1, 2, (select id from players where user_id = '00000000-0000-0000-0000-00000000000d')], 3, true;
+set role authenticated; select as_user((select m1 from ids));
+insert into matches (day_id, n, t1, t2, rest, win, confirmed) select id, 1, array[1], array[(select id from players where user_id = '00000000-0000-0000-0000-00000000000d')], 2, 1, false from days where date = '2099-03-05';   -- member1 rests, but in 3 anyone of tonight records
+insert into matches (day_id, n, t1, t2, rest, win) select id, 2, array[1], array[2], (select id from players where user_id = '00000000-0000-0000-0000-00000000000d'), 2 from days where date = '2099-03-05';   -- the latecomer (an account) rests: still anyone of tonight records
+select check_that((select bool_and(m.confirmed and m.confirm_player is null) from matches m join days d on d.id = m.day_id where d.date = '2099-03-05'), 'playing in 3: recorded by anyone of tonight, nothing to confirm');
+reset role;
+insert into days (date, player_order, mode, started) select '2000-01-06', array[1, 2, (select id from players where user_id = '00000000-0000-0000-0000-00000000000d'), (select id from players where name = 'Kid')], 4, true;   -- an old day nobody closed
+set role authenticated; select as_user((select adm from ids));
+insert into matches (day_id, n, t1, t2, rest, win, confirmed) select id, 1, array[1, 2], array[(select id from players where user_id = '00000000-0000-0000-0000-00000000000d'), (select id from players where name = 'Kid')], null, 1, false from days where date = '2000-01-06';
+select confirm_match((select m.id from matches m join days d on d.id = m.day_id where d.date = '2000-01-06' and m.n = 1), true);   -- the admin settles a match they recorded themselves
+select check_that((select m.confirmed from matches m join days d on d.id = m.day_id where d.date = '2000-01-06' and m.n = 1), 'an admin confirms what is left over');
+select propose_fix((select m.id from matches m join days d on d.id = m.day_id where d.date = '2000-01-06' and m.n = 1));   -- the day after, without closing the day
+select check_that((select m.fix_win = 2 from matches m join days d on d.id = m.day_id where d.date = '2000-01-06' and m.n = 1), 'a winner can be changed the day after, even if the day was not closed');
+reset role;
+
 select 'sql rights tests ok' as result;

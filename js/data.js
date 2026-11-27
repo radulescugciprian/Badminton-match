@@ -24,7 +24,7 @@ let db = { players: [], days: [] }, members = [], me = {}, session = null, loade
 let sched = null; // play schedule (null until loaded / before its migration): no restriction then
 let std = null, adminLog = []; // standings counted by the database (null before its migration); activity log (admins)
 let playDates = [], rsvpOpen = null, calMonth = null; // calendar marks; hand-made open/close of the sign-up card; month shown
-const DB_VERSION = 20261122; // bump together with db_version() in the newest migration
+const DB_VERSION = 20261127; // bump together with db_version() in the newest migration
 // links shared in the WhatsApp group open the app on the answer buttons for that day (?answer=YYYY-MM-DD)
 const deepLink = new URLSearchParams(location.search).get('answer');
 let unlocks = [];   // late answers: a member asked the admins to open the sign-up for them (opened: an admin did)
@@ -529,8 +529,10 @@ const changeLineup = (id, leaving) => {
 const myPid = () => (db.players.find(p => p.user === session.user.id) || {}).id;
 const standsIn = (pid, d, extra = []) => { const p = pid && player(pid); if (p && p.user) return p.user === session.user.id;
   const me_ = myPid(); return !!me_ && (extra.includes(me_) || (d.order || []).includes(me_)); };
-const canRecord = (d, x) => isAdmin() || standsIn(x.rest, d, [...x.t1, ...x.t2]);
-const canConfirm = (d, m) => m.confirmed === false && m.id && m.created_by !== session.user.id && (isAdmin() || standsIn(m.confirm_player, d, [...m.t1, ...m.t2]));
+const canRecord = (d, x) => isAdmin() || standsIn(d.mode === 3 ? null : x.rest, d, [...x.t1, ...x.t2]);   // playing in 3: anyone of tonight
+// from the day after: an admin settles whatever is still waiting (even matches they recorded, even in member view)
+const lateForAdmin = d => !!me.is_admin && d.date < tzParts().date;
+const canConfirm = (d, m) => m.confirmed === false && m.id && (lateForAdmin(d) || m.created_by !== session.user.id && (isAdmin() || standsIn(m.confirm_player, d, [...m.t1, ...m.t2])));
 const canAnswerFix = (d, m) => { if (m.fix_win == null) return false;
   const losers = m.win === 1 ? m.t1 : m.t2;   // the team that loses if the change goes through (the proposing admin too, if they played on it)
   return losers.some(id => (player(id) || {}).user === session.user.id) || (!losers.some(id => (player(id) || {}).user) && m.fix_by !== session.user.id && standsIn(null, d, [...m.t1, ...m.t2])); };
@@ -545,9 +547,9 @@ const recordWin = team => {
   if (!canRecord(d, { t1, t2, rest })) return;
   primeAudio();
   const row = { day_id: d.id, n: d.matches.length + 1, t1, t2, rest: rest || null, win: team };
-  row.confirm_player = nextTeams({ ...d, matches: [...d.matches, row] }).rest || null;   // the one resting next confirms it
+  row.confirm_player = d.mode === 3 ? null : nextTeams({ ...d, matches: [...d.matches, row] }).rest || null;   // the one resting next confirms it (playing in 3: no confirmation)
   return act(async () => ok(await sb.from('matches').insert(row)), () => {
-    d.matches.push({ ...row, id: null, confirmed: false, created_by: session.user.id, created_at: new Date().toISOString() }); winShow(row); const at = lastRec = Date.now(); setTimeout(() => lastRec === at && view === 'play' && render(), UNDO_MS + 100); // the "recorded" note with the only Undo goes away after 10 s (only redraw the play screen, never a half-filled form)
+    d.matches.push({ ...row, id: null, confirmed: d.mode === 3, created_by: session.user.id, created_at: new Date().toISOString() }); winShow(row); const at = lastRec = Date.now(); setTimeout(() => lastRec === at && view === 'play' && render(), UNDO_MS + 100); // the "recorded" note with the only Undo goes away after 10 s (only redraw the play screen, never a half-filled form)
   });
 };
 
